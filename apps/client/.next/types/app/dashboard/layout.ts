@@ -1,4 +1,4 @@
-// File: C:\Users\reyom\Downloads\Módulo LMS\Módulo LMS\apps\client\src\app\dashboard\layout.tsx
+// File: C:\Users\joste\Downloads\M-dulo-LMS\apps\client\src\app\dashboard\layout.tsx
 import * as entry from '../../../../src/app/dashboard/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

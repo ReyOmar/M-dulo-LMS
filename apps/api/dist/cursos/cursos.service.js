@@ -10,6 +10,49 @@ Object.defineProperty(exports, "CursosService", {
 });
 const _common = require("@nestjs/common");
 const _prismaservice = require("../prisma/prisma.service");
+const _fs = /*#__PURE__*/ _interop_require_wildcard(require("fs"));
+const _path = /*#__PURE__*/ _interop_require_wildcard(require("path"));
+function _getRequireWildcardCache(nodeInterop) {
+    if (typeof WeakMap !== "function") return null;
+    var cacheBabelInterop = new WeakMap();
+    var cacheNodeInterop = new WeakMap();
+    return (_getRequireWildcardCache = function(nodeInterop) {
+        return nodeInterop ? cacheNodeInterop : cacheBabelInterop;
+    })(nodeInterop);
+}
+function _interop_require_wildcard(obj, nodeInterop) {
+    if (!nodeInterop && obj && obj.__esModule) {
+        return obj;
+    }
+    if (obj === null || typeof obj !== "object" && typeof obj !== "function") {
+        return {
+            default: obj
+        };
+    }
+    var cache = _getRequireWildcardCache(nodeInterop);
+    if (cache && cache.has(obj)) {
+        return cache.get(obj);
+    }
+    var newObj = {
+        __proto__: null
+    };
+    var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor;
+    for(var key in obj){
+        if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) {
+            var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null;
+            if (desc && (desc.get || desc.set)) {
+                Object.defineProperty(newObj, key, desc);
+            } else {
+                newObj[key] = obj[key];
+            }
+        }
+    }
+    newObj.default = obj;
+    if (cache) {
+        cache.set(obj, newObj);
+    }
+    return newObj;
+}
 function _ts_decorate(decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -19,6 +62,7 @@ function _ts_decorate(decorators, target, key, desc) {
 function _ts_metadata(k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 }
+const UPLOADS_DIR = _path.join(process.cwd(), 'uploads');
 let CursosService = class CursosService {
     async getCursosActivosParaEstudiante() {
         return this.prisma.lms_cursos.findMany({
@@ -63,7 +107,8 @@ let CursosService = class CursosService {
     async getCursosDeProfesor(profesor_guid) {
         return this.prisma.lms_cursos.findMany({
             where: {
-                profesor_guid
+                profesor_guid,
+                estado: 'PUBLICADO'
             },
             orderBy: {
                 created_at: 'desc'
@@ -189,6 +234,15 @@ let CursosService = class CursosService {
             }
         });
     }
+    async getBloque(guid) {
+        const bloque = await this.prisma.lms_recursos.findUnique({
+            where: {
+                guid
+            }
+        });
+        if (!bloque) throw new _common.NotFoundException('Recurso no encontrado');
+        return bloque;
+    }
     async addBloqueToModulo(modulo_guid, data) {
         const modulo = await this.prisma.lms_modulos.findUnique({
             where: {
@@ -227,9 +281,29 @@ let CursosService = class CursosService {
             data: {
                 titulo: data.titulo,
                 contenido_html: data.contenido_html,
-                url_archivo: data.url_archivo
+                url_archivo: data.url_archivo,
+                url_referencia: data.url_referencia,
+                archivo_adjunto: data.archivo_adjunto,
+                archivo_adjunto_nombre: data.archivo_adjunto_nombre,
+                quiz_config: data.quiz_config,
+                archivo_max_size_mb: data.archivo_max_size_mb
             }
         });
+    }
+    // Save a base64 file to disk and return the filename
+    uploadFile(base64Data, originalName) {
+        const ext = _path.extname(originalName) || '.bin';
+        const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
+        // Remove data:xxx;base64, prefix if present
+        const base64Clean = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+        const buffer = Buffer.from(base64Clean, 'base64');
+        _fs.writeFileSync(_path.join(UPLOADS_DIR, uniqueName), buffer);
+        return uniqueName;
+    }
+    getUploadPath(filename) {
+        const fullPath = _path.join(UPLOADS_DIR, filename);
+        if (!_fs.existsSync(fullPath)) throw new _common.NotFoundException('Archivo no encontrado');
+        return fullPath;
     }
     async submitEntrega(tarea_guid, data) {
         // 1. Verificar si hay un registro de entrega previo
@@ -303,8 +377,28 @@ let CursosService = class CursosService {
             }
         });
     }
+    async deleteModulo(guid) {
+        return this.prisma.lms_modulos.delete({
+            where: {
+                guid
+            }
+        });
+    }
+    async deleteCurso(guid) {
+        return this.prisma.lms_cursos.delete({
+            where: {
+                guid
+            }
+        });
+    }
     constructor(prisma){
         this.prisma = prisma;
+        // Ensure uploads directory exists
+        if (!_fs.existsSync(UPLOADS_DIR)) {
+            _fs.mkdirSync(UPLOADS_DIR, {
+                recursive: true
+            });
+        }
     }
 };
 CursosService = _ts_decorate([

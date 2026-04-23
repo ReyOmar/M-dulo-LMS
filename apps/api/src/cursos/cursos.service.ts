@@ -1,10 +1,19 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { lms_tipo_recurso } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 
 @Injectable()
 export class CursosService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) {
+    // Ensure uploads directory exists
+    if (!fs.existsSync(UPLOADS_DIR)) {
+      fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    }
+  }
 
   async getCursosActivosParaEstudiante() {
     return this.prisma.lms_cursos.findMany({
@@ -35,7 +44,7 @@ export class CursosService {
 
   async getCursosDeProfesor(profesor_guid: string) {
     return this.prisma.lms_cursos.findMany({
-        where: { profesor_guid },
+        where: { profesor_guid, estado: 'PUBLICADO' },
         orderBy: { created_at: 'desc' }
     });
   }
@@ -139,6 +148,14 @@ export class CursosService {
     });
   }
 
+  async getBloque(guid: string) {
+    const bloque = await this.prisma.lms_recursos.findUnique({
+        where: { guid }
+    });
+    if (!bloque) throw new NotFoundException('Recurso no encontrado');
+    return bloque;
+  }
+
   async addBloqueToModulo(modulo_guid: string, data: { tipo: lms_tipo_recurso; contenido_html?: string; titulo?: string }) {
     const modulo = await this.prisma.lms_modulos.findUnique({
         where: { guid: modulo_guid },
@@ -166,15 +183,39 @@ export class CursosService {
     });
   }
 
-  async updateBloque(guid: string, data: { titulo?: string; contenido_html?: string; url_archivo?: string }) {
+  async updateBloque(guid: string, data: { titulo?: string; contenido_html?: string; url_archivo?: string; url_referencia?: string; archivo_adjunto?: string; archivo_adjunto_nombre?: string; quiz_config?: string; archivo_max_size_mb?: number }) {
     return this.prisma.lms_recursos.update({
         where: { guid },
         data: {
             titulo: data.titulo,
             contenido_html: data.contenido_html,
-            url_archivo: data.url_archivo
+            url_archivo: data.url_archivo,
+            url_referencia: data.url_referencia,
+            archivo_adjunto: data.archivo_adjunto,
+            archivo_adjunto_nombre: data.archivo_adjunto_nombre,
+            quiz_config: data.quiz_config,
+            archivo_max_size_mb: data.archivo_max_size_mb,
         }
     });
+  }
+
+  // Save a base64 file to disk and return the filename
+  uploadFile(base64Data: string, originalName: string): string {
+    const ext = path.extname(originalName) || '.bin';
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
+    
+    // Remove data:xxx;base64, prefix if present
+    const base64Clean = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+    const buffer = Buffer.from(base64Clean, 'base64');
+    
+    fs.writeFileSync(path.join(UPLOADS_DIR, uniqueName), buffer);
+    return uniqueName;
+  }
+
+  getUploadPath(filename: string): string {
+    const fullPath = path.join(UPLOADS_DIR, filename);
+    if (!fs.existsSync(fullPath)) throw new NotFoundException('Archivo no encontrado');
+    return fullPath;
   }
 
   async submitEntrega(tarea_guid: string, data: { base64: string, nombre_archivo: string, usuario_guid: string }) {
@@ -236,6 +277,18 @@ export class CursosService {
 
   async deleteBloque(guid: string) {
     return this.prisma.lms_recursos.delete({
+        where: { guid }
+    });
+  }
+
+  async deleteModulo(guid: string) {
+    return this.prisma.lms_modulos.delete({
+        where: { guid }
+    });
+  }
+
+  async deleteCurso(guid: string) {
+    return this.prisma.lms_cursos.delete({
         where: { guid }
     });
   }
