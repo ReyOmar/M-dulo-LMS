@@ -1,7 +1,6 @@
 {
-  "/login/page": "app/login/page.js",
-  "/page": "app/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/dashboard/admin/tema/page": "app/dashboard/admin/tema/page.js",
+  "/dashboard/constructor-cursos/page": "app/dashboard/constructor-cursos/page.js",
+  "/dashboard/constructor-cursos/[curso_id]/modulos/[modulo_id]/bloques/[bloque_id]/page": "app/dashboard/constructor-cursos/[curso_id]/modulos/[modulo_id]/bloques/[bloque_id]/page.js",
   "/dashboard/admin/usuarios/page": "app/dashboard/admin/usuarios/page.js"
 }

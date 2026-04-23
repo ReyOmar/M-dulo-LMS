@@ -3,12 +3,25 @@
 import { useRole, Role } from "@/contexts/RoleContext";
 import { useConfig } from "@/contexts/ConfigContext";
 import { GraduationCap, BookOpen, Clock, Award, Shield, Settings, Users, ArrowRight, Compass, ShieldAlert, BarChart3, Presentation, BookCheck, ClipboardList, LogOut, CheckCircle, Palette } from "lucide-react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ThemeToggle } from "./ThemeToggle";
 
 export function Sidebar() {
   const { role, realRole, simulatedRole, setSimulatedRole, logout } = useRole();
   const { config } = useConfig();
+  const pathname = usePathname() || "";
+
+  const isActive = (path: string) => {
+    if (path === '/dashboard') return pathname === '/dashboard';
+    return pathname.startsWith(path);
+  };
+
+  const linkClass = (path: string) => {
+    return isActive(path) 
+      ? "flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-primary font-medium transition-colors"
+      : "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted font-medium transition-colors";
+  };
 
   return (
     <aside className="w-80 border-r border-border bg-card flex flex-col fixed h-full z-10 transition-all">
@@ -24,16 +37,16 @@ export function Sidebar() {
         {role === "teacher" && (
             <div className="space-y-1 mb-8 animate-in slide-in-from-left-2">
                 <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Gestión de Evaluaciones</p>
-                <Link href="/dashboard" className="flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-primary font-medium transition-colors">
+                <Link href="/dashboard" className={linkClass('/dashboard')}>
                     <Presentation className="h-4 w-4" /> Asignaciones
                 </Link>
-                <Link href="/dashboard" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted font-medium transition-colors">
+                <Link href="/dashboard" className={linkClass('/dashboard')}>
                     <BookCheck className="h-4 w-4" /> Calificación Manual
                 </Link>
-                <Link href="/dashboard" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted font-medium transition-colors">
+                <Link href="/dashboard" className={linkClass('/dashboard')}>
                     <Users className="h-4 w-4" /> Armar Grupos
                 </Link>
-                <Link href="/dashboard" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted font-medium transition-colors">
+                <Link href="/dashboard" className={linkClass('/dashboard')}>
                     <Clock className="h-4 w-4" /> Prórrogas Individuales
                 </Link>
             </div>
@@ -43,16 +56,16 @@ export function Sidebar() {
         {role === "student" && (
             <div className="space-y-1 mb-8 animate-in slide-in-from-left-2">
                 <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Área de Aprendizaje</p>
-                <Link href="/dashboard" className="flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-primary font-medium transition-colors">
+                <Link href="/dashboard" className={linkClass('/dashboard')}>
                     <Compass className="h-4 w-4" /> Mi Tablero
                 </Link>
-                <Link href="/dashboard/student/cursos" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted font-medium transition-colors">
+                <Link href="/dashboard/student/cursos" className={linkClass('/dashboard/student/cursos')}>
                     <BookOpen className="h-4 w-4" /> Mis Cursos Activos
                 </Link>
-                <Link href="/dashboard" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted font-medium transition-colors">
+                <Link href="/dashboard" className={linkClass('/dashboard')}>
                     <ClipboardList className="h-4 w-4" /> Subida de Archivos
                 </Link>
-                <Link href="/dashboard" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted font-medium transition-colors">
+                <Link href="/dashboard" className={linkClass('/dashboard')}>
                     <Award className="h-4 w-4" /> Mis Certificados PDF
                 </Link>
             </div>
@@ -63,27 +76,27 @@ export function Sidebar() {
             <>
                 <div className="space-y-1 mb-6">
                     <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Visión Global</p>
-                    <Link href="/dashboard" className="flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-primary font-medium transition-colors">
+                    <Link href="/dashboard" className={linkClass('/dashboard')}>
                         <BarChart3 className="h-4 w-4" /> Panel Administrativo
                     </Link>
                 </div>
 
                 <div className="space-y-1 mb-6 animate-in slide-in-from-left-2">
                     <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Construcción</p>
-                    <Link href="/dashboard/constructor-cursos" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground font-medium transition-colors">
+                    <Link href="/dashboard/constructor-cursos" className={linkClass('/dashboard/constructor-cursos')}>
                         <BookOpen className="h-4 w-4" /> Gestión de Cursos
                     </Link>
                 </div>
 
                 <div className="space-y-1 mb-6 animate-in slide-in-from-left-2">
                     <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Administración del Sistema</p>
-                    <Link href="/dashboard/admin/usuarios" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted font-medium transition-colors">
+                    <Link href="/dashboard/admin/usuarios" className={linkClass('/dashboard/admin/usuarios')}>
                         <Users className="h-4 w-4" /> Base de Usuarios
                     </Link>
-                    <Link href="/dashboard/admin/solicitudes" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted font-medium transition-colors">
+                    <Link href="/dashboard/admin/solicitudes" className={linkClass('/dashboard/admin/solicitudes')}>
                         <Users className="h-4 w-4" /> Solicitudes Pendientes
                     </Link>
-                    <Link href="/dashboard/admin/tema" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted font-medium transition-colors">
+                    <Link href="/dashboard/admin/tema" className={linkClass('/dashboard/admin/tema')}>
                         <Palette className="h-4 w-4" /> Tema y Apariencia
                     </Link>
                 </div>

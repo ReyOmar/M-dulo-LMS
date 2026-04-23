@@ -217,20 +217,25 @@ model lms_lecciones {
 }
 
 model lms_recursos {
-  guid           String                @id @default(uuid())
-  leccion_guid   String
-  leccion        lms_lecciones         @relation(fields: [leccion_guid], references: [guid], onDelete: Cascade)
-  titulo         String
-  tipo           lms_tipo_recurso
-  contenido_html String?               
-  url_archivo    String?
-  orden          Int                   @default(0)
-  obligatorio    Boolean               @default(true)
-  tiempo_lectura Int?                  // Estimado en minutos
-  created_at     DateTime              @default(now())
-  updated_at     DateTime              @updatedAt
-  deleted_at     DateTime?
-  progreso       lms_progreso_recurso[]
+  guid                  String                @id @default(uuid())
+  leccion_guid          String
+  leccion               lms_lecciones         @relation(fields: [leccion_guid], references: [guid], onDelete: Cascade)
+  titulo                String
+  tipo                  lms_tipo_recurso
+  contenido_html        String?               
+  url_archivo           String?
+  url_referencia        String?               // URL externa opcional para recursos adicionales
+  archivo_adjunto       String?               // Base64 del archivo adjunto (PDF, Word, PPT, etc.)
+  archivo_adjunto_nombre String?              // Nombre original del archivo adjunto
+  archivo_max_size_mb   Int?                  // Límite de peso de archivo en MB (admin y estudiante)
+  quiz_config           String?               // JSON: { intentos_permitidos, tiempo_minutos, preguntas: [...] }
+  orden                 Int                   @default(0)
+  obligatorio           Boolean               @default(true)
+  tiempo_lectura        Int?                  // Estimado en minutos
+  created_at            DateTime              @default(now())
+  updated_at            DateTime              @updatedAt
+  deleted_at            DateTime?
+  progreso              lms_progreso_recurso[]
 
   @@index([leccion_guid])
 }
