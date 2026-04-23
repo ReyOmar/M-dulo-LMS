@@ -1,6 +1,4 @@
 {
-  "/dashboard/page": "app/dashboard/page.js",
-  "/dashboard/examiner/monitoreo/page": "app/dashboard/examiner/monitoreo/page.js",
-  "/dashboard/examiner/calificaciones/page": "app/dashboard/examiner/calificaciones/page.js",
-  "/dashboard/constructor-cursos/page": "app/dashboard/constructor-cursos/page.js"
+  "/login/page": "app/login/page.js",
+  "/dashboard/page": "app/dashboard/page.js"
 }

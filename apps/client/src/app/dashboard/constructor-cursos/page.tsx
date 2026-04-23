@@ -229,6 +229,7 @@ export default function ConstructorCursosRoot() {
       }
       if (recurso?.archivo_adjunto_nombre && recurso?.archivo_adjunto) {
           extras.push(
+<<<<<<< HEAD
               <a key="file" href={`http://localhost:3200/api/cursos/download/${recurso.archivo_adjunto}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-colors cursor-pointer group">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                       <Paperclip className="h-4 w-4 text-primary" />
@@ -248,6 +249,14 @@ export default function ConstructorCursosRoot() {
               </div>
           );
       }
+=======
+              <a key="file" href={`http://localhost:3200/api/cursos/download/${recurso.archivo_adjunto}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-muted/30 border border-border rounded-xl hover:bg-muted/50 transition-colors cursor-pointer">
+                  <Paperclip className="h-4 w-4 text-primary flex-shrink-0" />
+                  <span className="text-sm font-medium truncate text-primary hover:underline">{recurso.archivo_adjunto_nombre}</span>
+              </a>
+          );
+      }
+>>>>>>> d09ec4de4fdd09df26ae1ed277f0eb62850d7fbd
       if (recurso?.quiz_config) {
           try {
               const qc = JSON.parse(recurso.quiz_config);
@@ -356,7 +365,11 @@ export default function ConstructorCursosRoot() {
                 {/* Header for Active Course */}
                 <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
                     <div className="flex items-center gap-4 flex-1">
+<<<<<<< HEAD
                         <button type="button" onClick={() => { if (role === 'teacher') { router.push('/dashboard'); } else { setActiveCourse(null); window.history.replaceState({}, '', window.location.pathname); } }} className="p-2 bg-muted rounded-full hover:bg-border transition-colors">
+=======
+                        <button type="button" onClick={() => { setActiveCourse(null); window.history.replaceState({}, '', window.location.pathname); }} className="p-2 bg-muted rounded-full hover:bg-border transition-colors">
+>>>>>>> d09ec4de4fdd09df26ae1ed277f0eb62850d7fbd
                             <ArrowLeft className="h-5 w-5 text-muted-foreground" />
                         </button>
                         <div className="flex flex-col flex-1 max-w-xl group">

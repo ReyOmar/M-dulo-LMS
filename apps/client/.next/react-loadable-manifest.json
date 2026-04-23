@@ -2,19 +2,19 @@
   "..\\node_modules\\next\\dist\\client\\dev\\hot-reloader\\app\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts": {
     "id": "..\\node_modules\\next\\dist\\client\\dev\\hot-reloader\\app\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts",
     "files": [
-      "static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js"
+      "static/chunks/fallback/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js"
     ]
   },
-  "app\\dashboard\\constructor-cursos\\page.tsx -> @justinribeiro/lite-youtube": {
-    "id": "app\\dashboard\\constructor-cursos\\page.tsx -> @justinribeiro/lite-youtube",
+  "..\\node_modules\\next\\dist\\client\\index.js -> ../pages/_app": {
+    "id": "..\\node_modules\\next\\dist\\client\\index.js -> ../pages/_app",
     "files": [
-      "static/chunks/_app-pages-browser_node_modules_justinribeiro_lite-youtube_lite-youtube_js.js"
+      "static/chunks/fallback/_pages-dir-browser_node_modules_next_dist_pages__app_js.js"
     ]
   },
-  "components\\dashboards\\AdminDashboard.tsx -> recharts": {
-    "id": "components\\dashboards\\AdminDashboard.tsx -> recharts",
+  "..\\node_modules\\next\\dist\\client\\index.js -> ../pages/_error": {
+    "id": "..\\node_modules\\next\\dist\\client\\index.js -> ../pages/_error",
     "files": [
-      "static/chunks/_app-pages-browser_node_modules_recharts_es6_index_js.js"
+      "static/chunks/fallback/_pages-dir-browser_node_modules_next_dist_pages__error_js.js"
     ]
   }
 }
