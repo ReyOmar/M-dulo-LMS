@@ -4,3 +4,9 @@ dist
 .DS_Store
 *.log
 .env
+
+# Database and Uploads
+apps/api/prisma/*.db
+*.sqlite
+apps/api/uploads/
+
