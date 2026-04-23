@@ -5,6 +5,12 @@
       "static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js"
     ]
   },
+  "app\\dashboard\\constructor-cursos\\page.tsx -> @justinribeiro/lite-youtube": {
+    "id": "app\\dashboard\\constructor-cursos\\page.tsx -> @justinribeiro/lite-youtube",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_justinribeiro_lite-youtube_lite-youtube_js.js"
+    ]
+  },
   "components\\dashboards\\AdminDashboard.tsx -> recharts": {
     "id": "components\\dashboards\\AdminDashboard.tsx -> recharts",
     "files": [
