@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  db-lms:
+    image: mysql:8.0
+    container_name: lms-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: lms_db
+      MYSQL_USER: lms_user
+      MYSQL_PASSWORD: lms_password
+    ports:
+      - "3307:3306" # Exposing on port 3307 to avoid conflict with PESV's 3306
+    volumes:
+      - lms-db-data:/var/lib/mysql
+
+volumes:
+  lms-db-data:

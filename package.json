@@ -1,0 +1,15 @@
+{
+  "name": "lms",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "init": "npm ci && concurrently --success all -n api,client -c green,cyan \"cd apps/api && npm ci && npx prisma generate\" \"cd apps/client && npm ci\"",
+    "dev:api": "dotenv -e .env -- npm run dev --prefix apps/api",
+    "dev:client": "dotenv -e .env -- npm run dev --prefix apps/client",
+    "dev": "dotenv -e .env -- concurrently -k -n api,client -c green,cyan \"npm run dev:api\" \"npm run dev:client\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "dotenv-cli": "^10.0.0"
+  }
+}
