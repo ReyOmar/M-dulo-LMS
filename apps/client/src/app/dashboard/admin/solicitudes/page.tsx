@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, X, ShieldAlert, Clock } from "lucide-react";
+import { Check, X, ShieldAlert, Clock, KeyRound, Eye, EyeOff, Save, Loader2 } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import Link from "next/link";
 
@@ -11,8 +11,16 @@ export default function SolicitudesPendientes() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<number | null>(null);
 
+  // Default password state
+  const [defaultPassword, setDefaultPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordSaved, setPasswordSaved] = useState(false);
+
   useEffect(() => {
     fetchSolicitudes();
+    fetchDefaultPassword();
   }, []);
 
   const fetchSolicitudes = async () => {
@@ -24,6 +32,40 @@ export default function SolicitudesPendientes() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDefaultPassword = async () => {
+    try {
+      const res = await fetch("http://localhost:3200/api/configuracion");
+      const data = await res.json();
+      setDefaultPassword(data?.contrasena_defecto || "pesvauth2026");
+      setNewPassword(data?.contrasena_defecto || "pesvauth2026");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSavePassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      alert("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await fetch("http://localhost:3200/api/configuracion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contrasena_defecto: newPassword }),
+      });
+      setDefaultPassword(newPassword);
+      setPasswordSaved(true);
+      setTimeout(() => setPasswordSaved(false), 3000);
+    } catch (err) {
+      console.error(err);
+      alert("Error al guardar la contraseña.");
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -56,9 +98,75 @@ export default function SolicitudesPendientes() {
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           Solicitudes de Acceso <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-full text-sm font-bold">{solicitudes.length} Pendientes</span>
         </h1>
-        <p className="text-muted-foreground mt-2">Revise y valide las solicitudes de registro manualmente para mantener la integridad del sistema (JWT Control). <br/>Al aprobar, se asignará la clave temporal: <strong className="text-foreground">pesvauth2026</strong> a la cuenta.</p>
+        <p className="text-muted-foreground mt-2">Revise y valide las solicitudes de registro manualmente para mantener la integridad del sistema (JWT Control). <br/>Al aprobar, se asignará la clave temporal configurada abajo a la cuenta.</p>
       </header>
 
+      {/* ===== CONTRASEÑA POR DEFECTO ===== */}
+      <div className="bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden mb-8">
+        <div className="px-6 py-4 border-b border-border/50 bg-muted/20 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+            <KeyRound className="h-5 w-5 text-amber-500" />
+          </div>
+          <div>
+            <h2 className="font-bold text-sm">Contraseña por Defecto</h2>
+            <p className="text-xs text-muted-foreground">Esta contraseña se asignará automáticamente a cada usuario nuevo aprobado.</p>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+            <div className="flex-1 w-full sm:max-w-md">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-2">
+                Contraseña temporal para nuevos usuarios
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-amber-500/50 font-mono text-sm"
+                  placeholder="Ingresa la contraseña por defecto..."
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Mínimo 6 caracteres. Los usuarios deberán cambiarla en su primer inicio de sesión.
+              </p>
+            </div>
+            <button
+              onClick={handleSavePassword}
+              disabled={savingPassword || newPassword === defaultPassword || newPassword.length < 6}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-sm whitespace-nowrap
+                ${passwordSaved 
+                  ? 'bg-emerald-500 text-white' 
+                  : newPassword !== defaultPassword && newPassword.length >= 6
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white hover:-translate-y-0.5'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed'
+                }`}
+            >
+              {savingPassword ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Guardando...</>
+              ) : passwordSaved ? (
+                <><Check className="h-4 w-4" /> ¡Guardada!</>
+              ) : (
+                <><Save className="h-4 w-4" /> Guardar Contraseña</>
+              )}
+            </button>
+          </div>
+          {newPassword !== defaultPassword && newPassword.length >= 6 && (
+            <div className="mt-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-sm text-amber-600 dark:text-amber-400 font-medium animate-in fade-in duration-300">
+              ⚠️ Has modificado la contraseña. Presiona <strong>&quot;Guardar Contraseña&quot;</strong> para que los próximos usuarios aprobados reciban esta nueva clave.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ===== TABLA DE SOLICITUDES ===== */}
       {loading ? (
         <div className="flex items-center justify-center h-40">
            <span className="text-muted-foreground font-bold">Cargando base de datos...</span>

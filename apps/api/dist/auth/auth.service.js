@@ -62,6 +62,15 @@ function _ts_metadata(k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 }
 let AuthService = class AuthService {
+    // Helper: obtener la contraseña por defecto desde la configuración
+    async getDefaultPassword() {
+        const config = await this.prisma.lms_configuracion.findUnique({
+            where: {
+                id: 1
+            }
+        });
+        return config?.contrasena_defecto || 'pesvauth2026';
+    }
     async requestAccess(dto) {
         // Check if user already exists
         const existingUser = await this.prisma.usuarios.findUnique({
@@ -121,8 +130,9 @@ let AuthService = class AuthService {
         if (!isValid) {
             throw new _common.UnauthorizedException('Credenciales inválidas.');
         }
-        // Si la contraseña es la predeterminada (pesvauth2026), fuerza configuración
-        if (contrasena === 'pesvauth2026') {
+        // Si la contraseña es la predeterminada, fuerza configuración
+        const defaultPwd = await this.getDefaultPassword();
+        if (contrasena === defaultPwd) {
             return {
                 requireSetup: true,
                 message: 'Estás usando la contraseña temporal. Por favor, crea tu contraseña segura.',
@@ -159,7 +169,8 @@ let AuthService = class AuthService {
             throw new _common.NotFoundException('Usuario no existe.');
         }
         if (user.contrasena) {
-            const isDefault = await _bcryptjs.compare('pesvauth2026', user.contrasena);
+            const defaultPwd = await this.getDefaultPassword();
+            const isDefault = await _bcryptjs.compare(defaultPwd, user.contrasena);
             if (!isDefault) {
                 throw new _common.BadRequestException('La cuenta ya tiene una contraseña configurada y no es la temporal.');
             }
@@ -203,8 +214,9 @@ let AuthService = class AuthService {
         });
         if (!request) throw new _common.NotFoundException('Solicitud no encontrada.');
         if (request.estado !== 'PENDIENTE') throw new _common.BadRequestException('La solicitud ya fue procesada.');
-        // Asignamos la clave por defecto
-        const hashedDefault = await _bcryptjs.hash('pesvauth2026', 10);
+        // Obtener la clave por defecto de la configuración
+        const defaultPwd = await this.getDefaultPassword();
+        const hashedDefault = await _bcryptjs.hash(defaultPwd, 10);
         await this.prisma.$transaction([
             this.prisma.lms_solicitudes_acceso.update({
                 where: {

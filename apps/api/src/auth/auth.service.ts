@@ -6,6 +6,12 @@ import * as bcrypt from 'bcryptjs';
 export class AuthService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper: obtener la contraseña por defecto desde la configuración
+  private async getDefaultPassword(): Promise<string> {
+    const config = await this.prisma.lms_configuracion.findUnique({ where: { id: 1 } });
+    return config?.contrasena_defecto || 'pesvauth2026';
+  }
+
   async requestAccess(dto: { email: string; nombre: string; apellido: string; rol_pedido: any }) {
     // Check if user already exists
     const existingUser = await this.prisma.usuarios.findUnique({ where: { email: dto.email } });
@@ -55,8 +61,9 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas.');
     }
 
-    // Si la contraseña es la predeterminada (pesvauth2026), fuerza configuración
-    if (contrasena === 'pesvauth2026') {
+    // Si la contraseña es la predeterminada, fuerza configuración
+    const defaultPwd = await this.getDefaultPassword();
+    if (contrasena === defaultPwd) {
       return { 
         requireSetup: true, 
         message: 'Estás usando la contraseña temporal. Por favor, crea tu contraseña segura.',
@@ -81,7 +88,8 @@ export class AuthService {
     }
 
     if (user.contrasena) {
-      const isDefault = await bcrypt.compare('pesvauth2026', user.contrasena);
+      const defaultPwd = await this.getDefaultPassword();
+      const isDefault = await bcrypt.compare(defaultPwd, user.contrasena);
       if (!isDefault) {
         throw new BadRequestException('La cuenta ya tiene una contraseña configurada y no es la temporal.');
       }
@@ -116,8 +124,9 @@ export class AuthService {
     if (!request) throw new NotFoundException('Solicitud no encontrada.');
     if (request.estado !== 'PENDIENTE') throw new BadRequestException('La solicitud ya fue procesada.');
 
-    // Asignamos la clave por defecto
-    const hashedDefault = await bcrypt.hash('pesvauth2026', 10);
+    // Obtener la clave por defecto de la configuración
+    const defaultPwd = await this.getDefaultPassword();
+    const hashedDefault = await bcrypt.hash(defaultPwd, 10);
 
     await this.prisma.$transaction([
       this.prisma.lms_solicitudes_acceso.update({

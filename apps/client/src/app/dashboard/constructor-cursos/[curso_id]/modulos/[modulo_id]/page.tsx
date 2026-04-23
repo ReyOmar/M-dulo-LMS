@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Image as ImageIcon, Type, FileText, CheckCircle, UploadCloud, Save, X, Eye, Trash2, Edit3, Link as LinkIcon } from "lucide-react";
+import { ArrowLeft, Plus, Image as ImageIcon, Type, FileText, CheckCircle, UploadCloud, Save, X, Eye, Trash2, Edit3, Link as LinkIcon, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 export default function ModuleEditorPage() {
@@ -28,6 +28,15 @@ export default function ModuleEditorPage() {
   const [saving, setSaving] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Custom confirmation modal
+  const [confirmModal, setConfirmModal] = useState<{open: boolean; title: string; message: string; onConfirm: () => void}>({open: false, title: '', message: '', onConfirm: () => {}});
+  const showConfirm = useCallback((title: string, message: string): Promise<boolean> => {
+      return new Promise((resolve) => {
+          setConfirmModal({ open: true, title, message, onConfirm: () => { setConfirmModal(p => ({...p, open: false})); resolve(true); } });
+          (window as any).__confirmRejectMod = () => { setConfirmModal(p => ({...p, open: false})); resolve(false); };
+      });
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -97,7 +106,8 @@ export default function ModuleEditorPage() {
   };
 
   const handleDeleteBlock = async (id: string) => {
-      if (!confirm('¿Estás seguro de eliminar este bloque del contenido?')) return;
+      const ok = await showConfirm('Eliminar bloque', '¿Estás seguro de eliminar este bloque del contenido? Esta acción no se puede deshacer.');
+      if (!ok) return;
       try {
           await fetch(`http://localhost:3200/api/cursos/bloques/${id}`, { method: 'DELETE' });
           await fetchData();
@@ -462,6 +472,25 @@ export default function ModuleEditorPage() {
               </div>
           </div>
       )}
+
+    {/* Custom Confirmation Modal */}
+    {confirmModal.open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-6 flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-red-500/15 rounded-full flex items-center justify-center mb-4">
+                        <AlertTriangle className="h-8 w-8 text-red-500" />
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">{confirmModal.title}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">{confirmModal.message}</p>
+                </div>
+                <div className="px-6 pb-6 flex items-center gap-3">
+                    <button type="button" onClick={() => (window as any).__confirmRejectMod?.()} className="flex-1 bg-muted hover:bg-border text-foreground font-bold py-3 rounded-xl transition-colors">Cancelar</button>
+                    <button type="button" onClick={() => confirmModal.onConfirm()} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition-colors shadow-md">Sí, eliminar</button>
+                </div>
+            </div>
+        </div>
+    )}
     </div>
   );
 }

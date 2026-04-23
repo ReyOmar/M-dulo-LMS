@@ -10,6 +10,49 @@ Object.defineProperty(exports, "CursosService", {
 });
 const _common = require("@nestjs/common");
 const _prismaservice = require("../prisma/prisma.service");
+const _fs = /*#__PURE__*/ _interop_require_wildcard(require("fs"));
+const _path = /*#__PURE__*/ _interop_require_wildcard(require("path"));
+function _getRequireWildcardCache(nodeInterop) {
+    if (typeof WeakMap !== "function") return null;
+    var cacheBabelInterop = new WeakMap();
+    var cacheNodeInterop = new WeakMap();
+    return (_getRequireWildcardCache = function(nodeInterop) {
+        return nodeInterop ? cacheNodeInterop : cacheBabelInterop;
+    })(nodeInterop);
+}
+function _interop_require_wildcard(obj, nodeInterop) {
+    if (!nodeInterop && obj && obj.__esModule) {
+        return obj;
+    }
+    if (obj === null || typeof obj !== "object" && typeof obj !== "function") {
+        return {
+            default: obj
+        };
+    }
+    var cache = _getRequireWildcardCache(nodeInterop);
+    if (cache && cache.has(obj)) {
+        return cache.get(obj);
+    }
+    var newObj = {
+        __proto__: null
+    };
+    var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor;
+    for(var key in obj){
+        if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) {
+            var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null;
+            if (desc && (desc.get || desc.set)) {
+                Object.defineProperty(newObj, key, desc);
+            } else {
+                newObj[key] = obj[key];
+            }
+        }
+    }
+    newObj.default = obj;
+    if (cache) {
+        cache.set(obj, newObj);
+    }
+    return newObj;
+}
 function _ts_decorate(decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -19,6 +62,7 @@ function _ts_decorate(decorators, target, key, desc) {
 function _ts_metadata(k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 }
+const UPLOADS_DIR = _path.join(process.cwd(), 'uploads');
 let CursosService = class CursosService {
     async getCursosActivosParaEstudiante() {
         return this.prisma.lms_cursos.findMany({
@@ -63,7 +107,8 @@ let CursosService = class CursosService {
     async getCursosDeProfesor(profesor_guid) {
         return this.prisma.lms_cursos.findMany({
             where: {
-                profesor_guid
+                profesor_guid,
+                estado: 'PUBLICADO'
             },
             orderBy: {
                 created_at: 'desc'
@@ -189,6 +234,15 @@ let CursosService = class CursosService {
             }
         });
     }
+    async getBloque(guid) {
+        const bloque = await this.prisma.lms_recursos.findUnique({
+            where: {
+                guid
+            }
+        });
+        if (!bloque) throw new _common.NotFoundException('Recurso no encontrado');
+        return bloque;
+    }
     async addBloqueToModulo(modulo_guid, data) {
         const modulo = await this.prisma.lms_modulos.findUnique({
             where: {
@@ -227,12 +281,34 @@ let CursosService = class CursosService {
             data: {
                 titulo: data.titulo,
                 contenido_html: data.contenido_html,
-                url_archivo: data.url_archivo
+                url_archivo: data.url_archivo,
+                url_referencia: data.url_referencia,
+                archivo_adjunto: data.archivo_adjunto,
+                archivo_adjunto_nombre: data.archivo_adjunto_nombre,
+                quiz_config: data.quiz_config,
+                archivo_max_size_mb: data.archivo_max_size_mb
             }
         });
     }
+    // Save a base64 file to disk and return the filename
+    uploadFile(base64Data, originalName) {
+        const ext = _path.extname(originalName) || '.bin';
+        const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
+        // Remove data:xxx;base64, prefix if present
+        const base64Clean = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+        const buffer = Buffer.from(base64Clean, 'base64');
+        _fs.writeFileSync(_path.join(UPLOADS_DIR, uniqueName), buffer);
+        return uniqueName;
+    }
+    getUploadPath(filename) {
+        const fullPath = _path.join(UPLOADS_DIR, filename);
+        if (!_fs.existsSync(fullPath)) throw new _common.NotFoundException('Archivo no encontrado');
+        return fullPath;
+    }
     async submitEntrega(tarea_guid, data) {
-        // 1. Verificar si hay un registro de entrega previo
+        // 1. Upload file to disk
+        const serverFilename = this.uploadFile(data.base64, data.nombre_archivo);
+        // 2. Verificar si hay un registro de entrega previo
         let entrega = await this.prisma.lms_entregas.findFirst({
             where: {
                 tarea_guid,
@@ -245,7 +321,7 @@ let CursosService = class CursosService {
                     guid: entrega.guid
                 },
                 data: {
-                    url_archivo_adjunto: data.base64,
+                    url_archivo_adjunto: serverFilename,
                     respuesta_texto: data.nombre_archivo,
                     estado: 'ENTREGADA',
                     fecha_entrega: new Date()
@@ -256,7 +332,7 @@ let CursosService = class CursosService {
                 data: {
                     tarea_guid,
                     usuario_guid: data.usuario_guid,
-                    url_archivo_adjunto: data.base64,
+                    url_archivo_adjunto: serverFilename,
                     respuesta_texto: data.nombre_archivo,
                     estado: 'ENTREGADA'
                 }
@@ -303,8 +379,245 @@ let CursosService = class CursosService {
             }
         });
     }
+    async deleteModulo(guid) {
+        return this.prisma.lms_modulos.delete({
+            where: {
+                guid
+            }
+        });
+    }
+    async deleteCurso(guid) {
+        return this.prisma.lms_cursos.delete({
+            where: {
+                guid
+            }
+        });
+    }
+    // --- EXAMINER METHODS ---
+    async getMonitoreoEstudiantes(profesor_guid) {
+        // 1. Get courses assigned to this professor
+        const cursos = await this.prisma.lms_cursos.findMany({
+            where: {
+                profesor_guid
+            },
+            include: {
+                modulos: {
+                    include: {
+                        lecciones: {
+                            include: {
+                                recursos: {
+                                    select: {
+                                        guid: true,
+                                        tipo: true,
+                                        titulo: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        if (cursos.length === 0) return [];
+        // 2. Get all entregas for these courses' resources
+        const allResourceGuids = [];
+        const cursoResourceMap = {};
+        for (const curso of cursos){
+            for (const mod of curso.modulos){
+                const recursos = mod.lecciones.flatMap((l)=>l.recursos);
+                for (const r of recursos){
+                    allResourceGuids.push(r.guid);
+                    if (!cursoResourceMap[r.guid]) cursoResourceMap[r.guid] = [];
+                    cursoResourceMap[r.guid].push({
+                        curso_guid: curso.guid,
+                        curso_titulo: curso.titulo,
+                        modulo_titulo: mod.titulo,
+                        total_recursos: recursos.length
+                    });
+                }
+            }
+        }
+        const entregas = await this.prisma.lms_entregas.findMany({
+            where: {
+                tarea_guid: {
+                    in: allResourceGuids
+                }
+            },
+            select: {
+                usuario_guid: true,
+                tarea_guid: true,
+                estado: true,
+                fecha_entrega: true
+            }
+        });
+        // 3. Get unique student guids
+        const studentGuids = [
+            ...new Set(entregas.map((e)=>e.usuario_guid))
+        ];
+        // Also get all students (role ESTUDIANTE)
+        const allStudents = await this.prisma.usuarios.findMany({
+            where: {
+                rol: 'ESTUDIANTE'
+            },
+            select: {
+                guid: true,
+                nombre: true,
+                apellido: true,
+                email: true,
+                updated_at: true
+            }
+        });
+        // 4. Build result — for each student, calculate progress per course
+        const result = allStudents.map((student)=>{
+            const studentEntregas = entregas.filter((e)=>e.usuario_guid === student.guid);
+            const completedResources = new Set(studentEntregas.map((e)=>e.tarea_guid));
+            const cursosProgress = cursos.map((curso)=>{
+                const totalRecursos = curso.modulos.reduce((sum, mod)=>sum + mod.lecciones.reduce((s, l)=>s + l.recursos.length, 0), 0);
+                const completados = curso.modulos.reduce((sum, mod)=>{
+                    const recursos = mod.lecciones.flatMap((l)=>l.recursos);
+                    return sum + recursos.filter((r)=>completedResources.has(r.guid)).length;
+                }, 0);
+                return {
+                    curso_guid: curso.guid,
+                    curso_titulo: curso.titulo,
+                    total_recursos: totalRecursos,
+                    completados,
+                    porcentaje: totalRecursos > 0 ? Math.round(completados / totalRecursos * 100) : 0,
+                    modulos: curso.modulos.map((mod)=>{
+                        const modRecursos = mod.lecciones.flatMap((l)=>l.recursos);
+                        const modCompletados = modRecursos.filter((r)=>completedResources.has(r.guid)).length;
+                        return {
+                            titulo: mod.titulo,
+                            total: modRecursos.length,
+                            completados: modCompletados,
+                            porcentaje: modRecursos.length > 0 ? Math.round(modCompletados / modRecursos.length * 100) : 0
+                        };
+                    })
+                };
+            });
+            return {
+                guid: student.guid,
+                nombre: student.nombre,
+                apellido: student.apellido,
+                email: student.email,
+                ultima_actividad: student.updated_at,
+                total_entregas: studentEntregas.length,
+                cursos: cursosProgress
+            };
+        });
+        return result;
+    }
+    async getEntregasParaCalificar(profesor_guid) {
+        // 1. Get courses assigned to this professor
+        const cursos = await this.prisma.lms_cursos.findMany({
+            where: {
+                profesor_guid
+            },
+            include: {
+                modulos: {
+                    include: {
+                        lecciones: {
+                            include: {
+                                recursos: {
+                                    where: {
+                                        tipo: 'TAREA'
+                                    },
+                                    select: {
+                                        guid: true,
+                                        titulo: true,
+                                        archivo_max_size_mb: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        const tareaGuids = [];
+        const tareaInfo = {};
+        for (const curso of cursos){
+            for (const mod of curso.modulos){
+                for (const lec of mod.lecciones){
+                    for (const rec of lec.recursos){
+                        tareaGuids.push(rec.guid);
+                        tareaInfo[rec.guid] = {
+                            titulo: rec.titulo,
+                            curso_titulo: curso.titulo
+                        };
+                    }
+                }
+            }
+        }
+        if (tareaGuids.length === 0) return [];
+        // 2. Get all entregas for these tareas
+        const entregas = await this.prisma.lms_entregas.findMany({
+            where: {
+                tarea_guid: {
+                    in: tareaGuids
+                }
+            },
+            orderBy: {
+                fecha_entrega: 'desc'
+            }
+        });
+        // 3. Get student info
+        const studentGuids = [
+            ...new Set(entregas.map((e)=>e.usuario_guid))
+        ];
+        const students = await this.prisma.usuarios.findMany({
+            where: {
+                guid: {
+                    in: studentGuids
+                }
+            },
+            select: {
+                guid: true,
+                nombre: true,
+                apellido: true,
+                email: true
+            }
+        });
+        const studentMap = Object.fromEntries(students.map((s)=>[
+                s.guid,
+                s
+            ]));
+        return entregas.map((e)=>({
+                guid: e.guid,
+                tarea_guid: e.tarea_guid,
+                tarea_titulo: tareaInfo[e.tarea_guid || '']?.titulo || 'Sin título',
+                curso_titulo: tareaInfo[e.tarea_guid || '']?.curso_titulo || 'Sin curso',
+                estudiante: studentMap[e.usuario_guid] || {
+                    nombre: 'Desconocido',
+                    apellido: '',
+                    email: ''
+                },
+                archivo_nombre: e.respuesta_texto,
+                archivo_servidor: e.url_archivo_adjunto,
+                estado: e.estado,
+                fecha_entrega: e.fecha_entrega,
+                contenido_texto: e.contenido_texto
+            }));
+    }
+    async calificarEntrega(guid, data) {
+        return this.prisma.lms_entregas.update({
+            where: {
+                guid
+            },
+            data: {
+                estado: 'CALIFICADA',
+                contenido_texto: `NOTA: ${data.calificacion}${data.comentario ? ` | ${data.comentario}` : ''}`
+            }
+        });
+    }
     constructor(prisma){
         this.prisma = prisma;
+        // Ensure uploads directory exists
+        if (!_fs.existsSync(UPLOADS_DIR)) {
+            _fs.mkdirSync(UPLOADS_DIR, {
+                recursive: true
+            });
+        }
     }
 };
 CursosService = _ts_decorate([
