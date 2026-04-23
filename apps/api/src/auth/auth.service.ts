@@ -1,0 +1,153 @@
+import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import * as bcrypt from 'bcryptjs';
+
+@Injectable()
+export class AuthService {
+  constructor(private prisma: PrismaService) {}
+
+  async requestAccess(dto: { email: string; nombre: string; apellido: string; rol_pedido: any }) {
+    // Check if user already exists
+    const existingUser = await this.prisma.usuarios.findUnique({ where: { email: dto.email } });
+    if (existingUser) {
+      throw new BadRequestException('El usuario ya existe en el sistema.');
+    }
+
+    // Check if request already exists
+    const existingReq = await this.prisma.lms_solicitudes_acceso.findUnique({ where: { email: dto.email } });
+    if (existingReq) {
+      throw new BadRequestException('Ya existe una solicitud pendiente con este correo.');
+    }
+
+    const sol = await this.prisma.lms_solicitudes_acceso.create({
+      data: {
+        email: dto.email,
+        nombre: dto.nombre,
+        apellido: dto.apellido,
+        rol_pedido: dto.rol_pedido,
+      }
+    });
+
+    return { message: 'Solicitud enviada al administrador exitosamente.', request_id: sol.id };
+  }
+
+  async login(email: string, contrasena?: string) {
+    const user = await this.prisma.usuarios.findUnique({ where: { email } });
+    if (!user) {
+      throw new UnauthorizedException('Credenciales inválidas.');
+    }
+
+    if (!contrasena) {
+      throw new UnauthorizedException('Contraseña requerida.');
+    }
+
+    // Si la contraseña es NULL, fuerza configuración
+    if (!user.contrasena) {
+      return { 
+        requireSetup: true, 
+        message: 'Cuenta aprobada. Por favor, crea tu contraseña segura.',
+        user: { email: user.email, nombre: user.nombre }
+      };
+    }
+
+    const isValid = await bcrypt.compare(contrasena, user.contrasena);
+    if (!isValid) {
+      throw new UnauthorizedException('Credenciales inválidas.');
+    }
+
+    // Si la contraseña es la predeterminada (pesvauth2026), fuerza configuración
+    if (contrasena === 'pesvauth2026') {
+      return { 
+        requireSetup: true, 
+        message: 'Estás usando la contraseña temporal. Por favor, crea tu contraseña segura.',
+        user: { email: user.email, nombre: user.nombre }
+      };
+    }
+
+    // Generate dummy JWT for UI
+    const token = Buffer.from(JSON.stringify({ guid: user.guid, role: user.rol, email: user.email })).toString('base64');
+    
+    return {
+      message: 'Inicio de sesión exitoso.',
+      token,
+      user: { guid: user.guid, role: user.rol, nombre: user.nombre, apellido: user.apellido }
+    };
+  }
+
+  async setupPassword(email: string, nuevaContrasena: string) {
+    const user = await this.prisma.usuarios.findUnique({ where: { email } });
+    if (!user) {
+      throw new NotFoundException('Usuario no existe.');
+    }
+
+    if (user.contrasena) {
+      const isDefault = await bcrypt.compare('pesvauth2026', user.contrasena);
+      if (!isDefault) {
+        throw new BadRequestException('La cuenta ya tiene una contraseña configurada y no es la temporal.');
+      }
+    }
+
+    const hashed = await bcrypt.hash(nuevaContrasena, 10);
+    await this.prisma.usuarios.update({
+      where: { email },
+      data: { contrasena: hashed }
+    });
+
+    return { message: 'Contraseña establecida exitosamente.' };
+  }
+
+  // --- MÉTODOS DE ADMINISTRADOR ---
+
+  async getAllUsers() {
+    return this.prisma.usuarios.findMany({
+      orderBy: { created_at: 'desc' }
+    });
+  }
+
+  async getPendingRequests() {
+    return this.prisma.lms_solicitudes_acceso.findMany({
+      where: { estado: 'PENDIENTE' },
+      orderBy: { created_at: 'desc' }
+    });
+  }
+
+  async approveRequest(id: number) {
+    const request = await this.prisma.lms_solicitudes_acceso.findUnique({ where: { id } });
+    if (!request) throw new NotFoundException('Solicitud no encontrada.');
+    if (request.estado !== 'PENDIENTE') throw new BadRequestException('La solicitud ya fue procesada.');
+
+    // Asignamos la clave por defecto
+    const hashedDefault = await bcrypt.hash('pesvauth2026', 10);
+
+    await this.prisma.$transaction([
+      this.prisma.lms_solicitudes_acceso.update({
+        where: { id },
+        data: { estado: 'ACEPTADA' }
+      }),
+      this.prisma.usuarios.create({
+        data: {
+          email: request.email,
+          nombre: request.nombre,
+          apellido: request.apellido,
+          rol: request.rol_pedido,
+          contrasena: hashedDefault
+        }
+      })
+    ]);
+
+    return { message: 'Solicitud aprobada y usuario creado con clave temporal.' };
+  }
+
+  async rejectRequest(id: number) {
+    const request = await this.prisma.lms_solicitudes_acceso.findUnique({ where: { id } });
+    if (!request) throw new NotFoundException('Solicitud no encontrada.');
+    if (request.estado !== 'PENDIENTE') throw new BadRequestException('La solicitud ya fue procesada.');
+
+    await this.prisma.lms_solicitudes_acceso.update({
+      where: { id },
+      data: { estado: 'RECHAZADA' }
+    });
+
+    return { message: 'Solicitud rechazada.' };
+  }
+}
