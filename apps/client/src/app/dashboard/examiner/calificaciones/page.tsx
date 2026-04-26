@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BookCheck, Download, Loader2, Check, Search, FileText, Star, MessageSquare, X, Filter } from "lucide-react";
+import { PageLoader } from "@/components/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 
 export default function CalificacionManualPage() {
@@ -82,11 +83,7 @@ export default function CalificacionManualPage() {
   const gradedCount = entregas.filter(e => e.estado === "CALIFICADA").length;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <PageLoader message="Cargando entregas para calificar..." />;
   }
 
   return (

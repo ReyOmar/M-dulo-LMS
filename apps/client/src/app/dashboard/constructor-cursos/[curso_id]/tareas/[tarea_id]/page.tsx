@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { PageLoader } from "@/components/PageLoader";
 import { ArrowLeft, Save, Type, Calendar } from "lucide-react";
 import Link from "next/link";
 
@@ -69,7 +70,7 @@ export default function ConfigurarTareaPage() {
   };
 
   if (loading) {
-      return <div className="min-h-screen flex items-center justify-center font-bold text-muted-foreground">Cargando editor de actividad...</div>;
+      return <PageLoader message="Cargando editor de actividad..." />;
   }
 
   if (!tarea) {

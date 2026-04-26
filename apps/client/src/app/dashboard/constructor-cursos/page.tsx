@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRole } from "@/contexts/RoleContext";
+import { PageLoader } from "@/components/PageLoader";
 import { Plus, BookOpen, Layers, ArrowRight, ArrowLeft, ShieldAlert, UserCheck, Image as ImageIcon, Type, FileText, CheckCircle, UploadCloud, Save, X, Eye, Trash2, Edit3, Link as LinkIcon, ChevronDown, ChevronRight, PlayCircle, AlertTriangle, Paperclip, ExternalLink, Clock, RefreshCcw } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -327,7 +328,7 @@ export default function ConstructorCursosRoot() {
   }
 
   if (loading) {
-      return <div className="min-h-screen flex items-center justify-center font-bold text-muted-foreground">Cargando constructor...</div>;
+      return <PageLoader message="Cargando constructor de cursos..." />;
   }
 
   return (

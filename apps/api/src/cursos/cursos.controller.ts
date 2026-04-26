@@ -34,6 +34,20 @@ export class CursosController {
     return this.cursosService.getProfesores();
   }
 
+  @Get('/usuario-cursos')
+  async getUsuarioCursos(@Query('usuario_guid') usuario_guid: string, @Query('rol') rol: string) {
+    if (rol === 'PROFESOR') {
+      return this.cursosService.getCursosDeProfesorConFecha(usuario_guid);
+    }
+    return this.cursosService.getCursosDeEstudianteConFecha(usuario_guid);
+  }
+
+  // --- /admin routes ---
+  @Get('/admin/dashboard-stats')
+  async getAdminStats() {
+    return this.cursosService.getAdminDashboardStats();
+  }
+
   // --- /examiner routes ---
   @Get('/examiner/monitoreo')
   async getMonitoreo(@Query('profesor_guid') profesor_guid: string) {
@@ -48,6 +62,63 @@ export class CursosController {
   @Patch('/entregas/:guid/calificar')
   async calificarEntrega(@Param('guid') guid: string, @Body() body: { calificacion: number; comentario?: string }) {
     return this.cursosService.calificarEntrega(guid, body);
+  }
+
+  // --- /student routes ---
+  @Get('/student/progreso')
+  async getProgreso(@Query('usuario_guid') usuario_guid: string, @Query('curso_guid') curso_guid: string) {
+    return this.cursosService.getProgresoEstudiante(usuario_guid, curso_guid);
+  }
+
+  @Post('/student/marcar-recurso')
+  async marcarRecurso(@Body() body: { usuario_guid: string; recurso_guid: string }) {
+    return this.cursosService.marcarRecursoCompletado(body.usuario_guid, body.recurso_guid);
+  }
+
+  @Get('/student/dias-activos')
+  async getDiasActivos(@Query('usuario_guid') usuario_guid: string, @Query('year') year: string, @Query('month') month: string) {
+    return this.cursosService.getDiasActivos(usuario_guid, parseInt(year), parseInt(month));
+  }
+
+  @Get('/student/notificaciones')
+  async getNotificaciones(@Query('usuario_guid') usuario_guid: string) {
+    return this.cursosService.getNotificacionesEstudiante(usuario_guid);
+  }
+
+  @Patch('/student/notificaciones/:id/leer')
+  async marcarNotificacionLeida(@Param('id') id: string) {
+    return this.cursosService.marcarNotificacionLeida(parseInt(id));
+  }
+
+  @Get('/student/metricas')
+  async getMetricas(@Query('usuario_guid') usuario_guid: string) {
+    return this.cursosService.getMetricasEstudiante(usuario_guid);
+  }
+
+  // --- /matriculas routes ---
+  @Get('/matriculas/:cursoGuid')
+  async getMatriculas(@Param('cursoGuid') cursoGuid: string) {
+    return this.cursosService.getMatriculasCurso(cursoGuid);
+  }
+
+  @Post('/matriculas/:cursoGuid')
+  async matricular(@Param('cursoGuid') cursoGuid: string, @Body() body: { usuario_guid: string }) {
+    return this.cursosService.matricularEstudiante(cursoGuid, body.usuario_guid);
+  }
+
+  @Delete('/matriculas/:cursoGuid/:usuarioGuid')
+  async desmatricular(@Param('cursoGuid') cursoGuid: string, @Param('usuarioGuid') usuarioGuid: string) {
+    return this.cursosService.desmatricularEstudiante(cursoGuid, usuarioGuid);
+  }
+
+  @Get('/estudiantes')
+  async getEstudiantes() {
+    return this.cursosService.getEstudiantesDisponibles();
+  }
+
+  @Post('/seed-matriculas')
+  async seedMatriculas() {
+    return this.cursosService.seedMatriculas();
   }
 
   // --- /upload & /download routes ---

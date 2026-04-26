@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Lock, Mail, ArrowRight, GraduationCap, ShieldCheck, User } from "lucide-react";
+import { PageLoader } from "@/components/PageLoader";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
 import { useConfig } from "@/contexts/ConfigContext";
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const [rolPedido, setRolPedido] = useState("ESTUDIANTE");
 
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [view, setView] = useState<"LOGIN" | "SETUP_PASSWORD" | "REQUEST_ACCESS" | "REQUEST_SUCCESS">("LOGIN");
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -47,6 +49,7 @@ export default function LoginPage() {
 
         // Sync context and redirect
         syncSession(data.token, data.user);
+        setRedirecting(true);
         router.push("/dashboard");
 
       } catch (err: any) {
@@ -111,6 +114,14 @@ export default function LoginPage() {
           setLoading(false);
       }
   };
+
+  if (redirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <PageLoader message="Ingresando al campus..." />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4 transition-colors relative overflow-hidden">
