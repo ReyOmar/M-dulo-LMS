@@ -159,4 +159,40 @@ export class AuthService {
 
     return { message: 'Solicitud rechazada.' };
   }
+
+  async updateProfile(guid: string, data: { nombre?: string; apellido?: string; email?: string; contrasena_actual?: string; nueva_contrasena?: string }) {
+    const user = await this.prisma.usuarios.findUnique({ where: { guid } });
+    if (!user) throw new NotFoundException('Usuario no encontrado.');
+
+    const updateData: any = {};
+    if (data.nombre) updateData.nombre = data.nombre;
+    if (data.apellido) updateData.apellido = data.apellido;
+    if (data.email && data.email !== user.email) {
+      const existing = await this.prisma.usuarios.findUnique({ where: { email: data.email } });
+      if (existing) throw new BadRequestException('Este correo ya está en uso.');
+      updateData.email = data.email;
+    }
+
+    // Password change
+    if (data.nueva_contrasena) {
+      if (!data.contrasena_actual) throw new BadRequestException('Debes ingresar tu contraseña actual.');
+      if (!user.contrasena) throw new BadRequestException('No tienes contraseña configurada.');
+      const valid = await bcrypt.compare(data.contrasena_actual, user.contrasena);
+      if (!valid) throw new BadRequestException('La contraseña actual es incorrecta.');
+      updateData.contrasena = await bcrypt.hash(data.nueva_contrasena, 10);
+    }
+
+    const updated = await this.prisma.usuarios.update({
+      where: { guid },
+      data: updateData
+    });
+
+    return { message: 'Perfil actualizado exitosamente.', user: { guid: updated.guid, role: updated.rol, nombre: updated.nombre, apellido: updated.apellido, email: updated.email } };
+  }
+
+  async getUserProfile(guid: string) {
+    const user = await this.prisma.usuarios.findUnique({ where: { guid }, select: { guid: true, email: true, nombre: true, apellido: true, rol: true, created_at: true } });
+    if (!user) throw new NotFoundException('Usuario no encontrado.');
+    return user;
+  }
 }

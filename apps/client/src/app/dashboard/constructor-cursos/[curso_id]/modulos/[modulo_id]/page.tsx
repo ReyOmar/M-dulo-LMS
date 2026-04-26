@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { PageLoader } from "@/components/PageLoader";
 import { ArrowLeft, Plus, Image as ImageIcon, Type, FileText, CheckCircle, UploadCloud, Save, X, Eye, Trash2, Edit3, Link as LinkIcon, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
@@ -171,7 +172,7 @@ export default function ModuleEditorPage() {
   };
 
   if (loading || !modulo) {
-      return <div className="min-h-screen flex items-center justify-center font-bold text-muted-foreground">Cargando editor del módulo...</div>;
+      return <PageLoader message="Cargando editor del módulo..." />;
   }
 
   const recursos = modulo.lecciones?.[0]?.recursos || [];

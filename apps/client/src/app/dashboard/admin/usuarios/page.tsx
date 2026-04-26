@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Users, ShieldAlert, Key, UserCheck, UserX, Clock, Mail, BookOpen, X, GraduationCap, Shield, Presentation, Search } from "lucide-react";
+import { PageLoader } from "@/components/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import Link from "next/link";
 
@@ -21,6 +22,8 @@ interface CursoAsignado {
   titulo: string;
   estado: string;
   created_at: string;
+  updated_at?: string;
+  fecha_asignacion?: string;
 }
 
 type TabType = 'ADMINISTRADOR' | 'PROFESOR' | 'ESTUDIANTE';
@@ -54,22 +57,9 @@ export default function BaseUsuarios() {
   const openUserDetail = async (user: Usuario) => {
     setSelectedUser(user);
     setLoadingCursos(true);
-    let url = "";
-
-    if (user.rol === 'PROFESOR') {
-      url = `http://localhost:3200/api/cursos?role=teacher&profesor_guid=${user.guid}`;
-    } else if (user.rol === 'ESTUDIANTE') {
-      url = `http://localhost:3200/api/cursos?role=student&usuario_guid=${user.guid}`;
-    }
-
-    if (!url) {
-      setUserCourses([]);
-      setLoadingCursos(false);
-      return;
-    }
 
     try {
-      const res = await fetch(url);
+      const res = await fetch(`http://localhost:3200/api/cursos/usuario-cursos?usuario_guid=${user.guid}&rol=${user.rol}`);
       const data = await res.json();
       setUserCourses(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -153,9 +143,7 @@ export default function BaseUsuarios() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-40">
-           <span className="text-muted-foreground font-bold flex items-center gap-2"><Clock className="h-4 w-4 animate-spin"/> Cargando base de datos...</span>
-        </div>
+        <PageLoader message="Cargando base de usuarios..." />
       ) : (
         <div className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl shadow-sm overflow-hidden animate-in slide-in-from-bottom-6 duration-500">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -295,7 +283,12 @@ export default function BaseUsuarios() {
                         </div>
                         <div>
                           <p className="text-sm font-bold">{curso.titulo}</p>
-                          <p className="text-xs text-muted-foreground">Creado: {new Date(curso.created_at).toLocaleDateString()}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {selectedUser?.rol === 'PROFESOR' ? 'Asignado' : 'Matriculado'}: {(() => {
+                              const d = curso.fecha_asignacion || curso.updated_at || curso.created_at;
+                              return d ? new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Sin fecha';
+                            })()}
+                          </p>
                         </div>
                       </div>
                       <span className={`text-xs font-bold px-2 py-1 rounded-lg ${

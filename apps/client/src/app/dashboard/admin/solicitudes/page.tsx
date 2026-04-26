@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, X, ShieldAlert, Clock, KeyRound, Eye, EyeOff, Save, Loader2 } from "lucide-react";
+import { PageLoader } from "@/components/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import Link from "next/link";
 
@@ -168,9 +169,7 @@ export default function SolicitudesPendientes() {
 
       {/* ===== TABLA DE SOLICITUDES ===== */}
       {loading ? (
-        <div className="flex items-center justify-center h-40">
-           <span className="text-muted-foreground font-bold">Cargando base de datos...</span>
-        </div>
+        <PageLoader message="Cargando solicitudes..." />
       ) : solicitudes.length === 0 ? (
         <div className="bg-card border border-border/50 rounded-2xl p-12 flex flex-col items-center justify-center text-center shadow-sm">
             <Check className="h-16 w-16 text-emerald-500 mb-4 opacity-50" />

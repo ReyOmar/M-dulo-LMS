@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { PageLoader } from "@/components/PageLoader";
 
 export type Role = "admin" | "teacher" | "student";
 
@@ -22,6 +23,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const [simulatedRole, setSimulatedRole] = useState<Role | null>(null);
   const [user, setUser] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const router = useRouter();
 
   const mapDbRole = (dbRole: string): Role => {
@@ -54,17 +56,23 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    setLoggingOut(true);
     localStorage.removeItem("lms_token");
     localStorage.removeItem("lms_user");
     setUser(null);
-    setRoleState("student");
     setSimulatedRole(null);
-    router.push("/login");
+    window.location.href = "/login";
   };
 
   const activeRole = simulatedRole || role;
 
   if (!mounted) return <div className="min-h-screen bg-muted/20" />;
+
+  if (loggingOut) return (
+    <div className="min-h-screen flex items-center justify-center bg-muted/20">
+      <PageLoader message="Cerrando sesión..." />
+    </div>
+  );
 
   return (
     <RoleContext.Provider value={{ 

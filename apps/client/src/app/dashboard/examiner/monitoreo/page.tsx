@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Fragment } from "react";
 import { Search, Users, Clock, BookOpen, ChevronDown, ChevronRight, BarChart3, Loader2, TrendingUp } from "lucide-react";
+import { PageLoader } from "@/components/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 
 export default function MonitoreoEstudiantesPage() {
@@ -45,11 +46,7 @@ export default function MonitoreoEstudiantesPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <PageLoader message="Cargando monitoreo de estudiantes..." />;
   }
 
   return (

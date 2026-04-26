@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
+import { PageLoader } from "@/components/PageLoader";
 import { ArrowLeft, Save, Type, PlayCircle, FileText, CheckCircle, LinkIcon, Paperclip, Plus, Trash2, Clock, RefreshCcw, GripVertical, Download, Settings } from "lucide-react";
 
 // Types
@@ -178,7 +179,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
     };
 
     if (loading) {
-        return <div className="h-[calc(100vh-6rem)] flex items-center justify-center font-bold text-muted-foreground">Cargando editor...</div>;
+        return <PageLoader message="Cargando editor de contenido..." />;
     }
 
     if (!bloque) {

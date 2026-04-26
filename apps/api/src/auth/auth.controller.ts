@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Patch } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
@@ -18,6 +18,18 @@ export class AuthController {
   @Post('establecer-password')
   async setupPassword(@Body() body: { email: string; nuevaContrasena: string }) {
     return this.authService.setupPassword(body.email, body.nuevaContrasena);
+  }
+
+  // --- PERFIL DE USUARIO ---
+
+  @Get('perfil/:guid')
+  async getProfile(@Param('guid') guid: string) {
+    return this.authService.getUserProfile(guid);
+  }
+
+  @Patch('perfil/:guid')
+  async updateProfile(@Param('guid') guid: string, @Body() body: any) {
+    return this.authService.updateProfile(guid, body);
   }
 
   // --- RUTAS DE ADMINISTRADOR ---
