@@ -218,12 +218,26 @@ export class CursosService {
 
   // Save a base64 file to disk and return the filename
   uploadFile(base64Data: string, originalName: string): string {
-    const ext = path.extname(originalName) || '.bin';
+    // Security: Validate file extension
+    const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.txt', '.zip', '.rar', '.png', '.jpg', '.jpeg', '.gif', '.webp'];
+    const ext = path.extname(originalName).toLowerCase() || '.bin';
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      throw new BadRequestException(`Tipo de archivo no permitido: ${ext}`);
+    }
+
+    // Security: Sanitize filename to prevent path traversal
+    const safeName = path.basename(originalName);
     const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
     
     // Remove data:xxx;base64, prefix if present
     const base64Clean = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
     const buffer = Buffer.from(base64Clean, 'base64');
+
+    // Security: Enforce max file size (10MB)
+    const MAX_SIZE_BYTES = 10 * 1024 * 1024;
+    if (buffer.length > MAX_SIZE_BYTES) {
+      throw new BadRequestException(`El archivo excede el tamaño máximo permitido (10MB).`);
+    }
     
     fs.writeFileSync(path.join(UPLOADS_DIR, uniqueName), buffer);
     return uniqueName;

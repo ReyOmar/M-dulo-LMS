@@ -6,6 +6,7 @@ import { ArrowLeft, Check, FileText, UploadCloud, File as FileIcon, Loader2, Che
 import Link from "next/link";
 import { useRole } from "@/contexts/RoleContext";
 import { useRouter } from "next/navigation";
+import api from "@/lib/api";
 
 export default function TareaVisorPage() {
   const { curso_id, tarea_id } = useParams();
@@ -40,8 +41,8 @@ export default function TareaVisorPage() {
 
   const fetchCurso = async () => {
     try {
-      const res = await fetch(`http://localhost:3200/api/cursos/${curso_id}`);
-      const data = await res.json();
+      const res = await api.get(`/cursos/${curso_id}`);
+      const data = res.data;
       setCurso(data);
 
       let foundTarea = null;
@@ -57,13 +58,10 @@ export default function TareaVisorPage() {
       // Student: load previous submission
       if (!isTeacher) {
           try {
-              const entregaRes = await fetch(`http://localhost:3200/api/cursos/tareas/${tarea_id}/entregas?usuario_guid=dummy-estudiante-123`);
-              if (entregaRes.ok) {
-                  const entregaData = await entregaRes.json();
-                  if (entregaData?.respuesta_texto) {
-                      setSelectedFileName(entregaData.respuesta_texto);
-                      setUploadState('done');
-                  }
+              const { data: entregaData } = await api.get(`/cursos/tareas/${tarea_id}/entregas?usuario_guid=dummy-estudiante-123`);
+              if (entregaData?.respuesta_texto) {
+                  setSelectedFileName(entregaData.respuesta_texto);
+                  setUploadState('done');
               }
           } catch (_) {}
       }
@@ -77,8 +75,8 @@ export default function TareaVisorPage() {
   const fetchEntregas = async () => {
     setLoadingEntregas(true);
     try {
-        const res = await fetch(`http://localhost:3200/api/cursos/tareas/${tarea_id}/todas-entregas`);
-        const data = await res.json();
+        const res = await api.get(`/cursos/tareas/${tarea_id}/todas-entregas`);
+        const data = res.data;
         // Guard: ensure we always store an array
         setEntregas(Array.isArray(data) ? data : []);
     } catch (e) { console.error(e); setEntregas([]); }
@@ -97,11 +95,7 @@ export default function TareaVisorPage() {
       try {
           setUploadState('uploading');
           const base64 = await toBase64(file);
-          await fetch(`http://localhost:3200/api/cursos/tareas/${tarea_id}/entregas`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ base64, nombre_archivo: file.name, usuario_guid: 'dummy-estudiante-123' })
-          });
+          await api.post(`/cursos/tareas/${tarea_id}/entregas`, { base64, nombre_archivo: file.name, usuario_guid: 'dummy-estudiante-123' });
           setSelectedFileName(file.name);
           setUploadState('done');
       } catch (err) { console.error(err); alert('Hubo un error al enviar tu archivo.'); setUploadState('idle'); }

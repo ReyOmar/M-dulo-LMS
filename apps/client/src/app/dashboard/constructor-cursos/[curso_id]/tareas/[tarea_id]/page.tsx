@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { PageLoader } from "@/components/PageLoader";
 import { ArrowLeft, Save, Type, Calendar } from "lucide-react";
 import Link from "next/link";
+import api from "@/lib/api";
 
 export default function ConfigurarTareaPage() {
   const { curso_id, tarea_id } = useParams();
@@ -24,8 +25,8 @@ export default function ConfigurarTareaPage() {
   const fetchTarea = async () => {
     try {
       // Find the specific resource logic since we don't have a direct endpoint for single block
-      const res = await fetch(`http://localhost:3200/api/cursos/${curso_id}`);
-      const data = await res.json();
+      const res = await api.get(`/cursos/${curso_id}`);
+      const data = res.data;
       
       let foundTarea = null;
       for (const mod of data.modulos || []) {
@@ -54,11 +55,7 @@ export default function ConfigurarTareaPage() {
   const handleSave = async () => {
       setSaving(true);
       try {
-          await fetch(`http://localhost:3200/api/cursos/bloques/${tarea_id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contenido_html: htmlContent, url_archivo: fechaEntrega }) 
-          });
+          await api.patch(`/cursos/bloques/${tarea_id}`, { contenido_html: htmlContent, url_archivo: fechaEntrega });
           
           alert("Configuración de actividad guardada");
           router.back();

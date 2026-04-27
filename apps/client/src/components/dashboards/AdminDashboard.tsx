@@ -5,6 +5,7 @@ import { BookOpen, Users, Award, TrendingUp, GraduationCap, AlertCircle, Loader2
 import { PageLoader } from "@/components/PageLoader";
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import api from "@/lib/api";
 
 // Dynamically import Recharts to avoid SSR issues
 const AreaChart = dynamic(() => import('recharts').then(m => m.AreaChart), { ssr: false });
@@ -24,8 +25,8 @@ export function AdminDashboard() {
 
   useEffect(() => {
     Promise.all([
-      fetch('http://localhost:3200/api/auth/solicitudes').then(r => r.json()).catch(() => []),
-      fetch('http://localhost:3200/api/cursos/admin/dashboard-stats').then(r => r.json()).catch(() => null)
+      api.get('/auth/solicitudes').then(r => r.data).catch(() => []),
+      api.get('/cursos/admin/dashboard-stats').then(r => r.data).catch(() => null)
     ]).then(([solicitudes, dashStats]) => {
       const pending = Array.isArray(solicitudes) ? solicitudes.filter((s: any) => s.estado === 'PENDIENTE').length : 0;
       setSolicitudesPendientes(pending);
@@ -217,7 +218,7 @@ export function AdminDashboard() {
                           borderRadius: '12px',
                           fontSize: '13px',
                         }}
-                        formatter={(value: number, name: string) => [`${value} estudiantes`, name]}
+                        formatter={(value: any, name: any) => [`${value} estudiantes`, name]}
                       />
                     </PieChart>
                   </ResponsiveContainer>

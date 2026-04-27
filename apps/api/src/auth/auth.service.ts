@@ -1,10 +1,14 @@
 import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private jwtService: JwtService,
+  ) {}
 
   // Helper: obtener la contraseña por defecto desde la configuración
   private async getDefaultPassword(): Promise<string> {
@@ -71,8 +75,9 @@ export class AuthService {
       };
     }
 
-    // Generate dummy JWT for UI
-    const token = Buffer.from(JSON.stringify({ guid: user.guid, role: user.rol, email: user.email })).toString('base64');
+    // Generate signed JWT token
+    const payload = { sub: user.guid, role: user.rol, email: user.email };
+    const token = await this.jwtService.signAsync(payload);
     
     return {
       message: 'Inicio de sesión exitoso.',
@@ -108,7 +113,17 @@ export class AuthService {
 
   async getAllUsers() {
     return this.prisma.usuarios.findMany({
-      orderBy: { created_at: 'desc' }
+      orderBy: { created_at: 'desc' },
+      select: {
+        guid: true,
+        email: true,
+        nombre: true,
+        apellido: true,
+        rol: true,
+        activo: true,
+        created_at: true,
+        updated_at: true,
+      }
     });
   }
 

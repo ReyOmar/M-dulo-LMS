@@ -4,6 +4,7 @@ import { useEffect, useState, Fragment } from "react";
 import { Search, Users, Clock, BookOpen, ChevronDown, ChevronRight, BarChart3, Loader2, TrendingUp } from "lucide-react";
 import { PageLoader } from "@/components/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
+import api from "@/lib/api";
 
 export default function MonitoreoEstudiantesPage() {
   const { user } = useRole();
@@ -18,8 +19,8 @@ export default function MonitoreoEstudiantesPage() {
 
   const fetchMonitoreo = async () => {
     try {
-      const res = await fetch(`http://localhost:3200/api/cursos/examiner/monitoreo?profesor_guid=${user?.guid}`);
-      const data = await res.json();
+      const res = await api.get(`/cursos/examiner/monitoreo?profesor_guid=${user?.guid}`);
+      const data = res.data;
       setEstudiantes(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);

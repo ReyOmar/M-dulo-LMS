@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, FileText, Type, CheckCircle, Trophy, Lock, PlayCircle, Paperclip, UploadCloud, Loader2, ExternalLink } from "lucide-react";
 import { PageLoader } from "@/components/PageLoader";
 import Link from "next/link";
+import api, { API_BASE_URL } from "@/lib/api";
 
 export default function CursoVisorPage() {
   const { curso_id } = useParams();
@@ -37,8 +38,8 @@ export default function CursoVisorPage() {
 
   const fetchCurso = async () => {
     try {
-      const res = await fetch(`http://localhost:3200/api/cursos/${curso_id}`);
-      const data = await res.json();
+      const res = await api.get(`/cursos/${curso_id}`);
+      const data = res.data;
       setCurso(data);
     } catch (err) {
       console.error(err);
@@ -49,8 +50,8 @@ export default function CursoVisorPage() {
 
   const fetchProgreso = async () => {
     try {
-      const res = await fetch(`http://localhost:3200/api/cursos/student/progreso?usuario_guid=${userGuid}&curso_guid=${curso_id}`);
-      const data = await res.json();
+      const res = await api.get(`/cursos/student/progreso?usuario_guid=${userGuid}&curso_guid=${curso_id}`);
+      const data = res.data;
       setCompletados(data.completados || []);
     } catch (err) {
       console.error(err);
@@ -60,11 +61,7 @@ export default function CursoVisorPage() {
   const marcarCompletado = useCallback(async (recurso_guid: string) => {
     if (!userGuid || completados.includes(recurso_guid)) return;
     try {
-      await fetch('http://localhost:3200/api/cursos/student/marcar-recurso', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario_guid: userGuid, recurso_guid })
-      });
+      await api.post('/cursos/student/marcar-recurso', { usuario_guid: userGuid, recurso_guid });
       setCompletados(prev => [...prev, recurso_guid]);
     } catch (err) {
       console.error(err);
@@ -232,7 +229,7 @@ export default function CursoVisorPage() {
                     </a>
                   )}
                   {selectedRecurso.archivo_adjunto && (
-                    <a href={`http://localhost:3200/api/cursos/download/${selectedRecurso.archivo_adjunto}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 transition-colors">
+                    <a href={`${API_BASE_URL}/cursos/download/${selectedRecurso.archivo_adjunto}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 transition-colors">
                       <Paperclip className="h-4 w-4 text-primary" />
                       <span className="text-sm font-bold">{selectedRecurso.archivo_adjunto_nombre || 'Archivo adjunto'}</span>
                     </a>
@@ -268,7 +265,7 @@ export default function CursoVisorPage() {
                 <div className="space-y-6">
                   <div className="prose prose-slate dark:prose-invert max-w-none bg-card rounded-2xl p-8 border border-border/50 shadow-sm" dangerouslySetInnerHTML={{ __html: selectedRecurso.contenido_html || '<p class="text-muted-foreground italic">Sin instrucciones.</p>' }} />
                   {selectedRecurso.archivo_adjunto && (
-                    <a href={`http://localhost:3200/api/cursos/download/${selectedRecurso.archivo_adjunto}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 transition-colors">
+                    <a href={`${API_BASE_URL}/cursos/download/${selectedRecurso.archivo_adjunto}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 transition-colors">
                       <Paperclip className="h-4 w-4 text-primary" />
                       <span className="text-sm font-bold">{selectedRecurso.archivo_adjunto_nombre || 'Archivo adjunto'}</span>
                     </a>

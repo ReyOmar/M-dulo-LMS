@@ -5,6 +5,7 @@ import { Check, X, ShieldAlert, Clock, KeyRound, Eye, EyeOff, Save, Loader2 } fr
 import { PageLoader } from "@/components/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import Link from "next/link";
+import api from "@/lib/api";
 
 export default function SolicitudesPendientes() {
   const { realRole } = useRole();
@@ -26,8 +27,8 @@ export default function SolicitudesPendientes() {
 
   const fetchSolicitudes = async () => {
     try {
-      const res = await fetch("http://localhost:3200/api/auth/solicitudes");
-      const data = await res.json();
+      const res = await api.get("/auth/solicitudes");
+      const data = res.data;
       setSolicitudes(data);
     } catch (err) {
       console.error(err);
@@ -38,8 +39,8 @@ export default function SolicitudesPendientes() {
 
   const fetchDefaultPassword = async () => {
     try {
-      const res = await fetch("http://localhost:3200/api/configuracion");
-      const data = await res.json();
+      const res = await api.get("/configuracion");
+      const data = res.data;
       setDefaultPassword(data?.contrasena_defecto || "pesvauth2026");
       setNewPassword(data?.contrasena_defecto || "pesvauth2026");
     } catch (err) {
@@ -54,11 +55,7 @@ export default function SolicitudesPendientes() {
     }
     setSavingPassword(true);
     try {
-      await fetch("http://localhost:3200/api/configuracion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contrasena_defecto: newPassword }),
-      });
+      await api.post("/configuracion", { contrasena_defecto: newPassword });
       setDefaultPassword(newPassword);
       setPasswordSaved(true);
       setTimeout(() => setPasswordSaved(false), 3000);
@@ -73,7 +70,7 @@ export default function SolicitudesPendientes() {
   const handleAction = async (id: number, action: 'aprobar' | 'rechazar') => {
     setProcessing(id);
     try {
-      await fetch(`http://localhost:3200/api/auth/solicitudes/${id}/${action}`, { method: "POST" });
+      await api.post(`/auth/solicitudes/${id}/${action}`);
       setSolicitudes(solicitudes.filter(s => s.id !== id));
     } catch (err) {
       console.error(err);

@@ -4,6 +4,7 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { PageLoader } from "@/components/PageLoader";
 import { ArrowLeft, Save, Type, PlayCircle, FileText, CheckCircle, LinkIcon, Paperclip, Plus, Trash2, Clock, RefreshCcw, GripVertical, Download, Settings } from "lucide-react";
+import api, { API_BASE_URL } from "@/lib/api";
 
 // Types
 interface QuizOption { id: string; texto: string; es_correcta: boolean; }
@@ -35,8 +36,8 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
     useEffect(() => {
         const fetchBlock = async () => {
             try {
-                const res = await fetch(`http://localhost:3200/api/cursos/bloques/${resolvedParams.bloque_id}`);
-                const data = await res.json();
+                const res = await api.get(`/cursos/bloques/${resolvedParams.bloque_id}`);
+                const data = res.data;
                 setBloque(data);
                 
                 let cleanTitle = data.titulo;
@@ -76,10 +77,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                 quizConfig.intentos_permitidos = 1;
             }
 
-            await fetch(`http://localhost:3200/api/cursos/bloques/${resolvedParams.bloque_id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
+            await api.patch(`/cursos/bloques/${resolvedParams.bloque_id}`, { 
                     titulo: finalTitulo, 
                     contenido_html: contenidoHtml,
                     url_referencia: urlReferencia || null,
@@ -87,8 +85,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                     archivo_adjunto_nombre: archivoAdjuntoNombre || null,
                     archivo_max_size_mb: archivoMaxSizeMb,
                     quiz_config: isQuiz ? JSON.stringify(quizConfig) : null,
-                })
-            });
+                });
             
             router.push(`/dashboard/constructor-cursos?curso=${resolvedParams.curso_id}`);
         } catch (err) {
@@ -112,12 +109,8 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
             reader.onloadend = async () => {
                 const base64 = reader.result as string;
                 // Upload to server
-                const res = await fetch('http://localhost:3200/api/cursos/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ base64, nombre: file.name })
-                });
-                const data = await res.json();
+                const res = await api.post('/cursos/upload', { base64, nombre: file.name });
+                const data = res.data;
                 setArchivoAdjunto(data.filename); // server filename
                 setArchivoAdjuntoNombre(file.name); // original name
                 setUploading(false);
@@ -317,7 +310,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                                 <div className="flex items-center gap-3 bg-background border border-border rounded-xl px-4 py-3">
                                     <Paperclip className="h-5 w-5 text-primary flex-shrink-0" />
                                     <a 
-                                        href={`http://localhost:3200/api/cursos/download/${archivoAdjunto}`}
+                                        href={`${API_BASE_URL}/cursos/download/${archivoAdjunto}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="font-medium text-sm flex-1 truncate text-primary hover:underline cursor-pointer flex items-center gap-1"

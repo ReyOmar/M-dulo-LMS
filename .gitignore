@@ -10,3 +10,6 @@ apps/api/prisma/*.db
 *.sqlite
 apps/api/uploads/
 
+# Generated code (regenerate with: npx prisma generate)
+generated/
+

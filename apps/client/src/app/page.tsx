@@ -1,4 +1,4 @@
-import { GraduationCap, ArrowRight, ShieldCheck, Sparkles, BookOpen } from "lucide-react";
+import { GraduationCap, ArrowRight, ShieldCheck, BookOpen } from "lucide-react";
 
 export default function Home() {
   return (

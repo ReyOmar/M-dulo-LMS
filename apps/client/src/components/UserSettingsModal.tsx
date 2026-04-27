@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, User, Mail, Lock, Save, Loader2, CheckCircle, AlertCircle, Shield, Eye, EyeOff } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
+import api from "@/lib/api";
 
 interface Props {
   open: boolean;
@@ -35,8 +36,8 @@ export function UserSettingsModal({ open, onClose }: Props) {
   const fetchProfile = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3200/api/auth/perfil/${user.guid}`);
-      const data = await res.json();
+      const res = await api.get(`/auth/perfil/${user.guid}`);
+      const data = res.data;
       setProfileData(data);
       setNombre(data.nombre || '');
       setApellido(data.apellido || '');
@@ -71,18 +72,11 @@ export function UserSettingsModal({ open, onClose }: Props) {
         body.nueva_contrasena = nuevaContrasena;
       }
 
-      const res = await fetch(`http://localhost:3200/api/auth/perfil/${user.guid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
+      const res = await api.patch(`/auth/perfil/${user.guid}`, body
+      );
 
-      const data = await res.json();
+      const data = res.data;
 
-      if (!res.ok) {
-        showFeedback('error', data.message || 'Error al guardar.');
-        return;
-      }
 
       // Sync session with updated data
       if (data.user) {
