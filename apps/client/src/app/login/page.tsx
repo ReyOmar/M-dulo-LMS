@@ -6,6 +6,7 @@ import { PageLoader } from "@/components/PageLoader";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
 import { useConfig } from "@/contexts/ConfigContext";
+import api from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,17 +31,8 @@ export default function LoginPage() {
       setErrorMsg("");
 
       try {
-        const res = await fetch("http://localhost:3200/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, contrasena: password })
-        });
+        const { data } = await api.post("/auth/login", { email, contrasena: password });
         
-        const data = await res.json();
-        
-        if (!res.ok) {
-            throw new Error(data.message || "Credenciales incorrectas.");
-        }
         if (data.requireSetup) {
             setSuccessMsg(data.message);
             setView("SETUP_PASSWORD");
@@ -53,7 +45,7 @@ export default function LoginPage() {
         router.push("/dashboard");
 
       } catch (err: any) {
-          setErrorMsg(err.message);
+          setErrorMsg(err.response?.data?.message || err.message);
       } finally {
           setLoading(false);
       }
@@ -65,24 +57,13 @@ export default function LoginPage() {
       setErrorMsg("");
 
       try {
-        // Enviar la nueva contraseña al servidor
-        const res = await fetch("http://localhost:3200/api/auth/establecer-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, nuevaContrasena: newPassword })
-        });
-        
-        const data = await res.json();
-        
-        if (!res.ok) {
-            throw new Error(data.message || "Error al establecer la contraseña.");
-        }
+        await api.post("/auth/establecer-password", { email, nuevaContrasena: newPassword });
   
         // Iniciar sesión automáticamente después de establecerla
         await handleLogin({ preventDefault: () => {} } as React.FormEvent);
 
       } catch (err: any) {
-          setErrorMsg(err.message);
+          setErrorMsg(err.response?.data?.message || err.message);
       } finally {
           setLoading(false);
       }
@@ -94,22 +75,11 @@ export default function LoginPage() {
       setErrorMsg("");
 
       try {
-        const res = await fetch("http://localhost:3200/api/auth/solicitar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, nombre, apellido, rol_pedido: rolPedido })
-        });
-        
-        const data = await res.json();
-        
-        if (!res.ok) {
-            throw new Error(data.message || "Error enviando la solicitud.");
-        }
-  
+        await api.post("/auth/solicitar", { email, nombre, apellido, rol_pedido: rolPedido });
         setView("REQUEST_SUCCESS");
 
       } catch (err: any) {
-          setErrorMsg(err.message);
+          setErrorMsg(err.response?.data?.message || err.message);
       } finally {
           setLoading(false);
       }

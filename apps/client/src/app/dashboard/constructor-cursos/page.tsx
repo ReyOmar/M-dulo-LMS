@@ -6,6 +6,7 @@ import { PageLoader } from "@/components/PageLoader";
 import { Plus, BookOpen, Layers, ArrowRight, ArrowLeft, ShieldAlert, UserCheck, Image as ImageIcon, Type, FileText, CheckCircle, UploadCloud, Save, X, Eye, Trash2, Edit3, Link as LinkIcon, ChevronDown, ChevronRight, PlayCircle, AlertTriangle, Paperclip, ExternalLink, Clock, RefreshCcw } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import api, { API_BASE_URL } from "@/lib/api";
 
 export default function ConstructorCursosRoot() {
   const { role, user } = useRole();
@@ -69,8 +70,8 @@ export default function ConstructorCursosRoot() {
     const cursoParam = searchParams?.get('curso');
     if (cursoParam && cursos.length === 0 && !activeCourse) {
       // Fetch the specific course directly
-      fetch(`http://localhost:3200/api/cursos/${cursoParam}`)
-        .then(r => r.json())
+      api.get(`/cursos/${cursoParam}`)
+        .then(r => r.data)
         .then(data => {
             setActiveCourse(data);
         })
@@ -84,8 +85,8 @@ export default function ConstructorCursosRoot() {
 
   const fetchData = async () => {
     try {
-        const res = await fetch('http://localhost:3200/api/cursos?role=admin');
-        const data = await res.json();
+        const res = await api.get('/cursos?role=admin');
+        const data = res.data;
         setCursos(data);
     } catch (e) {
         console.error(e);
@@ -96,8 +97,8 @@ export default function ConstructorCursosRoot() {
 
   const fetchProfesores = async () => {
     try {
-        const res = await fetch('http://localhost:3200/api/cursos/profesores');
-        const data = await res.json();
+        const res = await api.get('/cursos/profesores');
+        const data = res.data;
         setProfesores(data);
     } catch (e) {
         console.error(e);
@@ -106,12 +107,8 @@ export default function ConstructorCursosRoot() {
 
   const handleCrearCurso = async () => {
       try {
-          const res = await fetch('http://localhost:3200/api/cursos', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ titulo: 'Curso Nuevo', profesor_guid: user?.guid })
-          });
-          const newCourse = await res.json();
+          const res = await api.post('/cursos', { titulo: 'Curso Nuevo', profesor_guid: user?.guid });
+          const newCourse = res.data;
           window.location.reload();
       } catch (err) {
           console.error(err);
@@ -121,11 +118,7 @@ export default function ConstructorCursosRoot() {
   const handleCrearModulo = async () => {
       if (!activeCourse) return;
       try {
-          await fetch(`http://localhost:3200/api/cursos/${activeCourse.guid}/modulos`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ titulo: `Módulo ${activeCourse.modulos?.length + 1 || 1} Nuevo` })
-          });
+          await api.post(`/cursos/${activeCourse.guid}/modulos`, { titulo: `Módulo ${activeCourse.modulos?.length + 1 || 1} Nuevo` });
           // Refresh course details
           await refreshActiveCourse();
       } catch (err) {
@@ -136,8 +129,8 @@ export default function ConstructorCursosRoot() {
   const refreshActiveCourse = async () => {
       if (!activeCourse) return;
       try {
-          const resDetails = await fetch(`http://localhost:3200/api/cursos/${activeCourse.guid}`);
-          setActiveCourse(await resDetails.json());
+          const resDetails = await api.get(`/cursos/${activeCourse.guid}`);
+          setActiveCourse(resDetails.data);
       } catch(err) {
           console.error(err);
       }
@@ -146,11 +139,7 @@ export default function ConstructorCursosRoot() {
   const handleUpdateCourseTitle = async (newTitle: string) => {
       if (!activeCourse) return;
       try {
-          await fetch(`http://localhost:3200/api/cursos/${activeCourse.guid}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ titulo: newTitle })
-          });
+          await api.patch(`/cursos/${activeCourse.guid}`, { titulo: newTitle });
           setActiveCourse({...activeCourse, titulo: newTitle});
           fetchData(); // Refresh list to reflect state changes
       } catch (err) {
@@ -160,11 +149,7 @@ export default function ConstructorCursosRoot() {
 
   const handleUpdateModuleTitle = async (moduleId: string, newTitle: string) => {
       try {
-          await fetch(`http://localhost:3200/api/cursos/modulos/${moduleId}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ titulo: newTitle })
-          });
+          await api.patch(`/cursos/modulos/${moduleId}`, { titulo: newTitle });
           await refreshActiveCourse();
       } catch (err) {
           console.error(err);
@@ -199,7 +184,7 @@ export default function ConstructorCursosRoot() {
   const openAppEdit = (recurso: any, moduloId: string) => {
       setEditingBlockId(recurso.guid);
       
-      let modalType: 'PARRAFO'|'IMAGEN'|'TAREA'|'CUESTIONARIO'|'ENLACE' = 'PARRAFO';
+      let modalType: 'PARRAFO'|'TAREA'|'CUESTIONARIO'|'ENLACE' = 'PARRAFO';
       if (recurso.tipo === 'TEXTO') modalType = 'PARRAFO';
       if (recurso.tipo === 'ENLACE') modalType = 'ENLACE';
       if (recurso.tipo === 'TAREA' && !recurso.titulo.startsWith('[QUIZ]')) modalType = 'TAREA';
@@ -211,7 +196,7 @@ export default function ConstructorCursosRoot() {
       setBloqueTitulo(cleanTitle);
       
       setBloqueHtml(recurso.contenido_html || '');
-      if (modalType === 'IMAGEN') setBloqueBase64(recurso.url_archivo || recurso.contenido_html || '');
+      if (modalType === 'ENLACE') setBloqueBase64(recurso.url_archivo || recurso.contenido_html || '');
 
       setBloqueTipo(modalType);
       setSelectedItem({ type: 'RESOURCE', data: recurso, moduloId });
@@ -230,7 +215,7 @@ export default function ConstructorCursosRoot() {
       }
       if (recurso?.archivo_adjunto_nombre && recurso?.archivo_adjunto) {
           extras.push(
-              <a key="file" href={`http://localhost:3200/api/cursos/download/${recurso.archivo_adjunto}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-colors cursor-pointer group">
+              <a key="file" href={`${API_BASE_URL}/cursos/download/${recurso.archivo_adjunto}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-colors cursor-pointer group">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                       <Paperclip className="h-4 w-4 text-primary" />
                   </div>
@@ -268,8 +253,7 @@ export default function ConstructorCursosRoot() {
       const ok = await showConfirm('Eliminar recurso', '¿Estás seguro de que deseas eliminar este recurso? Esta acción no se puede deshacer.');
       if (!ok) return;
       try {
-          const res = await fetch(`http://localhost:3200/api/cursos/bloques/${id}`, { method: 'DELETE' });
-          if (!res.ok) throw new Error('Error al eliminar');
+          const res = await api.delete(`/cursos/bloques/${id}`);
           
           setActiveCourse((prev: any) => {
              const newCourse = {...prev};
@@ -305,12 +289,8 @@ export default function ConstructorCursosRoot() {
       }
       
       try {
-          const res = await fetch(`http://localhost:3200/api/cursos/modulos/${moduleId}/bloques`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tipo: finalTipo, titulo: finalTitulo, contenido_html: '' })
-          });
-          const newBlock = await res.json();
+          const res = await api.post(`/cursos/modulos/${moduleId}/bloques`, { tipo: finalTipo, titulo: finalTitulo, contenido_html: '' });
+          const newBlock = res.data;
           router.push(`/dashboard/constructor-cursos/${activeCourse.guid}/modulos/${moduleId}/bloques/${newBlock.guid}`);
       } catch (e) {
           console.error(e);
@@ -376,11 +356,7 @@ export default function ConstructorCursosRoot() {
                             value={activeCourse.estado} 
                             onChange={async (e) => {
                                 const newEstado = e.target.value;
-                                await fetch(`http://localhost:3200/api/cursos/${activeCourse.guid}`, {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ estado: newEstado })
-                                });
+                                await api.patch(`/cursos/${activeCourse.guid}`, { estado: newEstado });
                                 setActiveCourse({...activeCourse, estado: newEstado});
                                 fetchData();
                             }}
@@ -397,8 +373,7 @@ export default function ConstructorCursosRoot() {
                                 const ok = await showConfirm('Eliminar curso', '¿Estás seguro de eliminar este curso por completo? Se borrarán todos los módulos y recursos asociados.');
                                 if (ok) {
                                     try {
-                                        const res = await fetch(`http://localhost:3200/api/cursos/${activeCourse.guid}`, { method: 'DELETE' });
-                                        if (!res.ok) throw new Error('Error al eliminar');
+                                        const res = await api.delete(`/cursos/${activeCourse.guid}`);
                                         
                                         const deletedGuid = activeCourse.guid;
                                         setActiveCourse(null);
@@ -586,8 +561,7 @@ export default function ConstructorCursosRoot() {
                                                             const ok = await showConfirm('Eliminar módulo', `¿Eliminar el módulo "${mod.titulo}"? Todo su contenido será borrado permanentemente.`);
                                                             if (ok) {
                                                                 try {
-                                                                    const res = await fetch(`http://localhost:3200/api/cursos/modulos/${mod.guid}`, { method: 'DELETE' });
-                                                                    if (!res.ok) throw new Error('Error');
+                                                                    const res = await api.delete(`/cursos/modulos/${mod.guid}`);
                                                                     
                                                                     setActiveCourse((prev: any) => ({
                                                                         ...prev,
@@ -700,8 +674,8 @@ export default function ConstructorCursosRoot() {
                         onClick={async () => {
                             setLoading(true);
                             try {
-                                const resDetails = await fetch(`http://localhost:3200/api/cursos/${curso.guid}`);
-                                const data = await resDetails.json();
+                                const resDetails = await api.get(`/cursos/${curso.guid}`);
+                                const data = resDetails.data;
                                 setActiveCourse(data);
                                 // Update URL without reloading so F5 works
                                 window.history.pushState({}, '', `?curso=${curso.guid}`);

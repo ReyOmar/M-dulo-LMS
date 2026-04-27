@@ -5,6 +5,7 @@ import { BookOpen, ArrowRight, Loader2 } from "lucide-react";
 import { PageLoader } from "@/components/PageLoader";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
+import api from "@/lib/api";
 
 export default function StudentCursosActivos() {
   const { user } = useRole();
@@ -18,8 +19,8 @@ export default function StudentCursosActivos() {
 
   const fetchCursos = async () => {
     try {
-      const res = await fetch(`http://localhost:3200/api/cursos?role=student&usuario_guid=${user.guid}`);
-      const data = await res.json();
+      const res = await api.get(`/cursos?role=student&usuario_guid=${user.guid}`);
+      const data = res.data;
       setCursos(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);

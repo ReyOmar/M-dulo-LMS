@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { BookOpen, Lock, AlertCircle, ArrowRight, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
+import api from "@/lib/api";
 
 export function TeacherDashboard() {
   const { user } = useRole();
@@ -18,8 +19,8 @@ export function TeacherDashboard() {
 
   const fetchCursos = async () => {
     try {
-      const res = await fetch(`http://localhost:3200/api/cursos?role=teacher&profesor_guid=${user?.guid}`);
-      const data = await res.json();
+      const res = await api.get(`/cursos?role=teacher&profesor_guid=${user?.guid}`);
+      const data = res.data;
       setCursos(data);
     } catch (e) {
       console.error(e);

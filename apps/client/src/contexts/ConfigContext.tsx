@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import api from "@/lib/api";
 
 export interface LMSConfig {
   id: number;
@@ -71,9 +72,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<LMSConfig | null>(null);
 
   useEffect(() => {
-    fetch("http://localhost:3200/api/configuracion")
-      .then((res) => res.json())
-      .then((data) => {
+    api.get("/configuracion")
+      .then(({ data }) => {
         if (data) {
           setConfig(data);
           applyAllToDOM(data);
@@ -170,20 +170,16 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const saveConfigToServer = async () => {
     if (!config) return;
     try {
-      await fetch("http://localhost:3200/api/configuracion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre_plataforma: config.nombre_plataforma,
-          color_primario: config.color_primario,
-          color_secundario: config.color_secundario,
-          fuente: config.fuente,
-          border_radius: config.border_radius,
-          logo_url: config.logo_url || null,
-          favicon_url: config.favicon_url || null,
-          login_fondo_url: config.login_fondo_url || null,
-          mensaje_bienvenida: config.mensaje_bienvenida,
-        }),
+      await api.post("/configuracion", {
+        nombre_plataforma: config.nombre_plataforma,
+        color_primario: config.color_primario,
+        color_secundario: config.color_secundario,
+        fuente: config.fuente,
+        border_radius: config.border_radius,
+        logo_url: config.logo_url || null,
+        favicon_url: config.favicon_url || null,
+        login_fondo_url: config.login_fondo_url || null,
+        mensaje_bienvenida: config.mensaje_bienvenida,
       });
       showToast('✓ Configuración guardada permanentemente', 'success');
     } catch (e) {

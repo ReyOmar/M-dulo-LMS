@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Play, BookOpen, Clock, GraduationCap, Bell, ChevronLeft, ChevronRight, Loader2, X, Flame } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
+import api from "@/lib/api";
 
 export function StudentDashboard() {
   const { user } = useRole();
@@ -41,14 +42,14 @@ export function StudentDashboard() {
   const fetchData = async () => {
     try {
       const [cursosRes, metricasRes, notifsRes] = await Promise.all([
-        fetch(`http://localhost:3200/api/cursos?role=student&usuario_guid=${user.guid}`),
-        fetch(`http://localhost:3200/api/cursos/student/metricas?usuario_guid=${user.guid}`),
-        fetch(`http://localhost:3200/api/cursos/student/notificaciones?usuario_guid=${user.guid}`)
+        api.get(`/cursos?role=student&usuario_guid=${user.guid}`),
+        api.get(`/cursos/student/metricas?usuario_guid=${user.guid}`),
+        api.get(`/cursos/student/notificaciones?usuario_guid=${user.guid}`)
       ]);
       const [cursosData, metricasData, notifsData] = await Promise.all([
-        cursosRes.json(),
-        metricasRes.json(),
-        notifsRes.json()
+        cursosRes.data,
+        metricasRes.data,
+        notifsRes.data
       ]);
       const cursosArr = Array.isArray(cursosData) ? cursosData : [];
       setCursos(cursosArr);
@@ -58,8 +59,8 @@ export function StudentDashboard() {
       // Fetch progress for the first (last active) course
       if (cursosArr.length > 0) {
         try {
-          const progRes = await fetch(`http://localhost:3200/api/cursos/student/progreso?usuario_guid=${user.guid}&curso_guid=${cursosArr[0].guid}`);
-          const progData = await progRes.json();
+          const progRes = await api.get(`/cursos/student/progreso?usuario_guid=${user.guid}&curso_guid=${cursosArr[0].guid}`);
+          const progData = await progRes.data;
           setProgreso({
             completados: progData.completados?.length || 0,
             total: progData.total_recursos || 0
@@ -75,7 +76,7 @@ export function StudentDashboard() {
 
   const markNotifRead = async (id: number) => {
     try {
-      await fetch(`http://localhost:3200/api/cursos/student/notificaciones/${id}/leer`, { method: 'PATCH' });
+      await api.patch(`/cursos/student/notificaciones/${id}/leer`);
       setNotificaciones(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n));
     } catch (e) { console.error(e); }
   };
@@ -98,8 +99,8 @@ export function StudentDashboard() {
   // Fetch active days when calendar month changes
   useEffect(() => {
     if (user?.guid) {
-      fetch(`http://localhost:3200/api/cursos/student/dias-activos?usuario_guid=${user.guid}&year=${calYear}&month=${calMonth}`)
-        .then(r => r.json())
+      api.get(`/cursos/student/dias-activos?usuario_guid=${user.guid}&year=${calYear}&month=${calMonth}`)
+        .then(r => r.data)
         .then(data => setActiveDays(Array.isArray(data.dias) ? data.dias : []))
         .catch(() => setActiveDays([]));
     }

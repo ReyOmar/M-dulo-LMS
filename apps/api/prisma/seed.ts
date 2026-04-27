@@ -1,7 +1,11 @@
 import { PrismaClient, lms_rol_usuario } from '@prisma/client';
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import * as bcrypt from 'bcryptjs';
+import * as path from 'path';
 
-const prisma = new PrismaClient();
+const DB_PATH = path.join(__dirname, 'dev.db');
+const adapter = new PrismaBetterSqlite3({ url: `file:${DB_PATH}` });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('Seeding database with secure credentials...');

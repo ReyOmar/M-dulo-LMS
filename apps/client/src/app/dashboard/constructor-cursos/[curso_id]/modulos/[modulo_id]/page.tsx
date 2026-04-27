@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { PageLoader } from "@/components/PageLoader";
 import { ArrowLeft, Plus, Image as ImageIcon, Type, FileText, CheckCircle, UploadCloud, Save, X, Eye, Trash2, Edit3, Link as LinkIcon, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import api from "@/lib/api";
 
 export default function ModuleEditorPage() {
   const { curso_id, modulo_id } = useParams();
@@ -19,7 +20,7 @@ export default function ModuleEditorPage() {
   const [savingTitle, setSavingTitle] = useState(false);
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeModal, setActiveModal] = useState<'IMAGEN'|'PARRAFO'|'TAREA'|'CUESTIONARIO' | null>(null);
+  const [activeModal, setActiveModal] = useState<'IMAGEN'|'PARRAFO'|'TAREA'|'CUESTIONARIO'|'ENLACE' | null>(null);
 
   // States for new block / edit block
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
@@ -45,8 +46,8 @@ export default function ModuleEditorPage() {
 
   const fetchData = async () => {
     try {
-      const res = await fetch(`http://localhost:3200/api/cursos/${curso_id}`);
-      const data = await res.json();
+      const res = await api.get(`/cursos/${curso_id}`);
+      const data = res.data;
       setCurso(data);
       const targetModulo = data.modulos?.find((m: any) => m.guid === modulo_id);
       setModulo(targetModulo);
@@ -110,7 +111,7 @@ export default function ModuleEditorPage() {
       const ok = await showConfirm('Eliminar bloque', '¿Estás seguro de eliminar este bloque del contenido? Esta acción no se puede deshacer.');
       if (!ok) return;
       try {
-          await fetch(`http://localhost:3200/api/cursos/bloques/${id}`, { method: 'DELETE' });
+          await api.delete(`/cursos/bloques/${id}`);
           await fetchData();
       } catch (err) {
           console.error(err);
@@ -143,17 +144,10 @@ export default function ModuleEditorPage() {
           }
 
           if (editingBlockId) {
-              await fetch(`http://localhost:3200/api/cursos/bloques/${editingBlockId}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ titulo: finalTitulo, contenido_html: htmlContent })
-              });
+              await api.patch(`/cursos/bloques/${editingBlockId}`, { titulo: finalTitulo, contenido_html: htmlContent });
           } else {
-              await fetch(`http://localhost:3200/api/cursos/modulos/${modulo_id}/bloques`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(body)
-              });
+              await api.post(`/cursos/modulos/${modulo_id}/bloques`, body
+              );
           }
 
           // Reset modals
@@ -197,11 +191,7 @@ export default function ModuleEditorPage() {
                           <button 
                               onClick={async () => {
                                   setSavingTitle(true);
-                                  await fetch(`http://localhost:3200/api/cursos/modulos/${modulo_id}`, {
-                                      method: 'PATCH',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ titulo: moduleTitle })
-                                  });
+                                  await api.patch(`/cursos/modulos/${modulo_id}`, { titulo: moduleTitle });
                                   setSavingTitle(false);
                                   fetchData();
                               }}

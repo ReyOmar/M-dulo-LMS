@@ -5,6 +5,7 @@ import { Users, ShieldAlert, Key, UserCheck, UserX, Clock, Mail, BookOpen, X, Gr
 import { PageLoader } from "@/components/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import Link from "next/link";
+import api from "@/lib/api";
 
 interface Usuario {
   guid: string;
@@ -44,8 +45,8 @@ export default function BaseUsuarios() {
 
   const fetchUsuarios = async () => {
     try {
-      const res = await fetch("http://localhost:3200/api/auth/usuarios");
-      const data = await res.json();
+      const res = await api.get("/auth/usuarios");
+      const data = res.data;
       setUsuarios(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
@@ -59,8 +60,8 @@ export default function BaseUsuarios() {
     setLoadingCursos(true);
 
     try {
-      const res = await fetch(`http://localhost:3200/api/cursos/usuario-cursos?usuario_guid=${user.guid}&rol=${user.rol}`);
-      const data = await res.json();
+      const res = await api.get(`/cursos/usuario-cursos?usuario_guid=${user.guid}&rol=${user.rol}`);
+      const data = res.data;
       setUserCourses(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);

@@ -130,11 +130,17 @@ export class CursosController {
 
   @Get('/download/:filename')
   async downloadFile(@Param('filename') filename: string, @Res() res: any) {
-    const filePath = this.cursosService.getUploadPath(filename);
+    // Security: Sanitize filename to prevent path traversal attacks (e.g. ../../.env)
+    const sanitized = require('path').basename(filename);
+    if (!sanitized || sanitized !== filename) {
+      return res.status(400).send({ message: 'Nombre de archivo inválido.' });
+    }
+
+    const filePath = this.cursosService.getUploadPath(sanitized);
     const buffer = fs.readFileSync(filePath);
     
     // Determine content type from extension
-    const ext = filename.split('.').pop()?.toLowerCase();
+    const ext = sanitized.split('.').pop()?.toLowerCase();
     const mimeTypes: Record<string, string> = {
       pdf: 'application/pdf',
       doc: 'application/msword',
@@ -156,7 +162,7 @@ export class CursosController {
     const contentType = mimeTypes[ext || ''] || 'application/octet-stream';
     
     res.header('Content-Type', contentType);
-    res.header('Content-Disposition', `attachment; filename="${filename}"`);
+    res.header('Content-Disposition', `attachment; filename="${sanitized}"`);
     res.header('Content-Length', buffer.length);
     return res.send(buffer);
   }

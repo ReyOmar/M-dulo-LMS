@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { BookCheck, Download, Loader2, Check, Search, FileText, Star, MessageSquare, X, Filter } from "lucide-react";
 import { PageLoader } from "@/components/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
+import api, { API_BASE_URL } from "@/lib/api";
 
 export default function CalificacionManualPage() {
   const { user } = useRole();
@@ -24,8 +25,8 @@ export default function CalificacionManualPage() {
 
   const fetchEntregas = async () => {
     try {
-      const res = await fetch(`http://localhost:3200/api/cursos/examiner/entregas?profesor_guid=${user?.guid}`);
-      const data = await res.json();
+      const res = await api.get(`/cursos/examiner/entregas?profesor_guid=${user?.guid}`);
+      const data = res.data;
       setEntregas(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
@@ -42,11 +43,7 @@ export default function CalificacionManualPage() {
     }
     setSaving(true);
     try {
-      await fetch(`http://localhost:3200/api/cursos/entregas/${guid}/calificar`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ calificacion: nota, comentario: gradeComment || undefined }),
-      });
+      await api.patch(`/cursos/entregas/${guid}/calificar`, { calificacion: nota, comentario: gradeComment || undefined });
       // Update local state
       setEntregas(prev =>
         prev.map(e =>
@@ -210,7 +207,7 @@ export default function CalificacionManualPage() {
                   {/* Center: File download */}
                   {entrega.archivo_servidor && (
                     <a
-                      href={`http://localhost:3200/api/cursos/download/${entrega.archivo_servidor}`}
+                      href={`${API_BASE_URL}/cursos/download/${entrega.archivo_servidor}`}
                       className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition-colors shrink-0"
                     >
                       <Download className="h-3.5 w-3.5" />

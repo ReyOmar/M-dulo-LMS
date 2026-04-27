@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BookOpen, Users, GraduationCap, Presentation, Plus, X, Loader2, CheckCircle, Search, UserPlus, UserMinus } from "lucide-react";
 import { PageLoader } from "@/components/PageLoader";
+import api from "@/lib/api";
 
 interface Curso {
   guid: string;
@@ -52,12 +53,12 @@ export default function AsignacionCursosPage() {
   const fetchData = async () => {
     try {
       const [cursosRes, profesoresRes, estudiantesRes] = await Promise.all([
-        fetch('http://localhost:3200/api/cursos?role=admin'),
-        fetch('http://localhost:3200/api/cursos/profesores'),
-        fetch('http://localhost:3200/api/cursos/estudiantes')
+        api.get('/cursos?role=admin'),
+        api.get('/cursos/profesores'),
+        api.get('/cursos/estudiantes')
       ]);
       const [cursosData, profesoresData, estudiantesData] = await Promise.all([
-        cursosRes.json(), profesoresRes.json(), estudiantesRes.json()
+        cursosRes.data, profesoresRes.data, estudiantesRes.data
       ]);
       setCursos(Array.isArray(cursosData) ? cursosData : []);
       setProfesores(Array.isArray(profesoresData) ? profesoresData : []);
@@ -74,8 +75,8 @@ export default function AsignacionCursosPage() {
   const fetchMatriculas = async (cursoGuid: string) => {
     setLoadingMatriculas(true);
     try {
-      const res = await fetch(`http://localhost:3200/api/cursos/matriculas/${cursoGuid}`);
-      const data = await res.json();
+      const res = await api.get(`/cursos/matriculas/${cursoGuid}`);
+      const data = res.data;
       setMatriculados(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
@@ -93,11 +94,7 @@ export default function AsignacionCursosPage() {
   const matricularEstudiante = async (usuario_guid: string) => {
     if (!selectedCursoEstudiante) return;
     try {
-      await fetch(`http://localhost:3200/api/cursos/matriculas/${selectedCursoEstudiante}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario_guid })
-      });
+      await api.post(`/cursos/matriculas/${selectedCursoEstudiante}`, { usuario_guid });
       showFeedback('success', 'Estudiante matriculado exitosamente');
       fetchMatriculas(selectedCursoEstudiante);
     } catch (err) {
@@ -108,7 +105,7 @@ export default function AsignacionCursosPage() {
   const desmatricularEstudiante = async (usuario_guid: string) => {
     if (!selectedCursoEstudiante) return;
     try {
-      await fetch(`http://localhost:3200/api/cursos/matriculas/${selectedCursoEstudiante}/${usuario_guid}`, { method: 'DELETE' });
+      await api.delete(`/cursos/matriculas/${selectedCursoEstudiante}/${usuario_guid}`);
       showFeedback('success', 'Estudiante desmatriculado');
       fetchMatriculas(selectedCursoEstudiante);
     } catch (err) {
@@ -121,11 +118,7 @@ export default function AsignacionCursosPage() {
   const asignarProfesor = async (profesor_guid: string) => {
     if (!selectedCursoProfesor) return;
     try {
-      await fetch(`http://localhost:3200/api/cursos/${selectedCursoProfesor}/asignar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profesor_guid })
-      });
+      await api.post(`/cursos/${selectedCursoProfesor}/asignar`, { profesor_guid });
       showFeedback('success', 'Profesor asignado al curso exitosamente');
       // Update local state
       setCursos(prev => prev.map(c => c.guid === selectedCursoProfesor ? { ...c, profesor_guid } : c));
