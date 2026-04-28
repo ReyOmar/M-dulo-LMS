@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useRole } from "@/contexts/RoleContext";
-import { AdminDashboard } from "@/components/dashboards/AdminDashboard";
-import { TeacherDashboard } from "@/components/dashboards/TeacherDashboard";
-import { StudentDashboard } from "@/components/dashboards/StudentDashboard";
+import { AdminDashboard } from "@/components/features/dashboards/AdminDashboard";
+import { TeacherDashboard } from "@/components/features/dashboards/TeacherDashboard";
+import { StudentDashboard } from "@/components/features/dashboards/StudentDashboard";
 
 export default function DashboardController() {
   const { role } = useRole();

@@ -41,7 +41,7 @@ export class AuthService {
     return { message: 'Solicitud enviada al administrador exitosamente.', request_id: sol.id };
   }
 
-  async login(email: string, contrasena?: string) {
+  async login(email: string, contrasena: string) {
     const user = await this.prisma.usuarios.findUnique({ where: { email } });
     if (!user) {
       throw new UnauthorizedException('Credenciales inválidas.');
@@ -86,18 +86,27 @@ export class AuthService {
     };
   }
 
-  async setupPassword(email: string, nuevaContrasena: string) {
+  async setupPassword(email: string, contrasenaTemporal: string, nuevaContrasena: string) {
     const user = await this.prisma.usuarios.findUnique({ where: { email } });
     if (!user) {
       throw new NotFoundException('Usuario no existe.');
     }
 
-    if (user.contrasena) {
-      const defaultPwd = await this.getDefaultPassword();
-      const isDefault = await bcrypt.compare(defaultPwd, user.contrasena);
-      if (!isDefault) {
-        throw new BadRequestException('La cuenta ya tiene una contraseña configurada y no es la temporal.');
-      }
+    if (!user.contrasena) {
+       throw new BadRequestException('La cuenta no tiene contraseña configurada. Contacte a soporte.');
+    }
+
+    // Verify the temporary password
+    const isTempValid = await bcrypt.compare(contrasenaTemporal, user.contrasena);
+    if (!isTempValid) {
+      throw new UnauthorizedException('La contraseña temporal es incorrecta.');
+    }
+
+    // Check if it's actually the default password (only allow setup if it is the default)
+    const defaultPwd = await this.getDefaultPassword();
+    const isDefault = await bcrypt.compare(defaultPwd, user.contrasena);
+    if (!isDefault) {
+      throw new BadRequestException('La cuenta ya tiene una contraseña personalizada y no es la temporal.');
     }
 
     const hashed = await bcrypt.hash(nuevaContrasena, 10);

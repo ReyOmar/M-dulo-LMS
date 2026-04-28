@@ -9,6 +9,12 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { CursosModule } from './cursos/cursos.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
+import { StorageModule } from './storage/storage.module';
+import { EvaluacionesModule } from './evaluaciones/evaluaciones.module';
+import { EstudiantesModule } from './estudiantes/estudiantes.module';
+import { MatriculasModule } from './matriculas/matriculas.module';
+import { DashboardsModule } from './dashboards/dashboards.module';
 
 @Module({
   imports: [
@@ -36,12 +42,20 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     PrismaModule,
     AuthModule,
     CursosModule,
+    StorageModule,
+    EvaluacionesModule,
+    EstudiantesModule,
+    MatriculasModule,
+    DashboardsModule,
   ],
   controllers: [],
   providers: [
     // Global JWT authentication guard — all routes protected by default
     // Use @Public() decorator to bypass on specific routes
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+
+    // Global Roles guard — enforces @Roles() decorator
+    { provide: APP_GUARD, useClass: RolesGuard },
 
     // Global rate limiting guard
     { provide: APP_GUARD, useClass: ThrottlerGuard },

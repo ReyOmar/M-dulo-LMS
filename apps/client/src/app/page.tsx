@@ -1,4 +1,4 @@
-import { GraduationCap, ArrowRight, ShieldCheck, BookOpen } from "lucide-react";
+﻿import { GraduationCap, ArrowRight, ShieldCheck, BookOpen } from "lucide-react";
 
 export default function Home() {
   return (
@@ -77,7 +77,7 @@ export default function Home() {
       
       <footer className="border-t border-border/40 py-8 px-6 mt-12 bg-muted/20">
         <div className="container mx-auto flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground">
-          <p>© 2026 PESV Education Platform.</p>
+          <p>Â© 2026 PESV Education Platform.</p>
           <p className="mt-4 md:mt-0 flex items-center gap-1">Diseñado para alto rendimiento y seguridad corporativa</p>
         </div>
       </footer>

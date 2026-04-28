@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { Users, ShieldAlert, Key, UserCheck, UserX, Clock, Mail, BookOpen, X, GraduationCap, Shield, Presentation, Search } from "lucide-react";
-import { PageLoader } from "@/components/PageLoader";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import Link from "next/link";
 import api from "@/lib/api";
@@ -213,7 +213,7 @@ export default function BaseUsuarios() {
         </div>
       )}
 
-      {/* ═══════ USER DETAIL MODAL ═══════ */}
+      {/* ======= USER DETAIL MODAL ======= */}
       {selectedUser && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center pt-24 animate-in fade-in duration-300" onClick={() => setSelectedUser(null)}>
           <div 

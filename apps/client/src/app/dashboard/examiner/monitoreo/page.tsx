@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, Fragment } from "react";
 import { Search, Users, Clock, BookOpen, ChevronDown, ChevronRight, BarChart3, Loader2, TrendingUp } from "lucide-react";
-import { PageLoader } from "@/components/PageLoader";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import api from "@/lib/api";
 

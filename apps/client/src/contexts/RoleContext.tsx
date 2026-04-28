@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { PageLoader } from "@/components/PageLoader";
+import { PageLoader } from "@/components/ui/PageLoader";
 
 export type Role = "admin" | "teacher" | "student";
 
