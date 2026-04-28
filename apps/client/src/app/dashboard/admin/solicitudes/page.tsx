@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { Check, X, ShieldAlert, Clock, KeyRound, Eye, EyeOff, Save, Loader2 } from "lucide-react";
-import { PageLoader } from "@/components/PageLoader";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import Link from "next/link";
 import api from "@/lib/api";
@@ -158,7 +158,7 @@ export default function SolicitudesPendientes() {
           </div>
           {newPassword !== defaultPassword && newPassword.length >= 6 && (
             <div className="mt-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-sm text-amber-600 dark:text-amber-400 font-medium animate-in fade-in duration-300">
-              ⚠️ Has modificado la contraseña. Presiona <strong>&quot;Guardar Contraseña&quot;</strong> para que los próximos usuarios aprobados reciban esta nueva clave.
+              ⚠️ Has modificado la contraseña. Presiona <strong>&quot;Guardar Contraseña&quot;</strong> para que los próximos usuarios aprobados reciban esta nueva clave.
             </div>
           )}
         </div>

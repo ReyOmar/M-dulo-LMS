@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Lock, Mail, ArrowRight, GraduationCap, ShieldCheck, User } from "lucide-react";
-import { PageLoader } from "@/components/PageLoader";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
 import { useConfig } from "@/contexts/ConfigContext";
@@ -57,7 +57,7 @@ export default function LoginPage() {
       setErrorMsg("");
 
       try {
-        await api.post("/auth/establecer-password", { email, nuevaContrasena: newPassword });
+        await api.post("/auth/establecer-password", { email, contrasenaTemporal: password, nuevaContrasena: newPassword });
   
         // Iniciar sesión automáticamente después de establecerla
         await handleLogin({ preventDefault: () => {} } as React.FormEvent);

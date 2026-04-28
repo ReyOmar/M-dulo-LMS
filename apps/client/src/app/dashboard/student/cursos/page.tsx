@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { BookOpen, ArrowRight, Loader2 } from "lucide-react";
-import { PageLoader } from "@/components/PageLoader";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
 import api from "@/lib/api";

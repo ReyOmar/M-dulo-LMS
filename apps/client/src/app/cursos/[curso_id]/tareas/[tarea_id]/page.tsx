@@ -58,7 +58,7 @@ export default function TareaVisorPage() {
       // Student: load previous submission
       if (!isTeacher) {
           try {
-              const { data: entregaData } = await api.get(`/cursos/tareas/${tarea_id}/entregas?usuario_guid=dummy-estudiante-123`);
+              const { data: entregaData } = await api.get(`/cursos/tareas/${tarea_id}/entregas/mine`);
               if (entregaData?.respuesta_texto) {
                   setSelectedFileName(entregaData.respuesta_texto);
                   setUploadState('done');
@@ -95,7 +95,7 @@ export default function TareaVisorPage() {
       try {
           setUploadState('uploading');
           const base64 = await toBase64(file);
-          await api.post(`/cursos/tareas/${tarea_id}/entregas`, { base64, nombre_archivo: file.name, usuario_guid: 'dummy-estudiante-123' });
+          await api.post(`/cursos/tareas/${tarea_id}/entregas`, { base64, nombre_archivo: file.name });
           setSelectedFileName(file.name);
           setUploadState('done');
       } catch (err) { console.error(err); alert('Hubo un error al enviar tu archivo.'); setUploadState('idle'); }

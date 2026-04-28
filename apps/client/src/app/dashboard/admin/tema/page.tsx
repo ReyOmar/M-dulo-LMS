@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useConfig, GOOGLE_FONTS } from "@/contexts/ConfigContext";
 import { useRole } from "@/contexts/RoleContext";
@@ -49,7 +49,7 @@ export default function TemaPage() {
         <p className="text-muted-foreground mt-2">Personaliza la identidad visual, colores, tipografía y experiencia de la plataforma.</p>
       </header>
 
-      {/* ═══════ IDENTITY & BRANDING ═══════ */}
+      {/* ======= IDENTITY & BRANDING ======= */}
       <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><GraduationCap className="h-5 w-5 text-primary" /> Identidad de Marca</h2>
         
@@ -110,7 +110,7 @@ export default function TemaPage() {
         </div>
       </section>
 
-      {/* ═══════ COLORS ═══════ */}
+      {/* ======= COLORS ======= */}
       <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Palette className="h-5 w-5 text-primary" /> Colores de la Plataforma</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
@@ -161,7 +161,7 @@ export default function TemaPage() {
         </div>
       </section>
 
-      {/* ═══════ THEME PRESETS ═══════ */}
+      {/* ======= THEME PRESETS ======= */}
       <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-xl font-bold mb-2 flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> Temas Predefinidos</h2>
         <p className="text-sm text-muted-foreground mb-6">Aplica un tema completo con un solo click. Los colores se actualizan en vivo.</p>
@@ -184,7 +184,7 @@ export default function TemaPage() {
         </div>
       </section>
 
-      {/* ═══════ TYPOGRAPHY ═══════ */}
+      {/* ======= TYPOGRAPHY ======= */}
       <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Type className="h-5 w-5 text-primary" /> Tipografía</h2>
         
@@ -209,7 +209,7 @@ export default function TemaPage() {
         </div>
       </section>
 
-      {/* ═══════ BORDER RADIUS ═══════ */}
+      {/* ======= BORDER RADIUS ======= */}
       <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><RectangleHorizontal className="h-5 w-5 text-primary" /> Redondez de Bordes</h2>
         
@@ -257,7 +257,7 @@ export default function TemaPage() {
         </div>
       </section>
 
-      {/* ═══════ LOGIN CUSTOMIZATION ═══════ */}
+      {/* ======= LOGIN CUSTOMIZATION ======= */}
       <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Image className="h-5 w-5 text-primary" /> Pantalla de Inicio de Sesión</h2>
         
@@ -293,7 +293,7 @@ export default function TemaPage() {
                 <>
                   <Upload className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
                   <p className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">Click para subir imagen de fondo</p>
-                  <p className="text-xs text-muted-foreground mt-1">Recomendado: 1920×1080 o mayor</p>
+                  <p className="text-xs text-muted-foreground mt-1">Recomendado: 1920Ã—1080 o mayor</p>
                 </>
               )}
             </div>
@@ -310,7 +310,7 @@ export default function TemaPage() {
         </div>
       </section>
 
-      {/* ═══════ SAVE BUTTON ═══════ */}
+      {/* ======= SAVE BUTTON ======= */}
       <div className="sticky bottom-6 flex justify-end pb-4">
         <button 
           onClick={saveConfigToServer}

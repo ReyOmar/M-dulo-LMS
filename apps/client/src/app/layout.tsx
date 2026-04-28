@@ -1,6 +1,6 @@
-import "./globals.css";
+﻿import "./globals.css";
 import { type Metadata } from "next";
-import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeProvider } from "@/components/ui/ThemeProvider";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, FileText, Type, CheckCircle, Trophy, Lock, PlayCircle, Paperclip, UploadCloud, Loader2, ExternalLink } from "lucide-react";
-import { PageLoader } from "@/components/PageLoader";
+import { PageLoader } from "@/components/ui/PageLoader";
 import Link from "next/link";
 import api, { API_BASE_URL } from "@/lib/api";
 
