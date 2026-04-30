@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { Users, ShieldAlert, Key, UserCheck, UserX, Clock, Mail, BookOpen, X, GraduationCap, Shield, Presentation, Search } from "lucide-react";
@@ -269,7 +269,7 @@ export default function BaseUsuarios() {
                 <div className="text-center py-6 bg-muted/10 rounded-xl border border-border/50">
                   <p className="text-sm text-muted-foreground">Este usuario no tiene cursos {selectedUser.rol === 'PROFESOR' ? 'asignados' : 'matriculados'}.</p>
                   {selectedUser.rol === 'PROFESOR' && (
-                    <Link href="/dashboard/constructor-cursos" className="text-xs text-primary font-bold hover:underline mt-2 inline-block">
+                    <Link href="/dashboard/admin/constructor-cursos" className="text-xs text-primary font-bold hover:underline mt-2 inline-block">
                       Ir a Gestión de Cursos para asignar →
                     </Link>
                   )}

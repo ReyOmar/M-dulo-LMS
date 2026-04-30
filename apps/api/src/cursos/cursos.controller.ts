@@ -6,17 +6,22 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateCursoDto, AsignarCursoDto, UpdateCursoDto, CreateModuloDto, UpdateModuloDto } from './dto/cursos.dto';
 import { CreateBloqueDto, UpdateBloqueDto } from './dto/bloques.dto';
 
+@Public()
 @Controller('cursos')
 export class CursosController {
   constructor(private readonly cursosService: CursosService) {}
 
   @Get()
-  async getCursos(@CurrentUser() user: any) {
-    if (user?.rol === 'ESTUDIANTE') {
-      return this.cursosService.getCursosDeEstudiante(user.guid);
-    } else if (user?.rol === 'PROFESOR') {
-      return this.cursosService.getCursosDeProfesor(user.guid);
-    } else if (user?.rol === 'ADMINISTRADOR') {
+  async getCursos(@CurrentUser() user: any, @Query('role') roleParam?: string, @Query('usuario_guid') usuario_guid?: string) {
+    // When JWT user is available, use their role directly; otherwise use query params
+    const userRole = user?.rol || (roleParam === 'admin' ? 'ADMINISTRADOR' : roleParam === 'teacher' ? 'PROFESOR' : roleParam === 'student' ? 'ESTUDIANTE' : null);
+    const userGuid = user?.guid || usuario_guid;
+
+    if (userRole === 'ESTUDIANTE' && userGuid) {
+      return this.cursosService.getCursosDeEstudiante(userGuid);
+    } else if (userRole === 'PROFESOR' && userGuid) {
+      return this.cursosService.getCursosDeProfesor(userGuid);
+    } else if (userRole === 'ADMINISTRADOR') {
       return this.cursosService.getAllCursosParaAdmin();
     }
     return this.cursosService.getCursosActivosParaEstudiante();

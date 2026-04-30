@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRole } from "@/contexts/RoleContext";
@@ -66,10 +66,11 @@ export default function ConstructorCursosRoot() {
   }, []);
 
   // Auto-open course from URL query param (when teacher navigates from their dashboard)
+  // Also refreshes course data when returning from block editor
   useEffect(() => {
     const cursoParam = searchParams?.get('curso');
-    if (cursoParam && cursos.length === 0 && !activeCourse) {
-      // Fetch the specific course directly
+    if (cursoParam) {
+      // Always fetch fresh course data (handles returning from block editor with updated content)
       api.get(`/cursos/${cursoParam}`)
         .then(r => r.data)
         .then(data => {
@@ -291,7 +292,7 @@ export default function ConstructorCursosRoot() {
       try {
           const res = await api.post(`/cursos/modulos/${moduleId}/bloques`, { tipo: finalTipo, titulo: finalTitulo, contenido_html: '' });
           const newBlock = res.data;
-          router.push(`/dashboard/constructor-cursos/${activeCourse.guid}/modulos/${moduleId}/bloques/${newBlock.guid}`);
+          router.push(`/dashboard/admin/constructor-cursos/${activeCourse.guid}/modulos/${moduleId}/bloques/${newBlock.guid}`);
       } catch (e) {
           console.error(e);
       }
@@ -433,7 +434,7 @@ export default function ConstructorCursosRoot() {
                                                 type="button"
                                                 onClick={async (e) => {
                                                     e.preventDefault();
-                                                    router.push(`/dashboard/constructor-cursos/${activeCourse.guid}/modulos/${selectedItem.moduloId}/bloques/${editingBlockId}`);
+                                                    router.push(`/dashboard/admin/constructor-cursos/${activeCourse.guid}/modulos/${selectedItem.moduloId}/bloques/${editingBlockId}`);
                                                 }}
                                                 className="bg-primary/10 text-primary hover:bg-primary/20 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
                                             >

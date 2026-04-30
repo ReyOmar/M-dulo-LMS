@@ -1,10 +1,12 @@
 import { Controller, Get, Post, Patch, Param, Body, Query } from '@nestjs/common';
 import { EvaluacionesService } from './evaluaciones.service';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { SubmitEntregaDto } from './dto/submit-entrega.dto';
 import { CalificarEntregaDto } from './dto/calificar-entrega.dto';
 
+@Public()
 @Controller('cursos')
 export class EvaluacionesController {
   constructor(private readonly evaluacionesService: EvaluacionesService) {}

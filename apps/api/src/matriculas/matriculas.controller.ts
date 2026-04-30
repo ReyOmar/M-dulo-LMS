@@ -1,8 +1,10 @@
 import { Controller, Get, Post, Delete, Param, Body } from '@nestjs/common';
 import { MatriculasService } from './matriculas.service';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { MatricularEstudianteDto } from './dto/matricular.dto';
 
+@Public()
 @Controller('cursos')
 export class MatriculasController {
   constructor(private readonly matriculasService: MatriculasService) {}

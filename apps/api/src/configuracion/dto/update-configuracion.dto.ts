@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsNumber } from 'class-validator';
 
 export class UpdateConfiguracionDto {
   @IsOptional()
@@ -24,4 +24,20 @@ export class UpdateConfiguracionDto {
   @IsOptional()
   @IsString()
   contrasena_defecto?: string;
+
+  @IsOptional()
+  @IsString()
+  logo_url?: string;
+
+  @IsOptional()
+  @IsString()
+  favicon_url?: string;
+
+  @IsOptional()
+  @IsString()
+  fuente?: string;
+
+  @IsOptional()
+  @IsNumber()
+  border_radius?: number;
 }

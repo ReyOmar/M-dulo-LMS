@@ -176,7 +176,7 @@ export default function ModuleEditorPage() {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card border-b border-border shadow-sm flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4 flex-1">
-              <Link href="/dashboard/constructor-cursos" className="p-2 bg-muted rounded-full hover:bg-border transition-colors">
+              <Link href="/dashboard/admin/constructor-cursos" className="p-2 bg-muted rounded-full hover:bg-border transition-colors">
                   <ArrowLeft className="h-5 w-5 text-muted-foreground" />
               </Link>
               <div className="flex flex-col flex-1 max-w-xl">
@@ -247,7 +247,7 @@ export default function ModuleEditorPage() {
                               <div className="flex items-center gap-4 text-blue-500 hover:opacity-80 transition-opacity">
                                   <FileText className="h-8 w-8" />
                                   <h3 className="font-bold flex-1">{displayTitle}</h3>
-                                  <Link href={`/dashboard/constructor-cursos/${curso_id}/tareas/${r.guid}`} className="text-xs border border-blue-500 px-3 py-1 rounded-full cursor-pointer hover:bg-blue-500 hover:text-white transition-colors">
+                                  <Link href={`/dashboard/admin/constructor-cursos/${curso_id}/tareas/${r.guid}`} className="text-xs border border-blue-500 px-3 py-1 rounded-full cursor-pointer hover:bg-blue-500 hover:text-white transition-colors">
                                       Editar Tarea
                                   </Link>
                               </div>
@@ -256,7 +256,7 @@ export default function ModuleEditorPage() {
                               <div className="flex items-center gap-4 text-amber-500 hover:opacity-80 transition-opacity">
                                   <CheckCircle className="h-8 w-8" />
                                   <h3 className="font-bold flex-1">{displayTitle}</h3>
-                                  <Link href={`/dashboard/constructor-cursos/${curso_id}/tareas/${r.guid}`} className="text-xs border border-amber-500 px-3 py-1 rounded-full cursor-pointer hover:bg-amber-500 hover:text-white transition-colors">
+                                  <Link href={`/dashboard/admin/constructor-cursos/${curso_id}/tareas/${r.guid}`} className="text-xs border border-amber-500 px-3 py-1 rounded-full cursor-pointer hover:bg-amber-500 hover:text-white transition-colors">
                                       Editar Cuestionario
                                   </Link>
                               </div>

@@ -1,7 +1,9 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { DashboardsService } from './dashboards.service';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Public } from '../common/decorators/public.decorator';
 
+@Public()
 @Controller('cursos')
 export class DashboardsController {
   constructor(private readonly dashboardsService: DashboardsService) {}

@@ -1,30 +1,36 @@
 import { Controller, Get, Patch, Post, Param, Body, Query } from '@nestjs/common';
 import { EstudiantesService } from './estudiantes.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { MarcarRecursoDto } from './dto/marcar-recurso.dto';
 
+@Public()
 @Controller('cursos')
 export class EstudiantesController {
   constructor(private readonly estudiantesService: EstudiantesService) {}
 
   @Get('/student/progreso')
-  async getProgresoEstudiante(@CurrentUser() user: any, @Query('curso_guid') curso_guid: string) {
-    return this.estudiantesService.getProgresoEstudiante(user.guid, curso_guid);
+  async getProgresoEstudiante(@CurrentUser() user: any, @Query('curso_guid') curso_guid: string, @Query('usuario_guid') usuario_guid?: string) {
+    const guid = user?.guid || usuario_guid;
+    return this.estudiantesService.getProgresoEstudiante(guid, curso_guid);
   }
 
   @Post('/student/completar-recurso')
-  async marcarRecursoCompletado(@CurrentUser() user: any, @Body() body: MarcarRecursoDto) {
-    return this.estudiantesService.marcarRecursoCompletado(user.guid, body.recurso_guid);
+  async marcarRecursoCompletado(@CurrentUser() user: any, @Body() body: MarcarRecursoDto, @Query('usuario_guid') usuario_guid?: string) {
+    const guid = user?.guid || usuario_guid;
+    return this.estudiantesService.marcarRecursoCompletado(guid, body.recurso_guid);
   }
 
   @Get('/student/dias-activos')
-  async getDiasActivos(@CurrentUser() user: any, @Query('year') year: string, @Query('month') month: string) {
-    return this.estudiantesService.getDiasActivos(user.guid, parseInt(year, 10), parseInt(month, 10));
+  async getDiasActivos(@CurrentUser() user: any, @Query('year') year: string, @Query('month') month: string, @Query('usuario_guid') usuario_guid?: string) {
+    const guid = user?.guid || usuario_guid;
+    return this.estudiantesService.getDiasActivos(guid, parseInt(year, 10), parseInt(month, 10));
   }
 
   @Get('/student/notificaciones')
-  async getNotificacionesEstudiante(@CurrentUser() user: any) {
-    return this.estudiantesService.getNotificacionesEstudiante(user.guid);
+  async getNotificacionesEstudiante(@CurrentUser() user: any, @Query('usuario_guid') usuario_guid?: string) {
+    const guid = user?.guid || usuario_guid;
+    return this.estudiantesService.getNotificacionesEstudiante(guid);
   }
 
   @Patch('/student/notificaciones/:id/leer')
@@ -33,7 +39,9 @@ export class EstudiantesController {
   }
 
   @Get('/student/metricas')
-  async getMetricasEstudiante(@CurrentUser() user: any) {
-    return this.estudiantesService.getMetricasEstudiante(user.guid);
+  async getMetricasEstudiante(@CurrentUser() user: any, @Query('usuario_guid') usuario_guid?: string) {
+    const guid = user?.guid || usuario_guid;
+    return this.estudiantesService.getMetricasEstudiante(guid);
   }
 }
+

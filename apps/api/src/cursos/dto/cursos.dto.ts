@@ -17,13 +17,13 @@ export class AsignarCursoDto {
 }
 
 export class UpdateCursoDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  titulo: string;
+  titulo?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  estado: string;
+  estado?: string;
 }
 
 export class CreateModuloDto {

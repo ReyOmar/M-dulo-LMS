@@ -61,7 +61,7 @@ export default function CursoVisorPage() {
   const marcarCompletado = useCallback(async (recurso_guid: string) => {
     if (!userGuid || completados.includes(recurso_guid)) return;
     try {
-      await api.post('/cursos/student/marcar-recurso', { usuario_guid: userGuid, recurso_guid });
+      await api.post(`/cursos/student/completar-recurso?usuario_guid=${userGuid}`, { recurso_guid });
       setCompletados(prev => [...prev, recurso_guid]);
     } catch (err) {
       console.error(err);

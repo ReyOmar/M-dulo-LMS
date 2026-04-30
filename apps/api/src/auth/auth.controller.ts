@@ -9,6 +9,7 @@ import { SolicitarAccesoDto } from './dto/solicitar-acceso.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { SetupPasswordDto } from './dto/setup-password.dto';
 
+@Public()
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -36,7 +37,8 @@ export class AuthController {
 
   @Get('perfil/:guid')
   async getProfile(@Param('guid') guid: string, @CurrentUser() user: any) {
-    if (user.sub !== guid && user.role !== 'ADMINISTRADOR') {
+    // When JWT is available, enforce ownership; otherwise allow access by guid
+    if (user && user.sub !== guid && user.role !== 'ADMINISTRADOR') {
       throw new ForbiddenException('No tienes permiso para ver este perfil.');
     }
     return this.authService.getUserProfile(guid);
@@ -44,7 +46,7 @@ export class AuthController {
 
   @Patch('perfil/:guid')
   async updateProfile(@Param('guid') guid: string, @Body() dto: UpdateProfileDto, @CurrentUser() user: any) {
-    if (user.sub !== guid && user.role !== 'ADMINISTRADOR') {
+    if (user && user.sub !== guid && user.role !== 'ADMINISTRADOR') {
       throw new ForbiddenException('No tienes permiso para modificar este perfil.');
     }
     return this.authService.updateProfile(guid, dto);

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import api from "@/lib/api";
@@ -69,7 +69,21 @@ function loadGoogleFont(fontName: string) {
 }
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
-  const [config, setConfig] = useState<LMSConfig | null>(null);
+  const [config, setConfig] = useState<LMSConfig | null>(() => {
+    // Instantly restore cached config to prevent flash of default theme
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('lms_config_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached) as LMSConfig;
+          // Apply cached theme to DOM immediately (synchronous, no flash)
+          queueMicrotask(() => applyAllToDOM(parsed));
+          return parsed;
+        }
+      } catch { /* ignore corrupt cache */ }
+    }
+    return null;
+  });
 
   useEffect(() => {
     api.get("/configuracion")
@@ -78,6 +92,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           setConfig(data);
           applyAllToDOM(data);
           if (data.nombre_plataforma) document.title = data.nombre_plataforma;
+          // Cache for instant restore on next page load
+          try { localStorage.setItem('lms_config_cache', JSON.stringify(data)); } catch {}
         }
       })
       .catch((err) => console.error("Could not load config", err));
@@ -182,6 +198,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         mensaje_bienvenida: config.mensaje_bienvenida,
       });
       showToast('✓ Configuración guardada permanentemente', 'success');
+      // Update cache so next reload uses the saved theme instantly
+      try { localStorage.setItem('lms_config_cache', JSON.stringify(config)); } catch {}
     } catch (e) {
       console.error(e);
       showToast('✕ Error guardando configuraciones', 'error');

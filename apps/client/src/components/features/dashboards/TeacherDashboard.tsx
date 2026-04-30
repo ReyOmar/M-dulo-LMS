@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { BookOpen, Lock, AlertCircle, ArrowRight, Loader2 } from "lucide-react";
@@ -59,7 +59,7 @@ export function TeacherDashboard() {
           {cursos.map((curso: any) => (
             <div
               key={curso.guid}
-              onClick={() => router.push(`/dashboard/constructor-cursos?curso=${curso.guid}`)}
+              onClick={() => router.push(`/dashboard/admin/constructor-cursos?curso=${curso.guid}`)}
               className="flex flex-col bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/50 hover:shadow-md transition-all shadow-sm cursor-pointer group"
             >
               <div className="h-32 bg-gradient-to-br from-primary/10 to-secondary/10 relative flex items-center justify-center overflow-hidden">

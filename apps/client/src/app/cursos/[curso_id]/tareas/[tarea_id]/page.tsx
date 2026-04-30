@@ -193,7 +193,7 @@ export default function TareaVisorPage() {
                             }
                         </button>
                         <button
-                            onClick={() => router.push(`/dashboard/constructor-cursos/${curso_id}/tareas/${tarea_id}`)}
+                            onClick={() => router.push(`/dashboard/admin/constructor-cursos/${curso_id}/tareas/${tarea_id}`)}
                             className="flex items-center gap-2 font-bold px-6 py-3 rounded-xl bg-card border border-border hover:bg-muted text-foreground transition-all shadow-sm hover:scale-105"
                         >
                             <Edit3 className="h-5 w-5 text-primary" /> {isQuiz ? 'Editar Cuestionario' : 'Editar Tarea'}

@@ -87,7 +87,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                     quiz_config: isQuiz ? JSON.stringify(quizConfig) : null,
                 });
             
-            router.push(`/dashboard/constructor-cursos?curso=${resolvedParams.curso_id}`);
+            router.push(`/dashboard/admin/constructor-cursos?curso=${resolvedParams.curso_id}`);
         } catch (err) {
             console.error(err);
         } finally {
@@ -186,7 +186,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
         <div className="animate-in slide-in-from-bottom-4 duration-700 max-w-4xl mx-auto h-[calc(100vh-6rem)] flex flex-col py-6">
             <header className="mb-6 flex items-center gap-4">
                 <button 
-                    onClick={() => router.push(`/dashboard/constructor-cursos?curso=${resolvedParams.curso_id}`)}
+                    onClick={() => router.push(`/dashboard/admin/constructor-cursos?curso=${resolvedParams.curso_id}`)}
                     className="p-3 bg-muted rounded-full hover:bg-border transition-colors"
                 >
                     <ArrowLeft className="h-5 w-5 text-muted-foreground" />

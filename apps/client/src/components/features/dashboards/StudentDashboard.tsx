@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState, useRef } from 'react';
 import { Play, BookOpen, Clock, GraduationCap, Bell, ChevronLeft, ChevronRight, Loader2, X, Flame } from "lucide-react";
@@ -120,7 +120,7 @@ export function StudentDashboard() {
       <header className="flex justify-between items-start mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Hola, {user?.nombre || 'Estudiante'} ðŸ‘‹
+            Hola, {user?.nombre || 'Estudiante'} 👋
           </h1>
           <p className="text-muted-foreground mt-1">
             Bienvenido de vuelta a tu espacio de capacitación.
@@ -196,7 +196,7 @@ export function StudentDashboard() {
               <>
                 <h2 className="text-2xl md:text-3xl font-bold mb-2 leading-tight">{lastCurso.titulo}</h2>
                 <p className="text-primary-foreground/70 mb-6">
-                  {lastCurso.modulos?.length || 0} módulos Â· {progreso.completados}/{progreso.total} recursos completados
+                  {lastCurso.modulos?.length || 0} módulos · {progreso.completados}/{progreso.total} recursos completados
                 </p>
                 <button
                   onClick={() => router.push(`/cursos/${lastCurso.guid}`)}
