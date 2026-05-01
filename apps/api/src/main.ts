@@ -7,6 +7,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { WsAdapter } from '@nestjs/platform-ws';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -39,6 +40,9 @@ async function bootstrap() {
     
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
+
+  // Enable WebSocket support with native ws adapter (compatible with Fastify)
+  app.useWebSocketAdapter(new WsAdapter(app));
 
   const port = process.env.APP_PORT || 3200;
   await app.listen(port, '0.0.0.0');

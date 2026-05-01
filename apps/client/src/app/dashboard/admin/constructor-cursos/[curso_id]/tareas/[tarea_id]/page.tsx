@@ -5,11 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { ArrowLeft, Save, Type, Calendar, Link as LinkIcon, Paperclip, Upload, X, ShieldCheck, UploadCloud, Loader2 } from "lucide-react";
 import api, { API_BASE_URL } from "@/lib/api";
-import { showAlert } from "@/lib/alerts";
+import { useAlert } from "@/contexts/AlertContext";
 
 export default function ConfigurarTareaPage() {
   const { curso_id, tarea_id } = useParams();
   const router = useRouter();
+  const { showAlert } = useAlert();
 
   const [tarea, setTarea] = useState<any>(null);
   const [loading, setLoading] = useState(true);

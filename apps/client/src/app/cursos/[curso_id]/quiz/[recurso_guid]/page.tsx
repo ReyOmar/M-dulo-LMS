@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { ArrowLeft, CheckCircle, Clock, Save, AlertTriangle, Send, Trophy, XCircle } from "lucide-react";
 import api from "@/lib/api";
-import { showAlert } from "@/lib/alerts";
+import { useAlert } from "@/contexts/AlertContext";
 
 interface QuizOption { id: string; texto: string; }
 interface QuizQuestion { id: string; enunciado: string; opciones: QuizOption[]; }
@@ -22,6 +22,7 @@ export default function StudentQuizPage({ params }: { params: Promise<{ curso_id
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const { showAlert } = useAlert();
     
     const [cursoTitulo, setCursoTitulo] = useState("");
     const [bloqueTitulo, setBloqueTitulo] = useState("");

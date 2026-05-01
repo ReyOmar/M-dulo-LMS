@@ -1,21 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, Mail, ArrowRight, GraduationCap, ShieldCheck, User } from "lucide-react";
+import { Lock, Mail, ArrowRight, GraduationCap, ShieldCheck, User, Info, Eye, EyeOff } from "lucide-react";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
 import { useConfig } from "@/contexts/ConfigContext";
 import api from "@/lib/api";
-import { showAlert } from "@/lib/alerts";
+import { useAlert } from "@/contexts/AlertContext";
+import { useEffect } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { syncSession } = useRole();
   const { config } = useConfig();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
   const [rolPedido, setRolPedido] = useState("ESTUDIANTE");
@@ -26,6 +30,18 @@ export default function LoginPage() {
   const [view, setView] = useState<"LOGIN" | "SETUP_PASSWORD" | "REQUEST_ACCESS" | "REQUEST_SUCCESS">("LOGIN");
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const { showAlert } = useAlert();
+
+  useEffect(() => {
+    if (searchParams?.get("revoked") === "true") {
+      showAlert.error(
+        "Sesión Revocada",
+        "Tu sesión ha sido cerrada por un administrador o tu cuenta ha sido desactivada."
+      );
+      // Clean up the URL
+      router.replace("/login");
+    }
+  }, [searchParams, showAlert, router]);
 
   const handleGoToLogin = () => {
     setEmail("");
@@ -92,7 +108,10 @@ export default function LoginPage() {
         await api.post("/auth/establecer-password", { email, contrasenaTemporal: password, nuevaContrasena: newPassword });
   
         // Iniciar sesión automáticamente después de establecerla
-        await handleLogin({ preventDefault: () => {} } as React.FormEvent);
+        const { data } = await api.post("/auth/login", { email, contrasena: newPassword });
+        syncSession(data.token, data.user);
+        setRedirecting(true);
+        router.push("/dashboard");
 
       } catch (err: any) {
           if (err.response?.status === 429) {
@@ -124,7 +143,7 @@ export default function LoginPage() {
           } else {
               const msg = err.response?.data?.message || err.message;
               if (msg.toLowerCase().includes("ya existe")) {
-                  showAlert.info("Atención", "Ya estás registrado");
+                  showAlert.info("Ya estás registrado", "El correo proporcionado ya se encuentra en el sistema. Por favor, inicia sesión.");
                   handleGoToLogin();
               } else {
                   setErrorMsg(msg);
@@ -213,13 +232,20 @@ export default function LoginPage() {
                     <div className="relative">
                     <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                     <input
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         placeholder="Contraseña"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className="flex h-11 w-full rounded-xl border border-input bg-background/50 pl-11 pr-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="flex h-11 w-full rounded-xl border border-input bg-background/50 pl-11 pr-11 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
+                    <button 
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+                    >
+                        {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                    </button>
                     </div>
                 </div>
             </div>
@@ -238,14 +264,21 @@ export default function LoginPage() {
                 <div className="relative">
                 <Lock className="absolute left-3 top-3 h-5 w-5 text-emerald-500" />
                 <input
-                    type="password"
+                    type={showNewPassword ? "text" : "password"}
                     placeholder="Minimo 6 caracteres"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
                     minLength={6}
-                    className="flex h-11 w-full rounded-xl border border-emerald-500/30 bg-emerald-500/5 pl-11 pr-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    className="flex h-11 w-full rounded-xl border border-emerald-500/30 bg-emerald-500/5 pl-11 pr-11 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 />
+                <button 
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-3 text-emerald-500/70 hover:text-emerald-500 transition-colors focus:outline-none"
+                >
+                    {showNewPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                </button>
                 </div>
             </div>
             

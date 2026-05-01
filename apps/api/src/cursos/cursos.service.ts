@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { lms_tipo_recurso, lms_estado_curso } from '@prisma/client';
+import { LmsGateway } from '../ws/lms.gateway';
 
 @Injectable()
 export class CursosService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private lmsGateway: LmsGateway) {}
 
   async getCursosActivosParaEstudiante() {
     return this.prisma.lms_cursos.findMany({
@@ -101,23 +102,31 @@ export class CursosService {
         else throw new BadRequestException('No hay profesores ni administradores disponibles para asignar el curso.');
     }
 
-    return this.prisma.lms_cursos.create({
+    const curso = await this.prisma.lms_cursos.create({
       data: {
         titulo: data.titulo,
         estado: 'BORRADOR',
         profesor_guid: guidFinal,
       }
     });
+
+    this.lmsGateway.broadcast('course:created', { guid: curso.guid, titulo: curso.titulo });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_created' });
+    return curso;
   }
 
   async updateCurso(curso_guid: string, data: { titulo?: string; estado?: string }) {
-    return this.prisma.lms_cursos.update({
+    const updated = await this.prisma.lms_cursos.update({
         where: { guid: curso_guid },
         data: {
             ...(data.titulo !== undefined && { titulo: data.titulo }),
             ...(data.estado !== undefined && { estado: data.estado as lms_estado_curso }),
         }
     });
+
+    this.lmsGateway.broadcast('course:updated', { guid: curso_guid, ...data });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_updated' });
+    return updated;
   }
 
   async createModuloParaCurso(curso_guid: string, data: { titulo: string; orden?: number }) {
@@ -226,7 +235,10 @@ export class CursosService {
   }
 
   async deleteCurso(guid: string) {
-    return this.prisma.lms_cursos.delete({ where: { guid } });
+    const result = await this.prisma.lms_cursos.delete({ where: { guid } });
+    this.lmsGateway.broadcast('course:deleted', { guid });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_deleted' });
+    return result;
   }
 
   async startQuiz(recurso_guid: string, usuario_guid: string) {

@@ -4,7 +4,6 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { MarcarRecursoDto } from './dto/marcar-recurso.dto';
 
-@Public()
 @Controller('cursos')
 export class EstudiantesController {
   constructor(private readonly estudiantesService: EstudiantesService) {}

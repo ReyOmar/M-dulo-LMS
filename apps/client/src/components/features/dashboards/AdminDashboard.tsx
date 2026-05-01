@@ -7,6 +7,8 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import api from "@/lib/api";
 
+import { useWS } from "@/contexts/WebSocketContext";
+
 // Dynamically import Recharts to avoid SSR issues
 const AreaChart = dynamic(() => import('recharts').then(m => m.AreaChart), { ssr: false });
 const Area = dynamic(() => import('recharts').then(m => m.Area), { ssr: false });
@@ -22,8 +24,9 @@ export function AdminDashboard() {
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { subscribe } = useWS();
 
-  useEffect(() => {
+  const fetchDashboardData = () => {
     Promise.all([
       api.get('/auth/solicitudes').then(r => r.data).catch(() => []),
       api.get('/cursos/admin/dashboard-stats').then(r => r.data).catch(() => null)
@@ -33,7 +36,20 @@ export function AdminDashboard() {
       setStats(dashStats);
       setLoading(false);
     });
-  }, []);
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+    
+    // Subscribe to events that should trigger a dashboard refresh
+    const unsubscribeRefresh = subscribe('dashboard:refresh', fetchDashboardData);
+    const unsubscribeReq = subscribe('request:new', fetchDashboardData);
+    
+    return () => {
+      unsubscribeRefresh();
+      unsubscribeReq();
+    };
+  }, [subscribe]);
 
   const weeklyActivity = stats?.weeklyActivity || [];
   const courseDistribution = stats?.courseDistribution || [];

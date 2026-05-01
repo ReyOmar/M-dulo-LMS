@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Users, ShieldAlert, Key, UserCheck, UserX, Clock, Mail, BookOpen, X, GraduationCap, Shield, Presentation, Search, Trash2 } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Users, ShieldAlert, Key, UserCheck, UserX, Clock, Mail, BookOpen, X, GraduationCap, Shield, Presentation, Search, Trash2, AlertTriangle } from "lucide-react";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import Link from "next/link";
 import api from "@/lib/api";
-import { showAlert } from "@/lib/alerts";
+import { useAlert } from "@/contexts/AlertContext";
+import { useWS } from "@/contexts/WebSocketContext";
 
 interface Usuario {
   guid: string;
@@ -15,8 +16,9 @@ interface Usuario {
   apellido: string;
   rol: string;
   activo: boolean;
-  contrasena?: string | null;
+  usa_clave_defecto?: boolean;
   created_at: string;
+  ultimo_acceso?: string | null;
 }
 
 interface CursoAsignado {
@@ -31,18 +33,43 @@ interface CursoAsignado {
 type TabType = 'ADMINISTRADOR' | 'PROFESOR' | 'ESTUDIANTE';
 
 export default function BaseUsuarios() {
-  const { realRole } = useRole();
+  const { realRole, user } = useRole();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
   const [userCourses, setUserCourses] = useState<CursoAsignado[]>([]);
   const [loadingCursos, setLoadingCursos] = useState(false);
+  const [adminStats, setAdminStats] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<TabType>('PROFESOR');
   const [searchQuery, setSearchQuery] = useState("");
+  const { showAlert, showConfirm } = useAlert();
+  const { subscribe, onlineUsers } = useWS();
 
   useEffect(() => {
-    fetchUsuarios();
-  }, []);
+    if (realRole === "admin") {
+      fetchUsuarios();
+    }
+  }, [realRole]);
+
+  useEffect(() => {
+    if (realRole !== "admin") return;
+    
+    // Auto-refresh user list when new users are created or deleted via WS
+    const unsub1 = subscribe('user:created', fetchUsuarios);
+    const unsub2 = subscribe('user:deleted', fetchUsuarios);
+    const unsub3 = subscribe('presence:update', () => {
+      // Force re-render to update online status dots, even if list doesn't change
+      setUsuarios(prev => [...prev]); 
+    });
+    const unsub4 = subscribe('dashboard:refresh', fetchUsuarios);
+    
+    return () => {
+      unsub1();
+      unsub2();
+      unsub3();
+      unsub4();
+    };
+  }, [realRole, subscribe]);
 
   const fetchUsuarios = async () => {
     try {
@@ -59,11 +86,17 @@ export default function BaseUsuarios() {
   const openUserDetail = async (user: Usuario) => {
     setSelectedUser(user);
     setLoadingCursos(true);
+    setAdminStats(null);
 
     try {
       const res = await api.get(`/cursos/usuario-cursos?usuario_guid=${user.guid}&rol=${user.rol}`);
       const data = res.data;
       setUserCourses(Array.isArray(data) ? data : []);
+
+      if (user.rol === 'ADMINISTRADOR') {
+        const statsRes = await api.get('/auth/admin-stats');
+        setAdminStats(statsRes.data);
+      }
     } catch (err) {
       console.error(err);
       setUserCourses([]);
@@ -72,10 +105,48 @@ export default function BaseUsuarios() {
     }
   };
 
+  const renderUltimoAcceso = (guid: string, d: string | null | undefined) => {
+    const isOnline = onlineUsers.includes(guid);
+    
+    if (isOnline) {
+      return (
+        <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold bg-emerald-500/10 px-2 py-1 rounded-full w-fit">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          En línea
+        </span>
+      );
+    }
+
+    if (!d) return <span className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Sin acceso</span>;
+    const lastAccess = new Date(d);
+
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Clock className="h-3 w-3" />
+        {lastAccess.toLocaleString("es-ES", {
+          day: "2-digit", month: "2-digit", year: "numeric",
+          hour: "2-digit", minute: "2-digit"
+        })}
+      </span>
+    );
+  };
+
   const handleDeleteUser = async (guid: string) => {
-    if (!window.confirm("¿Estás seguro de que deseas eliminar permanentemente esta cuenta?\n\nADVERTENCIA: Si es estudiante, todo su progreso se borrará de inmediato. Si es examinador o administrador, su cuenta se borrará pero los cursos que haya creado se conservarán intactos en la plataforma.")) {
+    // Prevent admin from deleting their own account
+    if (guid === user?.guid) {
+      showAlert.warning("Operación no permitida", "No puedes eliminar tu propia cuenta mientras estás autenticado.");
       return;
     }
+
+    const isConfirmed = await showConfirm(
+      "¿Eliminar cuenta?",
+      "Esta acción es permanente. Si el usuario es estudiante, perderá todo su progreso. Si es examinador o administrador, sus cursos creados permanecerán en el sistema."
+    );
+
+    if (!isConfirmed) return;
     
     try {
       await api.delete(`/auth/usuarios/${guid}`);
@@ -168,8 +239,8 @@ export default function BaseUsuarios() {
               <tr>
                 <th className="px-5 py-3">Usuario</th>
                 <th className="px-5 py-3">Contacto</th>
-                <th className="px-5 py-3">Estado</th>
-                <th className="px-5 py-3">Fecha Ingreso</th>
+                <th className="px-5 py-3">{activeTab === 'ADMINISTRADOR' ? 'Fecha de registro' : 'Estado'}</th>
+                <th className="px-5 py-3">Último Acceso</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/30">
@@ -181,7 +252,7 @@ export default function BaseUsuarios() {
                 </tr>
               ) : (
                 filteredUsuarios.map(user => {
-                  const clickable = user.rol === 'PROFESOR' || user.rol === 'ESTUDIANTE';
+                  const clickable = true;
                   const roleInfo = getRoleInfo(user.rol);
                   
                   return (
@@ -205,20 +276,20 @@ export default function BaseUsuarios() {
                       </td>
                       <td className="px-5 py-3.5">
                          <div className="flex items-center gap-3">
-                            {user.activo ? (
+                            {activeTab === 'ADMINISTRADOR' ? (
+                                <span className="text-sm font-bold text-muted-foreground">{new Date(user.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                            ) : user.activo ? (
                                 <span className="flex items-center gap-1 text-emerald-500 text-xs font-bold"><UserCheck className="h-3 w-3" /> Activo</span>
                             ) : (
                                 <span className="flex items-center gap-1 text-red-500 text-xs font-bold"><UserX className="h-3 w-3" /> Inactivo</span>
                             )}
-                            {!user.contrasena && (
+                            {user.usa_clave_defecto && (
                                 <span className="flex items-center gap-1 text-amber-500 text-xs font-bold" title="No ha configurado su contraseña"><Key className="h-3 w-3" /> Sin Clave</span>
                             )}
                          </div>
                       </td>
-                      <td className="px-5 py-3.5 text-muted-foreground text-sm">
-                          <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" /> {new Date(user.created_at).toLocaleDateString()}
-                          </div>
+                      <td className="px-5 py-3.5 text-sm">
+                          {renderUltimoAcceso(user.guid, user.ultimo_acceso)}
                       </td>
                     </tr>
                   )
@@ -258,29 +329,47 @@ export default function BaseUsuarios() {
             </div>
 
             {/* Info */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className={`grid ${selectedUser.rol === 'ADMINISTRADOR' ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'} gap-4 mb-6`}>
               <div className="bg-muted/20 rounded-xl p-4">
                 <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Rol</p>
                 <p className={`text-sm font-bold ${getRoleInfo(selectedUser.rol).color}`}>{getRoleInfo(selectedUser.rol).name}</p>
               </div>
+              {selectedUser.rol !== 'ADMINISTRADOR' && (
+                <div className="bg-muted/20 rounded-xl p-4">
+                  <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Estado</p>
+                  <p className="text-sm font-bold">{selectedUser.activo ? '✓ Activo' : '✕ Inactivo'}</p>
+                </div>
+              )}
               <div className="bg-muted/20 rounded-xl p-4">
-                <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Estado</p>
-                <p className="text-sm font-bold">{selectedUser.activo ? '✓ Activo' : '✕ Inactivo'}</p>
+                <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Fecha de registro</p>
+                <p className="text-sm font-bold">{new Date(selectedUser.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
               </div>
               <div className="bg-muted/20 rounded-xl p-4">
-                <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Ingreso</p>
-                <p className="text-sm font-bold">{new Date(selectedUser.created_at).toLocaleDateString()}</p>
+                <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Seguridad</p>
+                <p className={`text-sm font-bold ${selectedUser.usa_clave_defecto ? 'text-amber-500' : 'text-emerald-500'}`}>
+                  {selectedUser.usa_clave_defecto ? '⚠ Sin Clave' : '✓ Con Clave'}
+                </p>
               </div>
               <div className="bg-muted/20 rounded-xl p-4">
-                <p className="text-xs text-muted-foreground font-bold uppercase mb-1">{selectedUser.rol === 'PROFESOR' ? 'Cursos Asignados' : 'Cursos Matriculados'}</p>
+                <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Último Acceso</p>
+                <div className="mt-1">{renderUltimoAcceso(selectedUser.guid, selectedUser.ultimo_acceso)}</div>
+              </div>
+              <div className="bg-muted/20 rounded-xl p-4">
+                <p className="text-xs text-muted-foreground font-bold uppercase mb-1">{selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR' ? 'Cursos Creados' : 'Cursos Matriculados'}</p>
                 <p className="text-sm font-bold">{loadingCursos ? '...' : userCourses.length}</p>
               </div>
+              {selectedUser.rol === 'ADMINISTRADOR' && (
+                <div className="bg-muted/20 rounded-xl p-4">
+                  <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Cuentas Aprobadas</p>
+                  <p className="text-sm font-bold text-emerald-500">{adminStats ? adminStats.cuentasAprobadas : '...'}</p>
+                </div>
+              )}
             </div>
 
             {/* Assigned/Enrolled Courses */}
             <div>
               <h3 className="text-sm font-bold uppercase text-muted-foreground tracking-wider mb-3 flex items-center gap-2">
-                <BookOpen className="h-4 w-4" /> {selectedUser.rol === 'PROFESOR' ? 'Cursos Asignados' : 'Cursos Matriculados'}
+                <BookOpen className="h-4 w-4" /> {selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR' ? 'Cursos Creados' : 'Cursos Matriculados'}
               </h3>
               {loadingCursos ? (
                 <div className="text-center py-6 text-muted-foreground text-sm flex items-center justify-center gap-2">
@@ -288,10 +377,10 @@ export default function BaseUsuarios() {
                 </div>
               ) : userCourses.length === 0 ? (
                 <div className="text-center py-6 bg-muted/10 rounded-xl border border-border/50">
-                  <p className="text-sm text-muted-foreground">Este usuario no tiene cursos {selectedUser.rol === 'PROFESOR' ? 'asignados' : 'matriculados'}.</p>
-                  {selectedUser.rol === 'PROFESOR' && (
+                  <p className="text-sm text-muted-foreground">Este usuario no tiene cursos {selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR' ? 'creados' : 'matriculados'}.</p>
+                  {(selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR') && (
                     <Link href="/dashboard/admin/constructor-cursos" className="text-xs text-primary font-bold hover:underline mt-2 inline-block">
-                      Ir a Gestión de Cursos para asignar →
+                      Ir a Gestión de Cursos para {selectedUser.rol === 'ADMINISTRADOR' ? 'crear' : 'asignar'} →
                     </Link>
                   )}
                 </div>
@@ -306,9 +395,9 @@ export default function BaseUsuarios() {
                         <div>
                           <p className="text-sm font-bold">{curso.titulo}</p>
                           <p className="text-xs text-muted-foreground">
-                            {selectedUser?.rol === 'PROFESOR' ? 'Asignado' : 'Matriculado'}: {(() => {
+                            {selectedUser?.rol === 'PROFESOR' || selectedUser?.rol === 'ADMINISTRADOR' ? 'Creado' : 'Matriculado'}: {(() => {
                               const d = curso.fecha_asignacion || curso.updated_at || curso.created_at;
-                              return d ? new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Sin fecha';
+                              return d ? new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Sin fecha';
                             })()}
                           </p>
                         </div>

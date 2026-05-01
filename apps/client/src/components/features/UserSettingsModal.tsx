@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { X, User, Mail, Lock, Save, Loader2, CheckCircle, AlertCircle, Shield, Eye, EyeOff } from "lucide-react";
@@ -27,9 +27,27 @@ export function UserSettingsModal({ open, onClose }: Props) {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
+  const handleClose = () => {
+    onClose();
+  };
+
   useEffect(() => {
-    if (open && user?.guid) {
-      fetchProfile();
+    if (open) {
+      if (user?.guid) {
+        fetchProfile();
+      }
+    } else {
+      // Clear data when modal closes to prevent residual info
+      setNombre('');
+      setApellido('');
+      setEmail('');
+      setContrasenaActual('');
+      setNuevaContrasena('');
+      setConfirmarContrasena('');
+      setShowCurrentPwd(false);
+      setShowNewPwd(false);
+      setFeedback(null);
+      setProfileData(null);
     }
   }, [open, user?.guid]);
 
@@ -88,8 +106,14 @@ export function UserSettingsModal({ open, onClose }: Props) {
       setContrasenaActual('');
       setNuevaContrasena('');
       setConfirmarContrasena('');
-    } catch (err) {
-      showFeedback('error', 'Error de conexión.');
+      
+      // Auto-close after success
+      setTimeout(() => {
+        handleClose();
+      }, 2000);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Error de conexión.';
+      showFeedback('error', msg);
     } finally {
       setSaving(false);
     }
@@ -111,7 +135,7 @@ export function UserSettingsModal({ open, onClose }: Props) {
   const rolInfo = getRolLabel(profileData?.rol || '');
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={handleClose}>
       <div
         className="bg-card border border-border/50 rounded-2xl shadow-2xl w-full max-w-xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
         onClick={e => e.stopPropagation()}
@@ -127,7 +151,7 @@ export function UserSettingsModal({ open, onClose }: Props) {
               <p className="text-xs text-muted-foreground">Modifica tu información personal</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-xl transition-colors">
+          <button onClick={handleClose} className="p-2 hover:bg-muted rounded-xl transition-colors active:scale-90 duration-200">
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
@@ -155,7 +179,7 @@ export function UserSettingsModal({ open, onClose }: Props) {
                 <Shield className="h-3 w-3" /> {rolInfo.label}
               </span>
               <span className="text-xs text-muted-foreground">
-                Registrado: {profileData?.created_at ? new Date(profileData.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
+                Registrado: {profileData?.created_at ? new Date(profileData.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
               </span>
             </div>
 
@@ -217,8 +241,18 @@ export function UserSettingsModal({ open, onClose }: Props) {
                       placeholder="••••••••"
                       className="w-full pl-10 pr-10 py-2.5 bg-background border border-border rounded-xl text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                     />
-                    <button type="button" onClick={() => setShowCurrentPwd(!showCurrentPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
-                      {showCurrentPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <button 
+                      type="button" 
+                      onClick={() => setShowCurrentPwd(!showCurrentPwd)} 
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 active:scale-90"
+                      title={showCurrentPwd ? "Ver" : "Ocultar"}
+                    >
+                      <div className="relative h-4 w-4 flex items-center justify-center">
+                        {showCurrentPwd ? 
+                          <Eye className="h-4 w-4 animate-in zoom-in-75 duration-300" /> : 
+                          <EyeOff className="h-4 w-4 animate-in zoom-in-75 duration-300" />
+                        }
+                      </div>
                     </button>
                   </div>
                 </div>
@@ -248,8 +282,18 @@ export function UserSettingsModal({ open, onClose }: Props) {
                           confirmarContrasena && confirmarContrasena !== nuevaContrasena ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border focus:border-primary focus:ring-primary'
                         }`}
                       />
-                      <button type="button" onClick={() => setShowNewPwd(!showNewPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
-                        {showNewPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      <button 
+                        type="button" 
+                        onClick={() => setShowNewPwd(!showNewPwd)} 
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 active:scale-90"
+                        title={showNewPwd ? "Ver" : "Ocultar"}
+                      >
+                        <div className="relative h-4 w-4 flex items-center justify-center">
+                          {showNewPwd ? 
+                            <Eye className="h-4 w-4 animate-in zoom-in-75 duration-300" /> : 
+                            <EyeOff className="h-4 w-4 animate-in zoom-in-75 duration-300" />
+                          }
+                        </div>
                       </button>
                     </div>
                   </div>
@@ -262,7 +306,7 @@ export function UserSettingsModal({ open, onClose }: Props) {
         {/* Footer */}
         {!loading && (
           <div className="flex items-center justify-end gap-3 p-6 border-t border-border/50 bg-muted/5">
-            <button onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors rounded-xl hover:bg-muted">
+            <button onClick={handleClose} className="px-5 py-2.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors rounded-xl hover:bg-muted active:scale-95">
               Cancelar
             </button>
             <button

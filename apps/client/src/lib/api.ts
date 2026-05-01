@@ -33,7 +33,7 @@ api.interceptors.response.use(
       if (!window.location.pathname.includes('/login')) {
         localStorage.removeItem('lms_token');
         localStorage.removeItem('lms_user');
-        window.location.href = '/login';
+        window.location.href = '/login?revoked=true';
       }
     }
     return Promise.reject(error);

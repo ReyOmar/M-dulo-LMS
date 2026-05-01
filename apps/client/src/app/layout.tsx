@@ -3,6 +3,8 @@ import { type Metadata } from "next";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { ConfigProvider } from "@/contexts/ConfigContext";
+import { AlertProvider } from "@/contexts/AlertContext";
+import { WebSocketProvider } from "@/contexts/WebSocketContext";
 
 export const metadata: Metadata = {
   title: "Enterprise LMS Campus Virtual",
@@ -57,9 +59,13 @@ export default function RootLayout({
             enableSystem={false}
           >
           <RoleProvider>
-            <ConfigProvider>
-              {children}
-            </ConfigProvider>
+            <WebSocketProvider>
+              <ConfigProvider>
+                <AlertProvider>
+                  {children}
+                </AlertProvider>
+              </ConfigProvider>
+            </WebSocketProvider>
           </RoleProvider>
         </ThemeProvider>
       </body>

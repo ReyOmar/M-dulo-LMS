@@ -8,6 +8,7 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { UserSettingsModal } from "@/components/features/UserSettingsModal";
 import { useState, useRef, useEffect } from "react";
+import api from "@/lib/api";
 
 export function Sidebar() {
   const { role, realRole, simulatedRole, setSimulatedRole, user, logout } = useRole();
@@ -16,6 +17,7 @@ export function Sidebar() {
 
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [solicitudesCount, setSolicitudesCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu when clicking outside
@@ -28,6 +30,24 @@ export function Sidebar() {
     if (showUserMenu) document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showUserMenu]);
+
+  // Real-time solicitudes count for admin
+  useEffect(() => {
+    if (realRole !== "admin") return;
+
+    const fetchCount = async () => {
+      try {
+        const res = await api.get("/auth/solicitudes");
+        setSolicitudesCount(Array.isArray(res.data) ? res.data.length : 0);
+      } catch (err) {
+        console.error("Error fetching solicitudes count:", err);
+      }
+    };
+
+    fetchCount();
+    const interval = setInterval(fetchCount, 15000); // Check every 15 seconds
+    return () => clearInterval(interval);
+  }, [realRole]);
 
   const isActive = (path: string) => {
     if (path === '/dashboard') return pathname === '/dashboard';
@@ -113,7 +133,13 @@ export function Sidebar() {
                           <Users className="h-4 w-4" /> Base de Usuarios
                       </Link>
                       <Link href="/dashboard/admin/solicitudes" className={linkClass('/dashboard/admin/solicitudes')}>
-                          <Users className="h-4 w-4" /> Solicitudes Pendientes
+                          <Users className="h-4 w-4" /> 
+                          <span>Solicitudes Pendientes</span>
+                          {solicitudesCount > 0 && (
+                            <span className="ml-auto bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-[0_0_10px_rgba(245,158,11,0.5)]">
+                              {solicitudesCount}
+                            </span>
+                          )}
                       </Link>
                       <Link href="/dashboard/admin/tema" className={linkClass('/dashboard/admin/tema')}>
                           <Palette className="h-4 w-4" /> Tema y Apariencia

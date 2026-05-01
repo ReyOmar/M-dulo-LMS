@@ -15,6 +15,7 @@ import { EvaluacionesModule } from './evaluaciones/evaluaciones.module';
 import { EstudiantesModule } from './estudiantes/estudiantes.module';
 import { MatriculasModule } from './matriculas/matriculas.module';
 import { DashboardsModule } from './dashboards/dashboards.module';
+import { WsModule } from './ws/ws.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { DashboardsModule } from './dashboards/dashboards.module';
     EstudiantesModule,
     MatriculasModule,
     DashboardsModule,
+    WsModule,
   ],
   controllers: [],
   providers: [

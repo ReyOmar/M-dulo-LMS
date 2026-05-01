@@ -1,6 +1,8 @@
 import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { TokenBlacklistService } from './token-blacklist.service';
+import { LmsGateway } from '../ws/lms.gateway';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -8,6 +10,8 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private tokenBlacklistService: TokenBlacklistService,
+    private lmsGateway: LmsGateway,
   ) {}
 
   // Helper: obtener la contraseña por defecto desde la configuración
@@ -26,7 +30,12 @@ export class AuthService {
     // Check if request already exists
     const existingReq = await this.prisma.lms_solicitudes_acceso.findUnique({ where: { email: dto.email } });
     if (existingReq) {
-      throw new BadRequestException('Ya existe una solicitud pendiente con este correo.');
+      if (existingReq.estado === 'PENDIENTE') {
+        throw new BadRequestException('Ya existe una solicitud pendiente con este correo.');
+      } else {
+        // Purge old rejected/accepted requests so they can apply again
+        await this.prisma.lms_solicitudes_acceso.delete({ where: { id: existingReq.id } });
+      }
     }
 
     const sol = await this.prisma.lms_solicitudes_acceso.create({
@@ -37,6 +46,15 @@ export class AuthService {
         rol_pedido: dto.rol_pedido,
       }
     });
+
+    // Notify admins about new access request
+    this.lmsGateway.broadcastToRole('request:new', {
+      id: sol.id,
+      email: dto.email,
+      nombre: dto.nombre,
+      apellido: dto.apellido,
+      rol_pedido: dto.rol_pedido,
+    }, 'ADMINISTRADOR');
 
     return { message: 'Solicitud enviada al administrador exitosamente.', request_id: sol.id };
   }
@@ -125,7 +143,8 @@ export class AuthService {
   // --- MÉTODOS DE ADMINISTRADOR ---
 
   async getAllUsers() {
-    return this.prisma.usuarios.findMany({
+    const defaultPwd = await this.getDefaultPassword();
+    const users = await this.prisma.usuarios.findMany({
       orderBy: { created_at: 'desc' },
       select: {
         guid: true,
@@ -136,13 +155,57 @@ export class AuthService {
         activo: true,
         created_at: true,
         updated_at: true,
+        ultimo_acceso: true,
+        contrasena: true,
+        _count: {
+          select: {
+            cursos_impartidos: true,
+            matriculas: true,
+          }
+        }
       }
     });
+
+    return Promise.all(users.map(async user => {
+      const { contrasena, _count, activo: dbActivo, ...rest } = user;
+      const usa_clave_defecto = contrasena ? await bcrypt.compare(defaultPwd, contrasena) : true;
+      
+      let computedActivo = dbActivo;
+      if (user.rol === 'PROFESOR') {
+        computedActivo = _count.cursos_impartidos > 0;
+      } else if (user.rol === 'ESTUDIANTE') {
+        computedActivo = _count.matriculas > 0;
+      }
+
+      return {
+        ...rest,
+        activo: computedActivo,
+        usa_clave_defecto
+      };
+    }));
   }
 
-  async deleteUser(guid: string) {
+  async getAdminStats() {
+    const cuentasAprobadas = await this.prisma.lms_solicitudes_acceso.count({
+      where: { estado: 'ACEPTADA' }
+    });
+    
+    return {
+      cuentasAprobadas
+    };
+  }
+
+  async deleteUser(guid: string, currentUserGuid?: string) {
+    // Prevent self-deletion
+    if (currentUserGuid && guid === currentUserGuid) {
+      throw new BadRequestException('No puedes eliminar tu propia cuenta.');
+    }
+
     const user = await this.prisma.usuarios.findUnique({ where: { guid } });
     if (!user) throw new NotFoundException('Usuario no encontrado.');
+
+    // REVOKE all active JWT tokens for this user BEFORE deleting from DB
+    this.tokenBlacklistService.revokeUser(guid);
 
     // Reasignar cursos si es PROFESOR o ADMIN para no borrarlos
     if (user.rol === 'PROFESOR' || user.rol === 'ADMINISTRADOR') {
@@ -164,7 +227,13 @@ export class AuthService {
     });
 
     await this.prisma.usuarios.delete({ where: { guid } });
-    return { message: 'Cuenta eliminada exitosamente. Sus cursos han sido reasignados a otro administrador si los hubiera.' };
+
+    // Force disconnect the user via WebSocket and notify all clients
+    this.lmsGateway.forceDisconnect(guid, 'account_deleted');
+    this.lmsGateway.broadcast('user:deleted', { guid, rol: user.rol });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_deleted' });
+
+    return { message: 'Cuenta eliminada exitosamente. Sus cursos han sido reasignados a otro administrador si los hubiera.', deletedGuid: guid };
   }
 
   async getPendingRequests() {
@@ -202,17 +271,28 @@ export class AuthService {
     return { message: 'Solicitud aprobada y usuario creado con clave temporal.' };
   }
 
+  /**
+   * Notify via WebSocket after approve/reject outside the transaction.
+   * Called from controller after approveRequest/rejectRequest completes.
+   */
+  notifyRequestResolved(action: 'approved' | 'rejected', requestData?: any): void {
+    this.lmsGateway.broadcast('request:resolved', { action, ...requestData });
+    if (action === 'approved') {
+      this.lmsGateway.broadcast('user:created', requestData);
+    }
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'request_resolved' });
+  }
+
   async rejectRequest(id: number) {
     const request = await this.prisma.lms_solicitudes_acceso.findUnique({ where: { id } });
     if (!request) throw new NotFoundException('Solicitud no encontrada.');
     if (request.estado !== 'PENDIENTE') throw new BadRequestException('La solicitud ya fue procesada.');
 
-    await this.prisma.lms_solicitudes_acceso.update({
-      where: { id },
-      data: { estado: 'RECHAZADA' }
+    await this.prisma.lms_solicitudes_acceso.delete({
+      where: { id }
     });
 
-    return { message: 'Solicitud rechazada.' };
+    return { message: 'Solicitud rechazada y eliminada de la base de datos.' };
   }
 
   async updateProfile(guid: string, data: { nombre?: string; apellido?: string; email?: string; contrasena_actual?: string; nueva_contrasena?: string }) {

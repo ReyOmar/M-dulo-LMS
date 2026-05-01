@@ -223,7 +223,6 @@ export default function AssignmentPlayer({
 
                             <button
                                 onClick={() => fileInputRef.current?.click()}
-                                disabled={uploadState === 'uploading'}
                                 className="mt-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1.5"
                             >
                                 <UploadCloud className="h-4 w-4" /> Subir archivo diferente (reemplazar)
@@ -264,7 +263,6 @@ export default function AssignmentPlayer({
 
                             <button
                                 onClick={() => fileInputRef.current?.click()}
-                                disabled={uploadState === 'uploading'}
                                 className="flex items-center justify-center gap-2 font-bold px-8 py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm hover:shadow-md hover:scale-105 transition-all mt-2"
                             >
                                 <UploadCloud className="h-5 w-5" /> Seleccionar Archivo

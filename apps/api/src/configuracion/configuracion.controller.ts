@@ -4,7 +4,6 @@ import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UpdateConfiguracionDto } from './dto/update-configuracion.dto';
 
-@Public()
 @Controller('configuracion')
 export class ConfiguracionController {
   constructor(private readonly configuracionService: ConfiguracionService) {}

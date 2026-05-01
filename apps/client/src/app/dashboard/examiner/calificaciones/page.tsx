@@ -5,7 +5,7 @@ import { BookCheck, Download, Loader2, Check, Search, FileText, Star, MessageSqu
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import api, { API_BASE_URL } from "@/lib/api";
-import { showAlert } from "@/lib/alerts";
+import { useAlert } from "@/contexts/AlertContext";
 
 export default function CalificacionManualPage() {
   const { user } = useRole();
@@ -13,6 +13,7 @@ export default function CalificacionManualPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "pending" | "graded">("all");
+  const { showAlert } = useAlert();
 
   // Grading state
   const [gradingGuid, setGradingGuid] = useState<string | null>(null);

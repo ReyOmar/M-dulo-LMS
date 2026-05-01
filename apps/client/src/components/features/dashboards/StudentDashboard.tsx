@@ -4,10 +4,12 @@ import { useEffect, useState, useRef } from 'react';
 import { Play, BookOpen, Clock, GraduationCap, Bell, ChevronLeft, ChevronRight, Loader2, X, Flame } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
+import { useWS } from "@/contexts/WebSocketContext";
 import api from "@/lib/api";
 
 export function StudentDashboard() {
   const { user } = useRole();
+  const { subscribe } = useWS();
   const router = useRouter();
 
   const [cursos, setCursos] = useState<any[]>([]);
@@ -22,12 +24,6 @@ export function StudentDashboard() {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [activeDays, setActiveDays] = useState<number[]>([]);
 
-  useEffect(() => {
-    if (user?.guid) {
-      fetchData();
-    }
-  }, [user?.guid]);
-
   // Close notification panel on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -38,6 +34,29 @@ export function StudentDashboard() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  useEffect(() => {
+    if (user?.guid) {
+      fetchData();
+    }
+  }, [user?.guid]);
+
+  useEffect(() => {
+    if (!user?.guid) return;
+    
+    // Subscribe to events that should refresh the student dashboard
+    const unsub1 = subscribe('course:updated', fetchData);
+    const unsub2 = subscribe('submission:graded', fetchData);
+    const unsub3 = subscribe('enrollment:changed', fetchData);
+    const unsub4 = subscribe('dashboard:refresh', fetchData);
+    
+    return () => {
+      unsub1();
+      unsub2();
+      unsub3();
+      unsub4();
+    };
+  }, [user?.guid, subscribe]);
 
   const fetchData = async () => {
     try {

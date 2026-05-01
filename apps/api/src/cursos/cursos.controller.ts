@@ -6,7 +6,6 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateCursoDto, AsignarCursoDto, UpdateCursoDto, CreateModuloDto, UpdateModuloDto } from './dto/cursos.dto';
 import { CreateBloqueDto, UpdateBloqueDto } from './dto/bloques.dto';
 
-@Public()
 @Controller('cursos')
 export class CursosController {
   constructor(private readonly cursosService: CursosService) {}

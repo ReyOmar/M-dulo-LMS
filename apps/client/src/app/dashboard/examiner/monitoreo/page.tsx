@@ -46,7 +46,7 @@ export default function MonitoreoEstudiantesPage() {
   });
 
   const renderUltimoAcceso = (d: string | null) => {
-    if (!d) return <span className="text-muted-foreground">Sin registro</span>;
+    if (!d) return <span className="text-muted-foreground">Sin acceso</span>;
     const lastAccess = new Date(d);
     const now = new Date();
     const diffMinutes = Math.floor((now.getTime() - lastAccess.getTime()) / 60000);
@@ -68,7 +68,7 @@ export default function MonitoreoEstudiantesPage() {
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Clock className="h-3 w-3" />
         {lastAccess.toLocaleString("es-ES", {
-          day: "2-digit", month: "short", year: "numeric",
+          day: "2-digit", month: "2-digit", year: "numeric",
           hour: "2-digit", minute: "2-digit"
         })}
       </span>

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { CheckCircle, Clock, AlertTriangle, Send, Trophy, XCircle, ExternalLink, Paperclip, LogOut } from "lucide-react";
 import api, { API_BASE_URL } from "@/lib/api";
-import { showAlert } from "@/lib/alerts";
+import { useAlert } from "@/contexts/AlertContext";
 
 interface QuizOption { id: string; texto: string; }
 interface QuizQuestion { id: string; enunciado: string; opciones: QuizOption[]; }
@@ -57,6 +57,7 @@ export default function QuizPlayer({
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showResultModal, setShowResultModal] = useState<{nota: number, correctas: number, total: number} | null>(null);
+    const { showAlert } = useAlert();
 
     useEffect(() => {
         const savedUser = localStorage.getItem("lms_user");

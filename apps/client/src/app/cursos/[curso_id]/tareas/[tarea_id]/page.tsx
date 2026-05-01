@@ -10,12 +10,13 @@ import {
 import Link from "next/link";
 import { useRole } from "@/contexts/RoleContext";
 import api, { API_BASE_URL } from "@/lib/api";
-import { showAlert } from "@/lib/alerts";
+import { useAlert } from "@/contexts/AlertContext";
 
 export default function TareaVisorPage() {
   const { curso_id, tarea_id } = useParams();
   const { role } = useRole();
   const router = useRouter();
+  const { showAlert } = useAlert();
 
   const [curso, setCurso] = useState<any>(null);
   const [tarea, setTarea] = useState<any>(null);

@@ -4,7 +4,6 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { MatricularEstudianteDto } from './dto/matricular.dto';
 
-@Public()
 @Controller('cursos')
 export class MatriculasController {
   constructor(private readonly matriculasService: MatriculasService) {}

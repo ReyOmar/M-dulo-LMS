@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -41,6 +41,28 @@ export function RoleProvider({ children }: { children: ReactNode }) {
         const u = JSON.parse(savedUser);
         setUser(u);
         setRoleState(mapDbRole(u.role));
+        
+        // Verify session against backend to ensure account hasn't been deleted or revoked
+        import('@/lib/api').then(({ default: api }) => {
+          api.get('/auth/me').then(res => {
+            // Update local storage with fresh user data in case roles changed
+            if (res.data) {
+              const freshUser = { ...u, role: res.data.rol };
+              setUser(freshUser);
+              setRoleState(mapDbRole(res.data.rol));
+              localStorage.setItem("lms_user", JSON.stringify(freshUser));
+            }
+          }).catch(err => {
+            // If 401 Unauthorized, the token is revoked or user deleted
+            if (err.response?.status === 401) {
+              logout();
+              if (window.location.pathname !== '/login') {
+                window.location.href = '/login?revoked=true';
+              }
+            }
+          });
+        });
+        
       } catch (e) {
         logout();
       }

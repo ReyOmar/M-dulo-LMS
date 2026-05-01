@@ -6,13 +6,16 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import Link from "next/link";
 import api from "@/lib/api";
-import { showAlert } from "@/lib/alerts";
+import { useAlert } from "@/contexts/AlertContext";
+import { useWS } from "@/contexts/WebSocketContext";
 
 export default function SolicitudesPendientes() {
   const { realRole } = useRole();
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<number | null>(null);
+  const { showAlert } = useAlert();
+  const { subscribe } = useWS();
 
   // Default password state
   const [defaultPassword, setDefaultPassword] = useState("");
@@ -22,9 +25,24 @@ export default function SolicitudesPendientes() {
   const [passwordSaved, setPasswordSaved] = useState(false);
 
   useEffect(() => {
-    fetchSolicitudes();
-    fetchDefaultPassword();
-  }, []);
+    if (realRole === "admin") {
+      fetchSolicitudes();
+      fetchDefaultPassword();
+    }
+  }, [realRole]);
+
+  useEffect(() => {
+    if (realRole !== "admin") return;
+    
+    // Subscribe to new requests or resolutions to auto-update the list
+    const unsub1 = subscribe('request:new', fetchSolicitudes);
+    const unsub2 = subscribe('request:resolved', fetchSolicitudes);
+    
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [realRole, subscribe]);
 
   const fetchSolicitudes = async () => {
     try {
@@ -201,7 +219,7 @@ export default function SolicitudesPendientes() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> {new Date(sol.created_at).toLocaleDateString()}
+                      <Clock className="h-3 w-3" /> {new Date(sol.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                   </td>
                   <td className="px-6 py-4 text-right space-x-2">
                     <button 

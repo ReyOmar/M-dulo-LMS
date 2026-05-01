@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { ArrowLeft, Save, Type, PlayCircle, FileText, CheckCircle, LinkIcon, Paperclip, Plus, Trash2, Clock, RefreshCcw, GripVertical, Download, Settings } from "lucide-react";
 import api, { API_BASE_URL } from "@/lib/api";
-import { showAlert } from "@/lib/alerts";
+import { useAlert } from "@/contexts/AlertContext";
 
 // Types
 interface QuizOption { id: string; texto: string; es_correcta: boolean; }
@@ -30,6 +30,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
     const [archivoAdjuntoNombre, setArchivoAdjuntoNombre] = useState(""); // original name
     const [archivoMaxSizeMb, setArchivoMaxSizeMb] = useState<number>(5); // default 5MB
     const [uploading, setUploading] = useState(false);
+    const { showAlert } = useAlert();
     
     // Quiz config
     const [quizConfig, setQuizConfig] = useState<QuizConfig>({ intentos_permitidos: 1, tiempo_minutos: 0, preguntas: [] });

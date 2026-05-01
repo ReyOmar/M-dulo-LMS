@@ -4,18 +4,16 @@ import { useEffect, useState } from 'react';
 import { BookOpen, Lock, AlertCircle, ArrowRight, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
+import { useWS } from "@/contexts/WebSocketContext";
 import api from "@/lib/api";
 
 export function TeacherDashboard() {
   const { user } = useRole();
+  const { subscribe } = useWS();
   const router = useRouter();
 
   const [cursos, setCursos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user?.guid) fetchCursos();
-  }, [user?.guid]);
 
   const fetchCursos = async () => {
     try {
@@ -28,6 +26,21 @@ export function TeacherDashboard() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (user?.guid) fetchCursos();
+  }, [user?.guid]);
+
+  useEffect(() => {
+    if (!user?.guid) return;
+    const unsub1 = subscribe('course:updated', fetchCursos);
+    const unsub2 = subscribe('course:created', fetchCursos);
+    
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [user?.guid, subscribe]);
 
   if (loading) {
     return (

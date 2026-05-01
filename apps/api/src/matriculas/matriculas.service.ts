@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { lms_tipo_matricula } from '@prisma/client';
+import { LmsGateway } from '../ws/lms.gateway';
 
 @Injectable()
 export class MatriculasService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private lmsGateway: LmsGateway) {}
 
   async matricularEstudiante(curso_guid: string, usuario_guid: string) {
     const existing = await this.prisma.lms_matriculas.findUnique({
@@ -12,15 +13,27 @@ export class MatriculasService {
     });
     if (existing) return existing;
 
-    return this.prisma.lms_matriculas.create({
+    const result = await this.prisma.lms_matriculas.create({
       data: { usuario_guid, curso_guid, tipo: 'MANUAL' as lms_tipo_matricula }
     });
+
+    this.lmsGateway.broadcast('enrollment:changed', { action: 'enrolled', curso_guid, usuario_guid });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'enrollment_changed' }, [usuario_guid]);
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'enrollment_changed' }, 'ADMINISTRADOR');
+
+    return result;
   }
 
   async desmatricularEstudiante(curso_guid: string, usuario_guid: string) {
-    return this.prisma.lms_matriculas.delete({
+    const result = await this.prisma.lms_matriculas.delete({
       where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } }
     });
+
+    this.lmsGateway.broadcast('enrollment:changed', { action: 'unenrolled', curso_guid, usuario_guid });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'enrollment_changed' }, [usuario_guid]);
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'enrollment_changed' }, 'ADMINISTRADOR');
+
+    return result;
   }
 
   async getMatriculasCurso(curso_guid: string) {

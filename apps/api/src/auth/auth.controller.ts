@@ -9,7 +9,6 @@ import { SolicitarAccesoDto } from './dto/solicitar-acceso.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { SetupPasswordDto } from './dto/setup-password.dto';
 
-@Public()
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -34,6 +33,12 @@ export class AuthController {
   }
 
   // --- PERFIL DE USUARIO (autenticado) ---
+
+  @Get('me')
+  async getMe(@CurrentUser() user: any) {
+    if (!user) throw new ForbiddenException('No autenticado');
+    return this.authService.getUserProfile(user.sub);
+  }
 
   @Get('perfil/:guid')
   async getProfile(@Param('guid') guid: string, @CurrentUser() user: any) {
@@ -61,9 +66,15 @@ export class AuthController {
   }
 
   @Roles('ADMINISTRADOR')
+  @Get('admin-stats')
+  async getAdminStats() {
+    return this.authService.getAdminStats();
+  }
+
+  @Roles('ADMINISTRADOR')
   @Delete('usuarios/:guid')
-  async deleteUser(@Param('guid') guid: string) {
-    return this.authService.deleteUser(guid);
+  async deleteUser(@Param('guid') guid: string, @CurrentUser() currentUser: any) {
+    return this.authService.deleteUser(guid, currentUser?.sub);
   }
 
   @Roles('ADMINISTRADOR')
@@ -75,12 +86,16 @@ export class AuthController {
   @Roles('ADMINISTRADOR')
   @Post('solicitudes/:id/aprobar')
   async approveRequest(@Param('id') id: string) {
-    return this.authService.approveRequest(parseInt(id, 10));
+    const result = await this.authService.approveRequest(parseInt(id, 10));
+    this.authService.notifyRequestResolved('approved', { id: parseInt(id, 10) });
+    return result;
   }
 
   @Roles('ADMINISTRADOR')
   @Post('solicitudes/:id/rechazar')
   async rejectRequest(@Param('id') id: string) {
-    return this.authService.rejectRequest(parseInt(id, 10));
+    const result = await this.authService.rejectRequest(parseInt(id, 10));
+    this.authService.notifyRequestResolved('rejected', { id: parseInt(id, 10) });
+    return result;
   }
 }

@@ -18,8 +18,10 @@
     "@nestjs/core": "^11.1.6",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-fastify": "^11.1.6",
+    "@nestjs/platform-ws": "^11.1.19",
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/throttler": "^6.5.0",
+    "@nestjs/websockets": "^11.1.19",
     "@prisma/adapter-better-sqlite3": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "bcryptjs": "^3.0.3",
@@ -27,7 +29,8 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.10",
@@ -37,6 +40,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.17.1",
+    "@types/ws": "^8.18.1",
     "chokidar": "^5.0.0",
     "eslint": "^9.33.0",
     "prettier": "^3.6.2",

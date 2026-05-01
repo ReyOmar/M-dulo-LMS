@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { lms_estado_entrega } from '@prisma/client';
+import { LmsGateway } from '../ws/lms.gateway';
 
 @Injectable()
 export class EvaluacionesService {
   constructor(
     private prisma: PrismaService,
-    private storageService: StorageService
+    private storageService: StorageService,
+    private lmsGateway: LmsGateway,
   ) {}
 
   async submitEntrega(tarea_guid: string, data: { base64: string, nombre_archivo: string, usuario_guid: string }) {
@@ -38,6 +40,15 @@ export class EvaluacionesService {
             }
         });
     }
+
+    // Notify teachers/admins about the new submission
+    this.lmsGateway.broadcast('submission:new', { 
+      tarea_guid, 
+      usuario_guid: data.usuario_guid,
+      estado: 'ENTREGADA'
+    });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'submission_new' });
+
     return entrega;
   }
 
@@ -140,7 +151,7 @@ export class EvaluacionesService {
       }
     });
 
-    if (data.calificacion >= 3.0) {
+    if (data.calificacion >= 3.0 && entrega.tarea_guid) {
       const existing = await this.prisma.lms_progreso_recurso.findUnique({
         where: {
           usuario_guid_recurso_guid: {
@@ -159,6 +170,14 @@ export class EvaluacionesService {
         });
       }
     }
+
+    // Notify the student that their assignment has been graded
+    this.lmsGateway.broadcast('submission:graded', {
+      guid,
+      tarea_guid: entrega.tarea_guid,
+      calificacion: data.calificacion
+    }, [entrega.usuario_guid]);
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'submission_graded' }, [entrega.usuario_guid]);
 
     return entrega;
   }

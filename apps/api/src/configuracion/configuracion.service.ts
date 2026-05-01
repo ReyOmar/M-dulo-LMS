@@ -1,9 +1,10 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { LmsGateway } from '../ws/lms.gateway';
 
 @Injectable()
 export class ConfiguracionService implements OnModuleInit {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private lmsGateway: LmsGateway) {}
 
   async onModuleInit() {
     await this.ensureConfig();
@@ -37,9 +38,12 @@ export class ConfiguracionService implements OnModuleInit {
   }
 
   async updateConfig(dto: any) {
-    return this.prisma.lms_configuracion.update({
+    const updated = await this.prisma.lms_configuracion.update({
       where: { id: 1 },
       data: dto,
     });
+    
+    this.lmsGateway.broadcast('config:updated', updated);
+    return updated;
   }
 }
