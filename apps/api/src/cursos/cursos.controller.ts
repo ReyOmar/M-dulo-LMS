@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, Query, BadRequestException } from '@nestjs/common';
 import { CursosService } from './cursos.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -12,10 +12,15 @@ export class CursosController {
   constructor(private readonly cursosService: CursosService) {}
 
   @Get()
-  async getCursos(@CurrentUser() user: any, @Query('role') roleParam?: string, @Query('usuario_guid') usuario_guid?: string) {
+  async getCursos(
+    @CurrentUser() user: any, 
+    @Query('role') roleParam?: string, 
+    @Query('usuario_guid') usuario_guid?: string,
+    @Query('profesor_guid') profesor_guid?: string
+  ) {
     // When JWT user is available, use their role directly; otherwise use query params
-    const userRole = user?.rol || (roleParam === 'admin' ? 'ADMINISTRADOR' : roleParam === 'teacher' ? 'PROFESOR' : roleParam === 'student' ? 'ESTUDIANTE' : null);
-    const userGuid = user?.guid || usuario_guid;
+    const userRole = user?.role || user?.rol || (roleParam === 'admin' ? 'ADMINISTRADOR' : roleParam === 'teacher' ? 'PROFESOR' : roleParam === 'student' ? 'ESTUDIANTE' : null);
+    const userGuid = user?.sub || user?.guid || usuario_guid || profesor_guid;
 
     if (userRole === 'ESTUDIANTE' && userGuid) {
       return this.cursosService.getCursosDeEstudiante(userGuid);
@@ -112,5 +117,41 @@ export class CursosController {
   @Delete('/bloques/:bloque_guid')
   async deleteBloque(@Param('bloque_guid') bloque_guid: string) {
     return this.cursosService.deleteBloque(bloque_guid);
+  }
+
+  @Roles('ADMINISTRADOR', 'PROFESOR')
+  @Patch('/modulos/:modulo_guid/recursos/reorder')
+  async reorderBloques(@Param('modulo_guid') modulo_guid: string, @Body() body: { recursos_guids: string[] }) {
+    if (!body.recursos_guids || !Array.isArray(body.recursos_guids)) {
+      throw new BadRequestException('recursos_guids debe ser un arreglo de strings.');
+    }
+    return this.cursosService.reorderBloques(modulo_guid, body.recursos_guids);
+  }
+
+  @Post('/student/quiz/:bloque_guid/start')
+  async startQuiz(@Param('bloque_guid') bloque_guid: string, @Query('usuario_guid') usuario_guid: string, @CurrentUser() user: any) {
+    const finalGuid = user?.guid || usuario_guid;
+    if (!finalGuid) {
+        throw new BadRequestException('usuario_guid es requerido.');
+    }
+    return this.cursosService.startQuiz(bloque_guid, finalGuid);
+  }
+
+  @Post('/student/quiz/:bloque_guid/submit')
+  async submitQuiz(@Param('bloque_guid') bloque_guid: string, @Body() body: any, @Query('usuario_guid') usuario_guid: string, @CurrentUser() user: any) {
+    const finalGuid = user?.guid || usuario_guid;
+    if (!finalGuid) {
+        throw new BadRequestException('usuario_guid es requerido.');
+    }
+    return this.cursosService.evaluarQuiz(bloque_guid, finalGuid, body.respuestas || {});
+  }
+
+  @Get('/student/quiz/:bloque_guid/status')
+  async getQuizStatus(@Param('bloque_guid') bloque_guid: string, @Query('usuario_guid') usuario_guid: string, @CurrentUser() user: any) {
+    const finalGuid = user?.guid || usuario_guid;
+    if (!finalGuid) {
+        throw new BadRequestException('usuario_guid es requerido.');
+    }
+    return this.cursosService.getQuizStatus(bloque_guid, finalGuid);
   }
 }

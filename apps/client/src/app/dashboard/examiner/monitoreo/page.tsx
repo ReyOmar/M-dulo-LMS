@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, Fragment } from "react";
 import { Search, Users, Clock, BookOpen, ChevronDown, ChevronRight, BarChart3, Loader2, TrendingUp } from "lucide-react";
@@ -14,18 +14,25 @@ export default function MonitoreoEstudiantesPage() {
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.guid) fetchMonitoreo();
+    if (user?.guid) {
+      fetchMonitoreo();
+      const interval = setInterval(() => {
+        fetchMonitoreo(false);
+      }, 10000); // Auto-refresh every 10 seconds
+      return () => clearInterval(interval);
+    }
   }, [user?.guid]);
 
-  const fetchMonitoreo = async () => {
+  const fetchMonitoreo = async (showLoading = true) => {
     try {
+      if (showLoading && estudiantes.length === 0) setLoading(true);
       const res = await api.get(`/cursos/examiner/monitoreo?profesor_guid=${user?.guid}`);
       const data = res.data;
       setEstudiantes(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -38,12 +45,34 @@ export default function MonitoreoEstudiantesPage() {
     );
   });
 
-  const formatDate = (d: string) => {
-    if (!d) return "Sin registro";
-    return new Date(d).toLocaleString("es-ES", {
-      day: "2-digit", month: "short", year: "numeric",
-      hour: "2-digit", minute: "2-digit"
-    });
+  const renderUltimoAcceso = (d: string | null) => {
+    if (!d) return <span className="text-muted-foreground">Sin registro</span>;
+    const lastAccess = new Date(d);
+    const now = new Date();
+    const diffMinutes = Math.floor((now.getTime() - lastAccess.getTime()) / 60000);
+
+    // Consider online if active in the last 15 minutes
+    if (diffMinutes <= 15) {
+      return (
+        <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold bg-emerald-500/10 px-2 py-1 rounded-full w-fit">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          En línea
+        </span>
+      );
+    }
+
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Clock className="h-3 w-3" />
+        {lastAccess.toLocaleString("es-ES", {
+          day: "2-digit", month: "short", year: "numeric",
+          hour: "2-digit", minute: "2-digit"
+        })}
+      </span>
+    );
   };
 
   if (loading) {
@@ -154,10 +183,8 @@ export default function MonitoreoEstudiantesPage() {
                       </td>
                       <td className="px-6 py-4 font-bold">{est.nombre} {est.apellido}</td>
                       <td className="px-6 py-4 text-muted-foreground">{est.email}</td>
-                      <td className="px-6 py-4 text-muted-foreground">
-                        <span className="flex items-center gap-1.5 text-xs">
-                          <Clock className="h-3 w-3" /> {formatDate(est.ultima_actividad)}
-                        </span>
+                      <td className="px-6 py-4">
+                        {renderUltimoAcceso(est.ultimo_acceso)}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${est.total_entregas > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>

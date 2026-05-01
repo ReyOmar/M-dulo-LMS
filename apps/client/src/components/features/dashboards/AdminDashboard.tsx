@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { BookOpen, Users, Award, TrendingUp, GraduationCap, AlertCircle, Loader2 } from "lucide-react";
@@ -59,38 +59,40 @@ export function AdminDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
         
         {/* Usuarios Activos */}
-        <div className="relative overflow-hidden rounded-2xl border border-border/50 p-5 shadow-sm hover:shadow-lg transition-all duration-300 group
-                        bg-card/70 backdrop-blur-md hover:border-primary/40">
+        <Link href="/dashboard/admin/usuarios" className="relative overflow-hidden rounded-2xl border border-border/50 p-5 shadow-sm hover:shadow-lg transition-all duration-300 group
+                        bg-card/70 backdrop-blur-md hover:border-primary/40 cursor-pointer block">
           <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 blur-xl group-hover:scale-150 transition-transform duration-500" />
           <div className="relative z-10 flex justify-between items-start">
             <div>
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Usuarios Activos</p>
               <p className="text-3xl font-black tracking-tight">{stats?.usuarios?.total || 0}</p>
               <p className="text-xs text-muted-foreground mt-2">
-                {stats?.usuarios?.estudiantes || 0} estudiantes Â· {stats?.usuarios?.profesores || 0} profesores
+                {stats?.usuarios?.estudiantes || 0} estudiantes · {stats?.usuarios?.profesores || 0} profesores
               </p>
             </div>
             <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 group-hover:scale-110 transition-transform">
               <Users className="h-5 w-5 text-primary" />
             </div>
           </div>
-        </div>
+        </Link>
 
         {/* Cursos */}
-        <div className="relative overflow-hidden rounded-2xl border border-border/50 p-5 shadow-sm hover:shadow-lg transition-all duration-300 group
-                        bg-card/70 backdrop-blur-md hover:border-blue-500/40">
+        <Link href="/dashboard/admin/constructor-cursos" className="relative overflow-hidden rounded-2xl border border-border/50 p-5 shadow-sm hover:shadow-lg transition-all duration-300 group
+                        bg-card/70 backdrop-blur-md hover:border-blue-500/40 cursor-pointer block">
           <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-gradient-to-br from-blue-500/20 to-blue-500/5 blur-xl group-hover:scale-150 transition-transform duration-500" />
           <div className="relative z-10 flex justify-between items-start">
             <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Cursos Publicados</p>
-              <p className="text-3xl font-black tracking-tight">{stats?.cursos?.publicados || 0}</p>
-              <p className="text-xs text-muted-foreground mt-2">{stats?.cursos?.borrador || 0} en modo borrador</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Cursos</p>
+              <p className="text-3xl font-black tracking-tight">{(stats?.cursos?.publicados || 0) + (stats?.cursos?.borrador || 0)}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                {stats?.cursos?.publicados || 0} en publicación · {stats?.cursos?.borrador || 0} en borrador
+              </p>
             </div>
             <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/10 group-hover:scale-110 transition-transform">
               <BookOpen className="h-5 w-5 text-blue-500" />
             </div>
           </div>
-        </div>
+        </Link>
 
         {/* Solicitudes Pendientes — conectado a API real */}
         <Link href="/dashboard/admin/solicitudes" className="relative overflow-hidden rounded-2xl border border-border/50 p-5 shadow-sm hover:shadow-lg transition-all duration-300 group

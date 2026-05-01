@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { ArrowLeft, Save, Type, PlayCircle, FileText, CheckCircle, LinkIcon, Paperclip, Plus, Trash2, Clock, RefreshCcw, GripVertical, Download, Settings } from "lucide-react";
 import api, { API_BASE_URL } from "@/lib/api";
+import { showAlert } from "@/lib/alerts";
 
 // Types
 interface QuizOption { id: string; texto: string; es_correcta: boolean; }
@@ -87,7 +88,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                     quiz_config: isQuiz ? JSON.stringify(quizConfig) : null,
                 });
             
-            router.push(`/dashboard/admin/constructor-cursos?curso=${resolvedParams.curso_id}`);
+            router.push(`/dashboard/admin/constructor-cursos?curso=${resolvedParams.curso_id}&resource=${resolvedParams.bloque_id}&module=${resolvedParams.modulo_id}`);
         } catch (err) {
             console.error(err);
         } finally {
@@ -98,9 +99,11 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const maxBytes = archivoMaxSizeMb * 1024 * 1024;
+        // Para tareas, usar el límite configurado. Para los recursos normales, permitir hasta 50MB al admin.
+        const limitMb = (bloque.tipo === 'TAREA' && !isQuiz) ? archivoMaxSizeMb : 50;
+        const maxBytes = limitMb * 1024 * 1024;
         if (file.size > maxBytes) {
-            alert(`El archivo no puede superar los ${archivoMaxSizeMb}MB.`);
+            showAlert.warning('Atención', `El archivo no puede superar los ${limitMb}MB.`);
             return;
         }
         setUploading(true);
@@ -186,7 +189,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
         <div className="animate-in slide-in-from-bottom-4 duration-700 max-w-4xl mx-auto h-[calc(100vh-6rem)] flex flex-col py-6">
             <header className="mb-6 flex items-center gap-4">
                 <button 
-                    onClick={() => router.push(`/dashboard/admin/constructor-cursos?curso=${resolvedParams.curso_id}`)}
+                    onClick={() => router.push(`/dashboard/admin/constructor-cursos?curso=${resolvedParams.curso_id}&resource=${resolvedParams.bloque_id}&module=${resolvedParams.modulo_id}`)}
                     className="p-3 bg-muted rounded-full hover:bg-border transition-colors"
                 >
                     <ArrowLeft className="h-5 w-5 text-muted-foreground" />
@@ -283,23 +286,10 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                     {showExtras && (
                         <div className="border border-border/50 rounded-xl p-5 bg-muted/5 space-y-4">
                             <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                <Paperclip className="h-4 w-4" /> Archivo Adjunto <span className="text-xs font-normal lowercase tracking-normal">(opcional, máx {archivoMaxSizeMb}MB)</span>
+                                <Paperclip className="h-4 w-4" /> Archivo Adjunto <span className="text-xs font-normal lowercase tracking-normal">(opcional)</span>
                             </h3>
                             
-                            {/* Max file size config */}
-                            <div className="flex items-center gap-3">
-                                <Settings className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                <label className="text-xs font-bold text-muted-foreground uppercase">Peso máximo (MB):</label>
-                                <input 
-                                    type="number"
-                                    min={1}
-                                    max={50}
-                                    value={archivoMaxSizeMb}
-                                    onChange={e => setArchivoMaxSizeMb(Math.max(1, Math.min(50, parseInt(e.target.value) || 5)))}
-                                    className="w-20 bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 font-bold"
-                                />
-                                <span className="text-xs text-muted-foreground">Este límite aplica para archivos del admin y del estudiante.</span>
-                            </div>
+                            {/* La configuración de tamaño máximo se movió a su propio contenedor */}
 
                             {uploading ? (
                                 <div className="flex items-center justify-center gap-2 p-6 border-2 border-dashed border-primary/50 rounded-xl bg-primary/5">
@@ -310,7 +300,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                                 <div className="flex items-center gap-3 bg-background border border-border rounded-xl px-4 py-3">
                                     <Paperclip className="h-5 w-5 text-primary flex-shrink-0" />
                                     <a 
-                                        href={`${API_BASE_URL}/cursos/download/${archivoAdjunto}`}
+                                        href={`${API_BASE_URL}/cursos/download/${archivoAdjunto}?originalName=${encodeURIComponent(archivoAdjuntoNombre)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="font-medium text-sm flex-1 truncate text-primary hover:underline cursor-pointer flex items-center gap-1"
@@ -332,6 +322,27 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                                     <input type="file" className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip,.rar" onChange={handleFileUpload} />
                                 </label>
                             )}
+                        </div>
+                    )}
+
+                    {/* ===== RESTRICCIONES (Solo Tareas) ===== */}
+                    {showExtras && bloque.tipo === 'TAREA' && !isQuiz && (
+                        <div className="border border-amber-500/30 rounded-xl p-5 bg-amber-500/5 space-y-4">
+                            <h3 className="font-bold text-sm text-amber-700 dark:text-amber-500 uppercase tracking-wider flex items-center gap-2">
+                                <Settings className="h-4 w-4" /> Configuración de Entrega
+                            </h3>
+                            <div className="flex items-center gap-3">
+                                <label className="text-xs font-bold text-muted-foreground uppercase">Peso máximo estudiante (MB):</label>
+                                <input 
+                                    type="number"
+                                    min={1}
+                                    max={50}
+                                    value={archivoMaxSizeMb}
+                                    onChange={e => setArchivoMaxSizeMb(Math.max(1, Math.min(50, parseInt(e.target.value) || 5)))}
+                                    className="w-20 bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 font-bold"
+                                />
+                                <span className="text-xs text-muted-foreground">Límite para la entrega del estudiante.</span>
+                            </div>
                         </div>
                     )}
 

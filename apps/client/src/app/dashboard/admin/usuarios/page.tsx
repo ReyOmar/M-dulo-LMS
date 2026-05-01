@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, ShieldAlert, Key, UserCheck, UserX, Clock, Mail, BookOpen, X, GraduationCap, Shield, Presentation, Search } from "lucide-react";
+import { Users, ShieldAlert, Key, UserCheck, UserX, Clock, Mail, BookOpen, X, GraduationCap, Shield, Presentation, Search, Trash2 } from "lucide-react";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import Link from "next/link";
 import api from "@/lib/api";
+import { showAlert } from "@/lib/alerts";
 
 interface Usuario {
   guid: string;
@@ -68,6 +69,21 @@ export default function BaseUsuarios() {
       setUserCourses([]);
     } finally {
       setLoadingCursos(false);
+    }
+  };
+
+  const handleDeleteUser = async (guid: string) => {
+    if (!window.confirm("¿Estás seguro de que deseas eliminar permanentemente esta cuenta?\n\nADVERTENCIA: Si es estudiante, todo su progreso se borrará de inmediato. Si es examinador o administrador, su cuenta se borrará pero los cursos que haya creado se conservarán intactos en la plataforma.")) {
+      return;
+    }
+    
+    try {
+      await api.delete(`/auth/usuarios/${guid}`);
+      showAlert.success("Éxito", "Cuenta eliminada exitosamente.");
+      setSelectedUser(null);
+      fetchUsuarios();
+    } catch (err: any) {
+      showAlert.error("Error", err.response?.data?.message || "Error al eliminar la cuenta");
     }
   };
 
@@ -231,9 +247,14 @@ export default function BaseUsuarios() {
                   <p className="text-sm text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> {selectedUser.email}</p>
                 </div>
               </div>
-              <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-muted rounded-xl transition-colors">
-                <X className="h-5 w-5 text-muted-foreground" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => handleDeleteUser(selectedUser.guid)} className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-colors text-muted-foreground" title="Eliminar cuenta">
+                  <Trash2 className="h-5 w-5" />
+                </button>
+                <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-muted rounded-xl transition-colors">
+                  <X className="h-5 w-5 text-muted-foreground" />
+                </button>
+              </div>
             </div>
 
             {/* Info */}

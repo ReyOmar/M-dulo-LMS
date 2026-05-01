@@ -23,79 +23,83 @@ export class DashboardsService {
 
     if (cursos.length === 0) return [];
 
+    const cursoGuids = cursos.map(c => c.guid);
     const allResourceGuids: string[] = [];
-    const cursoResourceMap: Record<string, { curso_guid: string; curso_titulo: string; modulo_titulo: string; total_recursos: number }[]> = {};
     
     for (const curso of cursos) {
       for (const mod of curso.modulos) {
-        const recursos = mod.lecciones.flatMap(l => l.recursos);
+        const recursos = mod.lecciones.flatMap((l: any) => l.recursos);
         for (const r of recursos) {
           allResourceGuids.push(r.guid);
-          if (!cursoResourceMap[r.guid]) cursoResourceMap[r.guid] = [];
-          cursoResourceMap[r.guid].push({
-            curso_guid: curso.guid,
-            curso_titulo: curso.titulo,
-            modulo_titulo: mod.titulo,
-            total_recursos: recursos.length
-          });
         }
       }
     }
 
+    const matriculas = await this.prisma.lms_matriculas.findMany({
+      where: { curso_guid: { in: cursoGuids } },
+      select: { usuario_guid: true, curso_guid: true }
+    });
+    
+    const enrolledStudentGuids = [...new Set(matriculas.map(m => m.usuario_guid))];
+    if (enrolledStudentGuids.length === 0) return [];
+
+    const enrolledStudents = await this.prisma.usuarios.findMany({
+      where: { guid: { in: enrolledStudentGuids } },
+      select: { guid: true, nombre: true, apellido: true, email: true, ultimo_acceso: true }
+    });
+
     const entregas = await this.prisma.lms_entregas.findMany({
       where: { tarea_guid: { in: allResourceGuids } },
-      select: {
-        usuario_guid: true,
-        tarea_guid: true,
-        estado: true,
-        fecha_entrega: true,
-      }
+      select: { usuario_guid: true, tarea_guid: true, fecha_entrega: true }
     });
 
-    const studentGuids = [...new Set(entregas.map(e => e.usuario_guid))];
-    
-    const allStudents = await this.prisma.usuarios.findMany({
-      where: { rol: 'ESTUDIANTE' },
-      select: { guid: true, nombre: true, apellido: true, email: true, updated_at: true }
+    const progresos = await this.prisma.lms_progreso_recurso.findMany({
+      where: { recurso_guid: { in: allResourceGuids } },
+      select: { usuario_guid: true, recurso_guid: true }
     });
 
-    const result = allStudents.map(student => {
+    const result = enrolledStudents.map(student => {
       const studentEntregas = entregas.filter(e => e.usuario_guid === student.guid);
-      const completedResources = new Set(studentEntregas.map(e => e.tarea_guid));
+      const studentProgresos = progresos.filter(p => p.usuario_guid === student.guid);
+      const completedResources = new Set(studentProgresos.map(p => p.recurso_guid));
+      const studentEnrolledCourseGuids = new Set(matriculas.filter(m => m.usuario_guid === student.guid).map(m => m.curso_guid));
 
-      const cursosProgress = cursos.map(curso => {
-        const totalRecursos = curso.modulos.reduce((sum, mod) => 
-          sum + mod.lecciones.reduce((s, l) => s + l.recursos.length, 0), 0);
-        const completados = curso.modulos.reduce((sum, mod) => {
-          const recursos = mod.lecciones.flatMap(l => l.recursos);
-          return sum + recursos.filter(r => completedResources.has(r.guid)).length;
-        }, 0);
+      const cursosProgress = cursos
+        .filter(curso => studentEnrolledCourseGuids.has(curso.guid))
+        .map(curso => {
+          const totalRecursos = curso.modulos.reduce((sum, mod) => 
+            sum + mod.lecciones.reduce((s: any, l: any) => s + l.recursos.length, 0), 0);
+          
+          const completados = curso.modulos.reduce((sum, mod) => {
+            const recursos = mod.lecciones.flatMap((l: any) => l.recursos);
+            return sum + recursos.filter((r: any) => completedResources.has(r.guid)).length;
+          }, 0);
 
-        return {
-          curso_guid: curso.guid,
-          curso_titulo: curso.titulo,
-          total_recursos: totalRecursos,
-          completados,
-          porcentaje: totalRecursos > 0 ? Math.round((completados / totalRecursos) * 100) : 0,
-          modulos: curso.modulos.map(mod => {
-            const modRecursos = mod.lecciones.flatMap(l => l.recursos);
-            const modCompletados = modRecursos.filter(r => completedResources.has(r.guid)).length;
-            return {
-              titulo: mod.titulo,
-              total: modRecursos.length,
-              completados: modCompletados,
-              porcentaje: modRecursos.length > 0 ? Math.round((modCompletados / modRecursos.length) * 100) : 0
-            };
-          })
-        };
-      });
+          return {
+            curso_guid: curso.guid,
+            curso_titulo: curso.titulo,
+            total_recursos: totalRecursos,
+            completados,
+            porcentaje: totalRecursos > 0 ? Math.round((completados / totalRecursos) * 100) : 0,
+            modulos: curso.modulos.map(mod => {
+              const modRecursos = mod.lecciones.flatMap((l: any) => l.recursos);
+              const modCompletados = modRecursos.filter((r: any) => completedResources.has(r.guid)).length;
+              return {
+                titulo: mod.titulo,
+                total: modRecursos.length,
+                completados: modCompletados,
+                porcentaje: modRecursos.length > 0 ? Math.round((modCompletados / modRecursos.length) * 100) : 0
+              };
+            })
+          };
+        });
 
       return {
         guid: student.guid,
         nombre: student.nombre,
         apellido: student.apellido,
         email: student.email,
-        ultima_actividad: student.updated_at,
+        ultimo_acceso: student.ultimo_acceso,
         total_entregas: studentEntregas.length,
         cursos: cursosProgress
       };

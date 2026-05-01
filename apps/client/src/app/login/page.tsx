@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { Lock, Mail, ArrowRight, GraduationCap, ShieldCheck, User } from "lucide-react";
@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
 import { useConfig } from "@/contexts/ConfigContext";
 import api from "@/lib/api";
+import { showAlert } from "@/lib/alerts";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,9 +22,34 @@ export default function LoginPage() {
 
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
   const [view, setView] = useState<"LOGIN" | "SETUP_PASSWORD" | "REQUEST_ACCESS" | "REQUEST_SUCCESS">("LOGIN");
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
+  const handleGoToLogin = () => {
+    setEmail("");
+    setPassword("");
+    setNewPassword("");
+    setNombre("");
+    setApellido("");
+    setErrorMsg("");
+    setSuccessMsg("");
+    setRateLimited(false);
+    setView("LOGIN");
+  };
+
+  const handleGoToRequest = () => {
+    setEmail("");
+    setPassword("");
+    setNewPassword("");
+    setNombre("");
+    setApellido("");
+    setErrorMsg("");
+    setSuccessMsg("");
+    setRateLimited(false);
+    setView("REQUEST_ACCESS");
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -45,7 +71,13 @@ export default function LoginPage() {
         router.push("/dashboard");
 
       } catch (err: any) {
-          setErrorMsg(err.response?.data?.message || err.message);
+          if (err.response?.status === 429) {
+              setErrorMsg("Demasiadas peticiones. Por favor, intenta más tarde.");
+              setRateLimited(true);
+              setTimeout(() => setRateLimited(false), 30000);
+          } else {
+              setErrorMsg(err.response?.data?.message || err.message);
+          }
       } finally {
           setLoading(false);
       }
@@ -63,7 +95,13 @@ export default function LoginPage() {
         await handleLogin({ preventDefault: () => {} } as React.FormEvent);
 
       } catch (err: any) {
-          setErrorMsg(err.response?.data?.message || err.message);
+          if (err.response?.status === 429) {
+              setErrorMsg("Demasiadas peticiones. Por favor, intenta más tarde.");
+              setRateLimited(true);
+              setTimeout(() => setRateLimited(false), 30000);
+          } else {
+              setErrorMsg(err.response?.data?.message || err.message);
+          }
       } finally {
           setLoading(false);
       }
@@ -79,7 +117,19 @@ export default function LoginPage() {
         setView("REQUEST_SUCCESS");
 
       } catch (err: any) {
-          setErrorMsg(err.response?.data?.message || err.message);
+          if (err.response?.status === 429) {
+              setErrorMsg("Demasiadas peticiones. Por favor, intenta más tarde.");
+              setRateLimited(true);
+              setTimeout(() => setRateLimited(false), 30000);
+          } else {
+              const msg = err.response?.data?.message || err.message;
+              if (msg.toLowerCase().includes("ya existe")) {
+                  showAlert.info("Atención", "Ya estás registrado");
+                  handleGoToLogin();
+              } else {
+                  setErrorMsg(msg);
+              }
+          }
       } finally {
           setLoading(false);
       }
@@ -122,7 +172,7 @@ export default function LoginPage() {
                 {view === "LOGIN" && "Ingresa tus credenciales para ser validado en base de datos."}
                 {view === "SETUP_PASSWORD" && "Tu cuenta fue dada de alta por la Administración. Ingresa una contraseña personal y secreta solo para ti."}
                 {view === "REQUEST_ACCESS" && "Registro cerrado. Envía tu información para que la administración determine tu pase."}
-                {view === "REQUEST_SUCCESS" && "Tu petición se ha encolado en los servidores de la administración."}
+                {view === "REQUEST_SUCCESS" && "Tu petición se ha registrado y está en espera de aprobación, contacta al administrador."}
             </p>
           </div>
         </div>
@@ -149,7 +199,7 @@ export default function LoginPage() {
                     <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                     <input
                         type="email"
-                        placeholder="admin@pesv.com"
+                        placeholder="Correo"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
@@ -164,7 +214,7 @@ export default function LoginPage() {
                     <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                     <input
                         type="password"
-                        placeholder="Tu clave secreta"
+                        placeholder="Contraseña"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
@@ -174,8 +224,8 @@ export default function LoginPage() {
                 </div>
             </div>
 
-            <button type="submit" disabled={loading} className="group relative inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-all hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-70">
-                {loading ? "Validando..." : "Ingresar Seguro"}
+            <button type="submit" disabled={loading || rateLimited} className="group relative inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-all hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-70">
+                {loading ? "Validando..." : rateLimited ? "Bloqueado Temporalmente" : "Ingresar Seguro"}
             </button>
             </form>
         )}
@@ -199,8 +249,8 @@ export default function LoginPage() {
                 </div>
             </div>
             
-            <button type="submit" disabled={loading} className="w-full h-11 rounded-xl bg-emerald-600 px-8 text-sm font-bold text-white shadow hover:bg-emerald-700 disabled:opacity-70">
-                {loading ? "Encriptando..." : "Firmar e Ingresar"}
+            <button type="submit" disabled={loading || rateLimited} className="w-full h-11 rounded-xl bg-emerald-600 px-8 text-sm font-bold text-white shadow hover:bg-emerald-700 disabled:opacity-70">
+                {loading ? "Encriptando..." : rateLimited ? "Bloqueado Temporalmente" : "Firmar e Ingresar"}
             </button>
             </form>
         )}
@@ -227,16 +277,16 @@ export default function LoginPage() {
             <div className="space-y-1">
                 <label className="text-xs font-bold text-muted-foreground">Cargo Pedido (Para Asignaciones)</label>
                 <select value={rolPedido} onChange={e=>setRolPedido(e.target.value)} className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary bg-background">
-                    <option value="ESTUDIANTE">Personal Capacitante / Alumno</option>
-                    <option value="PROFESOR">Examinador / Supervisor</option>
-                    <option value="ADMINISTRADOR">Administrador Maestro</option>
+                    <option value="ESTUDIANTE">Capacitante</option>
+                    <option value="PROFESOR">Examinador</option>
+                    <option value="ADMINISTRADOR">Administrador</option>
                 </select>
             </div>
             
             <div className="flex gap-2 mt-6">
-                <button type="button" onClick={() => setView("LOGIN")} className="h-10 px-4 text-xs font-bold text-muted-foreground rounded-lg border border-border hover:bg-muted">Cerrar</button>
-                <button type="submit" disabled={loading} className="flex-1 h-10 rounded-lg bg-primary text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-70">
-                    {loading ? "Elevando Petición..." : "Solicitar a Prevención"}
+                <button type="button" onClick={handleGoToLogin} className="h-10 px-4 text-xs font-bold text-muted-foreground rounded-lg border border-border hover:bg-muted">Cerrar</button>
+                <button type="submit" disabled={loading || rateLimited} className="flex-1 h-10 rounded-lg bg-primary text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-70">
+                    {loading ? "Elevando Petición..." : rateLimited ? "Bloqueado Temporalmente" : "Solicitar a Prevención"}
                 </button>
             </div>
             </form>
@@ -246,9 +296,9 @@ export default function LoginPage() {
         {view === "REQUEST_SUCCESS" && (
             <div className="flex flex-col items-center text-center animate-in zoom-in-95">
                 <div className="text-emerald-500 font-bold bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20 mb-6">
-                    Misión Completa. Cuando el administrador acepte la solicitud, intenta iniciar sesión con tu correo aquí para configurar tu contraseña.
+                    Tu petición se ha registrado y está en espera de aprobación, contacta al administrador.
                 </div>
-                <button onClick={() => setView("LOGIN")} className="h-11 w-full rounded-xl bg-card border border-border hover:bg-muted font-bold text-sm shadow-sm transition-colors">
+                <button onClick={handleGoToLogin} className="h-11 w-full rounded-xl bg-card border border-border hover:bg-muted font-bold text-sm shadow-sm transition-colors">
                     Volver al Inicio
                 </button>
             </div>
@@ -257,7 +307,7 @@ export default function LoginPage() {
         {/* Footer Toggle */}
         {(view === "LOGIN") && (
             <div className="mt-8 pt-6 border-t border-border flex justify-center items-center">
-            <button onClick={() => setView("REQUEST_ACCESS")} className="text-xs font-bold text-primary hover:underline flex items-center gap-2">
+            <button onClick={handleGoToRequest} className="text-xs font-bold text-primary hover:underline flex items-center gap-2">
                 <User className="h-4 w-4" /> Registrar Petición de Monitoreo
             </button>
             </div>

@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { BookCheck, Download, Loader2, Check, Search, FileText, Star, MessageSquare, X, Filter } from "lucide-react";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import api, { API_BASE_URL } from "@/lib/api";
+import { showAlert } from "@/lib/alerts";
 
 export default function CalificacionManualPage() {
   const { user } = useRole();
@@ -38,7 +39,7 @@ export default function CalificacionManualPage() {
   const handleCalificar = async (guid: string) => {
     const nota = parseFloat(gradeValue);
     if (isNaN(nota) || nota < 0 || nota > 5) {
-      alert("La calificación debe ser un número entre 0 y 5.");
+      showAlert.warning("Atención", "La calificación debe ser un número entre 0 y 5.");
       return;
     }
     setSaving(true);
@@ -57,7 +58,7 @@ export default function CalificacionManualPage() {
       setGradeComment("");
     } catch (err) {
       console.error(err);
-      alert("Error al calificar.");
+      showAlert.error("Error", "Error al calificar.");
     } finally {
       setSaving(false);
     }
@@ -207,7 +208,7 @@ export default function CalificacionManualPage() {
                   {/* Center: File download */}
                   {entrega.archivo_servidor && (
                     <a
-                      href={`${API_BASE_URL}/cursos/download/${entrega.archivo_servidor}`}
+                      href={`${API_BASE_URL}/cursos/download/${entrega.archivo_servidor}?originalName=${encodeURIComponent(entrega.archivo_nombre || 'archivo')}`}
                       className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition-colors shrink-0"
                     >
                       <Download className="h-3.5 w-3.5" />

@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Res, Body } from '@nestjs/common';
+import { Controller, Post, Get, Param, Res, Body, Query } from '@nestjs/common';
 import { StorageService } from './storage.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -19,7 +19,7 @@ export class StorageController {
 
   @Public()
   @Get('/download/:filename')
-  async downloadFile(@Param('filename') filename: string, @Res() res: any) {
+  async downloadFile(@Param('filename') filename: string, @Query('originalName') originalName: string, @Res() res: any) {
     const sanitized = path.basename(filename);
     if (!sanitized || sanitized !== filename) {
       return res.status(400).send({ message: 'Nombre de archivo inválido.' });
@@ -33,8 +33,10 @@ export class StorageController {
     if (ext === 'pdf') contentType = 'application/pdf';
     else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext || '')) contentType = `image/${ext}`;
     
+    const downloadName = originalName ? path.basename(originalName).replace(/"/g, '') : sanitized;
+
     res.header('Content-Type', contentType);
-    res.header('Content-Disposition', `attachment; filename="${sanitized}"`);
+    res.header('Content-Disposition', `attachment; filename="${downloadName}"`);
     return res.send(stream);
   }
 }

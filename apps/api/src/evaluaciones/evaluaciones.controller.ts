@@ -1,12 +1,10 @@
-import { Controller, Get, Post, Patch, Param, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UnauthorizedException } from '@nestjs/common';
 import { EvaluacionesService } from './evaluaciones.service';
 import { Roles } from '../common/decorators/roles.decorator';
-import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { SubmitEntregaDto } from './dto/submit-entrega.dto';
 import { CalificarEntregaDto } from './dto/calificar-entrega.dto';
 
-@Public()
 @Controller('cursos')
 export class EvaluacionesController {
   constructor(private readonly evaluacionesService: EvaluacionesService) {}
@@ -17,12 +15,16 @@ export class EvaluacionesController {
     @Param('tarea_guid') tarea_guid: string,
     @Body() body: SubmitEntregaDto
   ) {
-    return this.evaluacionesService.submitEntrega(tarea_guid, { ...body, usuario_guid: user.guid });
+    const userGuid = user?.sub || user?.guid;
+    if (!userGuid) throw new UnauthorizedException('Debes iniciar sesión para subir tu tarea.');
+    return this.evaluacionesService.submitEntrega(tarea_guid, { ...body, usuario_guid: userGuid });
   }
 
   @Get('/tareas/:tarea_guid/entregas/mine')
   async getEntrega(@CurrentUser() user: any, @Param('tarea_guid') tarea_guid: string) {
-    const entrega = await this.evaluacionesService.getEntrega(tarea_guid, user.guid);
+    const userGuid = user?.sub || user?.guid;
+    if (!userGuid) throw new UnauthorizedException('Usuario no autenticado correctamente.');
+    const entrega = await this.evaluacionesService.getEntrega(tarea_guid, userGuid);
     return entrega || { estado: 'PENDIENTE' };
   }
 

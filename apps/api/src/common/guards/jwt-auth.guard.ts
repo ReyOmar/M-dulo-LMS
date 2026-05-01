@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -10,31 +11,41 @@ export class JwtAuthGuard implements CanActivate {
     private jwtService: JwtService,
     private configService: ConfigService,
     private reflector: Reflector,
+    private prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // Check if the route is marked as @Public()
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
-    if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
 
-    if (!token) {
-      throw new UnauthorizedException('Token de autenticación requerido.');
-    }
+    let payload: any = null;
 
-    try {
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get<string>('JWT_SECRET'),
-      });
-      // Attach user payload to request for downstream use
-      request.user = payload;
-    } catch {
-      throw new UnauthorizedException('Token inválido o expirado.');
+    if (token) {
+      try {
+        payload = await this.jwtService.verifyAsync(token, {
+          secret: this.configService.get<string>('JWT_SECRET'),
+        });
+        request.user = payload;
+
+        // Update ultimo_acceso asynchronously without blocking the request
+        if (payload.sub) {
+          this.prisma.usuarios.update({
+            where: { guid: payload.sub },
+            data: { ultimo_acceso: new Date() }
+          }).catch(err => console.error("Error updating ultimo_acceso", err));
+        }
+      } catch {
+        if (!isPublic) {
+          throw new UnauthorizedException('Token inválido o expirado.');
+        }
+      }
+    } else if (!isPublic) {
+      throw new UnauthorizedException('Token de autenticación requerido.');
     }
 
     return true;

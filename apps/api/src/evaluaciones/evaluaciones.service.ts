@@ -50,6 +50,7 @@ export class EvaluacionesService {
             fecha_entrega: true,
             respuesta_texto: true,
             url_archivo_adjunto: true,
+            contenido_texto: true,
         }
     });
   }
@@ -131,12 +132,34 @@ export class EvaluacionesService {
   }
 
   async calificarEntrega(guid: string, data: { calificacion: number; comentario?: string }) {
-    return this.prisma.lms_entregas.update({
+    const entrega = await this.prisma.lms_entregas.update({
       where: { guid },
       data: {
         estado: 'CALIFICADA' as lms_estado_entrega,
         contenido_texto: `NOTA: ${data.calificacion}${data.comentario ? ` | ${data.comentario}` : ''}`
       }
     });
+
+    if (data.calificacion >= 3.0) {
+      const existing = await this.prisma.lms_progreso_recurso.findUnique({
+        where: {
+          usuario_guid_recurso_guid: {
+            usuario_guid: entrega.usuario_guid,
+            recurso_guid: entrega.tarea_guid
+          }
+        }
+      });
+      if (!existing) {
+        await this.prisma.lms_progreso_recurso.create({
+          data: {
+            usuario_guid: entrega.usuario_guid,
+            recurso_guid: entrega.tarea_guid,
+            completado: true
+          }
+        });
+      }
+    }
+
+    return entrega;
   }
 }

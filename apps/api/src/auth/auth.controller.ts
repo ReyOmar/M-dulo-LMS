@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Patch, ForbiddenException } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Patch, ForbiddenException, Delete } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
@@ -58,6 +58,12 @@ export class AuthController {
   @Get('usuarios')
   async getAllUsers() {
     return this.authService.getAllUsers();
+  }
+
+  @Roles('ADMINISTRADOR')
+  @Delete('usuarios/:guid')
+  async deleteUser(@Param('guid') guid: string) {
+    return this.authService.deleteUser(guid);
   }
 
   @Roles('ADMINISTRADOR')

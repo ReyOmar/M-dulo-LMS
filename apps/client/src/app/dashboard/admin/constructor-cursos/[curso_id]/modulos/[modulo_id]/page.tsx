@@ -6,6 +6,7 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { ArrowLeft, Plus, Image as ImageIcon, Type, FileText, CheckCircle, UploadCloud, Save, X, Eye, Trash2, Edit3, Link as LinkIcon, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api";
+import { showAlert } from "@/lib/alerts";
 
 export default function ModuleEditorPage() {
   const { curso_id, modulo_id } = useParams();
@@ -451,7 +452,10 @@ export default function ModuleEditorPage() {
                       <button onClick={() => setActiveModal(null)} className="px-6 py-2 rounded-xl font-bold bg-muted hover:bg-border transition-colors">Cancelar</button>
                       <button 
                           onClick={() => {
-                              if (!bloqueTitulo || !bloqueHtml) return alert('Completa título y enlace');
+                              if (!bloqueTitulo || !bloqueHtml) {
+                                  showAlert.warning('Atención', 'Completa título y enlace');
+                                  return;
+                              }
                               handleSaveBlock('ENLACE', { titulo: bloqueTitulo, url_archivo: bloqueHtml });
                           }} 
                           disabled={saving}

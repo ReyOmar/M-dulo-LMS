@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { Check, X, ShieldAlert, Clock, KeyRound, Eye, EyeOff, Save, Loader2 } from "lucide-react";
@@ -6,6 +6,7 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import Link from "next/link";
 import api from "@/lib/api";
+import { showAlert } from "@/lib/alerts";
 
 export default function SolicitudesPendientes() {
   const { realRole } = useRole();
@@ -50,7 +51,7 @@ export default function SolicitudesPendientes() {
 
   const handleSavePassword = async () => {
     if (!newPassword || newPassword.length < 6) {
-      alert("La contraseña debe tener al menos 6 caracteres.");
+      showAlert.warning("Atención", "La contraseña debe tener al menos 6 caracteres.");
       return;
     }
     setSavingPassword(true);
@@ -61,7 +62,7 @@ export default function SolicitudesPendientes() {
       setTimeout(() => setPasswordSaved(false), 3000);
     } catch (err) {
       console.error(err);
-      alert("Error al guardar la contraseña.");
+      showAlert.error("Error", "Error al guardar la contraseña.");
     } finally {
       setSavingPassword(false);
     }

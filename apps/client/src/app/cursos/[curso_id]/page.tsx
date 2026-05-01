@@ -6,6 +6,8 @@ import { ArrowLeft, BookOpen, FileText, Type, CheckCircle, Trophy, Lock, PlayCir
 import { PageLoader } from "@/components/ui/PageLoader";
 import Link from "next/link";
 import api, { API_BASE_URL } from "@/lib/api";
+import QuizPlayer from "@/components/quiz/QuizPlayer";
+import AssignmentPlayer from "@/components/tareas/AssignmentPlayer";
 
 export default function CursoVisorPage() {
   const { curso_id } = useParams();
@@ -16,6 +18,7 @@ export default function CursoVisorPage() {
   const [selectedRecurso, setSelectedRecurso] = useState<any>(null);
   const [selectedModuloGuid, setSelectedModuloGuid] = useState<string>('');
   const [userGuid, setUserGuid] = useState<string>('');
+  const [progresoLoaded, setProgresoLoaded] = useState(false);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("lms_user");
@@ -55,6 +58,8 @@ export default function CursoVisorPage() {
       setCompletados(data.completados || []);
     } catch (err) {
       console.error(err);
+    } finally {
+      setProgresoLoaded(true);
     }
   };
 
@@ -68,20 +73,9 @@ export default function CursoVisorPage() {
     }
   }, [userGuid, completados]);
 
-  if (loading) {
-    return <PageLoader message="Cargando contenido del curso..." />;
-  }
 
-  if (!curso) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold">Curso no encontrado</h1>
-        <Link href="/dashboard" className="mt-4 text-primary font-bold">Volver al inicio</Link>
-      </div>
-    );
-  }
 
-  const modulos = curso.modulos || [];
+  const modulos = curso?.modulos || [];
 
   // --- UNLOCK LOGIC ---
   // For each module, check if ALL resources in the PREVIOUS module are completed
@@ -117,6 +111,51 @@ export default function CursoVisorPage() {
     }
   };
 
+  // Auto-select first uncompleted resource (Retomar Curso)
+  useEffect(() => {
+    if (curso && progresoLoaded && !selectedRecurso) {
+      const modulosList = curso.modulos || [];
+      let targetRecurso = null;
+      let targetModuloGuid = '';
+      let targetModIdx = -1;
+      let targetRecIdx = -1;
+
+      for (let m = 0; m < modulosList.length; m++) {
+        if (!isModuloUnlocked(m)) break;
+        const recursos = modulosList[m]?.lecciones?.[0]?.recursos || [];
+        for (let r = 0; r < recursos.length; r++) {
+          if (!completados.includes(recursos[r].guid)) {
+            // Found first uncompleted resource
+            targetRecurso = recursos[r];
+            targetModuloGuid = modulosList[m].guid;
+            targetModIdx = m;
+            targetRecIdx = r;
+            break;
+          }
+        }
+        if (targetRecurso) break;
+      }
+
+      // If all are completed, select the very last resource
+      if (!targetRecurso && modulosList.length > 0) {
+        const lastMod = modulosList[modulosList.length - 1];
+        const lastRecursos = lastMod?.lecciones?.[0]?.recursos || [];
+        if (lastRecursos.length > 0) {
+          targetRecurso = lastRecursos[lastRecursos.length - 1];
+          targetModuloGuid = lastMod.guid;
+          targetModIdx = modulosList.length - 1;
+          targetRecIdx = lastRecursos.length - 1;
+        }
+      }
+
+      if (targetRecurso) {
+        // Bypass the wrapper to avoid triggering complete immediately if not wanted,
+        // but handleSelectRecurso handles the marking anyway, which is fine.
+        handleSelectRecurso(targetRecurso, targetModuloGuid, targetModIdx, targetRecIdx);
+      }
+    }
+  }, [curso, progresoLoaded, selectedRecurso, completados]);
+
   const getRecursoIcon = (recurso: any, completed: boolean, locked: boolean) => {
     if (locked) return <Lock className="h-4 w-4 text-muted-foreground/50" />;
     if (recurso.tipo === 'TEXTO') return <Type className={`h-4 w-4 ${completed ? 'text-emerald-500' : ''}`} />;
@@ -126,19 +165,48 @@ export default function CursoVisorPage() {
     return <BookOpen className="h-4 w-4" />;
   };
 
+  const [isQuizActive, setIsQuizActive] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isQuizActive) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isQuizActive]);
+
+  if (loading) {
+    return <PageLoader message="Cargando contenido del curso..." />;
+  }
+
+  if (!curso) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <h1 className="text-2xl font-bold">Curso no encontrado</h1>
+        <Link href="/dashboard" className="mt-4 text-primary font-bold">Volver al inicio</Link>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Navbar */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50 h-16 flex items-center px-6 shrink-0">
-        <Link href="/dashboard/student/cursos" className="p-2 hover:bg-muted rounded-full transition-colors mr-4">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div className="flex-1 truncate font-bold text-lg">{curso.titulo}</div>
-      </header>
+      {!isQuizActive && (
+          <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50 h-16 flex items-center px-6 shrink-0">
+            <Link href="/dashboard/student/cursos" className="p-2 hover:bg-muted rounded-full transition-colors mr-4">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <div className="flex-1 truncate font-bold text-lg">{curso.titulo}</div>
+          </header>
+      )}
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar — Module & Resource List */}
-        <div className="w-[320px] bg-card border-r border-border overflow-y-auto flex flex-col shrink-0">
+        {!isQuizActive && (
+            <div className="w-[320px] bg-card border-r border-border overflow-y-auto flex flex-col shrink-0">
           <div className="p-4 border-b border-border">
             <h2 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Temario del Curso</h2>
           </div>
@@ -198,6 +266,7 @@ export default function CursoVisorPage() {
             })}
           </div>
         </div>
+        )}
 
         {/* Main Content Panel */}
         <div className="flex-1 overflow-y-auto p-8">
@@ -229,7 +298,7 @@ export default function CursoVisorPage() {
                     </a>
                   )}
                   {selectedRecurso.archivo_adjunto && (
-                    <a href={`${API_BASE_URL}/cursos/download/${selectedRecurso.archivo_adjunto}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 transition-colors">
+                    <a href={`${API_BASE_URL}/cursos/download/${selectedRecurso.archivo_adjunto}?originalName=${encodeURIComponent(selectedRecurso.archivo_adjunto_nombre)}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 transition-colors">
                       <Paperclip className="h-4 w-4 text-primary" />
                       <span className="text-sm font-bold">{selectedRecurso.archivo_adjunto_nombre || 'Archivo adjunto'}</span>
                     </a>
@@ -262,48 +331,33 @@ export default function CursoVisorPage() {
 
               {/* TAREA */}
               {selectedRecurso.tipo === 'TAREA' && !selectedRecurso.titulo?.startsWith('[QUIZ]') && (
-                <div className="space-y-6">
-                  <div className="prose prose-slate dark:prose-invert max-w-none bg-card rounded-2xl p-8 border border-border/50 shadow-sm" dangerouslySetInnerHTML={{ __html: selectedRecurso.contenido_html || '<p class="text-muted-foreground italic">Sin instrucciones.</p>' }} />
-                  {selectedRecurso.archivo_adjunto && (
-                    <a href={`${API_BASE_URL}/cursos/download/${selectedRecurso.archivo_adjunto}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 transition-colors">
-                      <Paperclip className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-bold">{selectedRecurso.archivo_adjunto_nombre || 'Archivo adjunto'}</span>
-                    </a>
-                  )}
-                  <div className="bg-card border border-border rounded-2xl p-8 text-center">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <UploadCloud className="h-8 w-8 text-primary" />
-                    </div>
-                    <h3 className="font-bold text-lg mb-2">Área de Entrega</h3>
-                    <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">Sube tu documento para que el examinador lo revise y califique.</p>
-                    <button
-                      onClick={() => router.push(`/cursos/${curso_id}/tareas/${selectedRecurso.guid}`)}
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-xl font-bold shadow-md transition-colors"
-                    >
-                      Ir a Subir Archivo
-                    </button>
-                  </div>
-                </div>
+                <AssignmentPlayer
+                  curso_id={curso_id as string}
+                  recurso_guid={selectedRecurso.guid}
+                  bloque_titulo={selectedRecurso.titulo}
+                  instrucciones_html={selectedRecurso.contenido_html || ''}
+                  archivo_adjunto={selectedRecurso.archivo_adjunto}
+                  archivo_adjunto_nombre={selectedRecurso.archivo_adjunto_nombre}
+                  url_referencia={selectedRecurso.url_referencia}
+                  archivo_max_size_mb={selectedRecurso.archivo_max_size_mb ?? 5}
+                  onFinish={() => fetchProgreso()}
+                />
               )}
 
               {/* QUIZ */}
               {selectedRecurso.tipo === 'TAREA' && selectedRecurso.titulo?.startsWith('[QUIZ]') && (
-                <div className="space-y-6">
-                  <div className="prose prose-slate dark:prose-invert max-w-none bg-card rounded-2xl p-8 border border-border/50 shadow-sm" dangerouslySetInnerHTML={{ __html: selectedRecurso.contenido_html || '<p class="text-muted-foreground italic">Sin instrucciones.</p>' }} />
-                  <div className="bg-card border border-amber-500/30 rounded-2xl p-8 text-center">
-                    <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <CheckCircle className="h-8 w-8 text-amber-500" />
-                    </div>
-                    <h3 className="font-bold text-lg mb-2">Cuestionario Interactivo</h3>
-                    <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">Responde las preguntas del cuestionario para avanzar.</p>
-                    <button
-                      onClick={() => router.push(`/cursos/${curso_id}/tareas/${selectedRecurso.guid}`)}
-                      className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-bold shadow-md transition-colors"
-                    >
-                      Comenzar Cuestionario
-                    </button>
-                  </div>
-                </div>
+                <QuizPlayer
+                  curso_id={curso_id as string}
+                  recurso_guid={selectedRecurso.guid}
+                  bloque_titulo={selectedRecurso.titulo.replace('[QUIZ] ', '')}
+                  quiz_config_raw={selectedRecurso.quiz_config || ''}
+                  instrucciones_html={selectedRecurso.contenido_html || ''}
+                  url_referencia={selectedRecurso.url_referencia}
+                  archivo_adjunto={selectedRecurso.archivo_adjunto}
+                  archivo_adjunto_nombre={selectedRecurso.archivo_adjunto_nombre}
+                  onFinish={() => fetchProgreso()}
+                  onQuizStateChange={(active) => setIsQuizActive(active)}
+                />
               )}
             </div>
           )}

@@ -36,14 +36,14 @@ export class CursosService {
 
   async getCursosDeProfesor(profesor_guid: string) {
     return this.prisma.lms_cursos.findMany({
-        where: { profesor_guid, estado: 'PUBLICADO' },
+        where: { profesor_guid }, // El profesor DEBE ver sus cursos en borrador para editarlos
         orderBy: { created_at: 'desc' }
     });
   }
 
   async getCursosDeEstudiante(estudiante_guid: string) {
     const matriculas = await this.prisma.lms_matriculas.findMany({
-      where: { usuario_guid: estudiante_guid },
+      where: { usuario_guid: estudiante_guid, curso: { estado: 'PUBLICADO' } },
       include: { curso: true },
       orderBy: { fecha_matricula: 'desc' }
     });
@@ -60,7 +60,7 @@ export class CursosService {
 
   async getCursosDeEstudianteConFecha(estudiante_guid: string) {
     const matriculas = await this.prisma.lms_matriculas.findMany({
-      where: { usuario_guid: estudiante_guid },
+      where: { usuario_guid: estudiante_guid, curso: { estado: 'PUBLICADO' } },
       include: { curso: { select: { guid: true, titulo: true, estado: true } } },
       orderBy: { fecha_matricula: 'desc' }
     });
@@ -110,12 +110,12 @@ export class CursosService {
     });
   }
 
-  async updateCurso(curso_guid: string, data: { titulo: string; estado: string }) {
+  async updateCurso(curso_guid: string, data: { titulo?: string; estado?: string }) {
     return this.prisma.lms_cursos.update({
         where: { guid: curso_guid },
         data: {
-            titulo: data.titulo,
-            estado: data.estado as lms_estado_curso
+            ...(data.titulo !== undefined && { titulo: data.titulo }),
+            ...(data.estado !== undefined && { estado: data.estado as lms_estado_curso }),
         }
     });
   }
@@ -200,11 +200,165 @@ export class CursosService {
     return this.prisma.lms_recursos.delete({ where: { guid } });
   }
 
+  async reorderBloques(modulo_guid: string, recursos_guids: string[]) {
+    // Validar que el módulo existe y obtener su lección principal
+    const modulo = await this.prisma.lms_modulos.findUnique({
+      where: { guid: modulo_guid },
+      include: { lecciones: true }
+    });
+    if (!modulo || !modulo.lecciones || modulo.lecciones.length === 0) {
+      throw new NotFoundException('Módulo o lección no encontrada.');
+    }
+    
+    // Ejecutar transacciones en secuencia para actualizar el campo orden de cada recurso
+    const queries = recursos_guids.map((guid, index) => {
+      return this.prisma.lms_recursos.update({
+        where: { guid },
+        data: { orden: index }
+      });
+    });
+
+    return this.prisma.$transaction(queries);
+  }
+
   async deleteModulo(guid: string) {
     return this.prisma.lms_modulos.delete({ where: { guid } });
   }
 
   async deleteCurso(guid: string) {
     return this.prisma.lms_cursos.delete({ where: { guid } });
+  }
+
+  async startQuiz(recurso_guid: string, usuario_guid: string) {
+    const bloque = await this.prisma.lms_recursos.findUnique({ where: { guid: recurso_guid } });
+    if (!bloque || bloque.tipo !== 'TAREA' || !bloque.quiz_config) {
+      throw new BadRequestException('El recurso no es un cuestionario válido.');
+    }
+
+    const enProgreso = await this.prisma.lms_entregas.findFirst({
+        where: { tarea_guid: recurso_guid, usuario_guid, estado: 'BORRADOR' }
+    });
+    if (enProgreso) return { success: true, guid: enProgreso.guid, fecha_inicio: enProgreso.fecha_inicio };
+
+    const prevAttempts = await this.prisma.lms_entregas.count({
+        where: { tarea_guid: recurso_guid, usuario_guid, estado: { in: ['CALIFICADA', 'ENTREGADA', 'ENTREGADA_TARDE'] } }
+    });
+
+    const nueva = await this.prisma.lms_entregas.create({
+        data: {
+            usuario_guid,
+            tarea_guid: recurso_guid,
+            estado: 'BORRADOR',
+            fecha_inicio: new Date(),
+            intento_numero: prevAttempts + 1
+        }
+    });
+
+    return { success: true, guid: nueva.guid, fecha_inicio: nueva.fecha_inicio };
+  }
+
+  async evaluarQuiz(recurso_guid: string, usuario_guid: string, respuestas: Record<string, string>) {
+    const bloque = await this.prisma.lms_recursos.findUnique({ where: { guid: recurso_guid } });
+    if (!bloque || bloque.tipo !== 'TAREA' || !bloque.quiz_config) {
+      throw new BadRequestException('El recurso no es un cuestionario válido.');
+    }
+
+    let quizConfig: any;
+    try { quizConfig = JSON.parse(bloque.quiz_config); } catch {
+      throw new BadRequestException('Configuración de cuestionario corrupta.');
+    }
+
+    const preguntas = quizConfig.preguntas || [];
+    let correctas = 0;
+    const total = preguntas.length;
+
+    for (const p of preguntas) {
+      const userAnswer = respuestas[p.id];
+      const correctOption = p.opciones.find((o: any) => o.es_correcta);
+      if (correctOption && userAnswer === correctOption.id) {
+        correctas++;
+      }
+    }
+
+    let nota = 0;
+    if (total > 0) {
+      nota = parseFloat(((correctas / total) * 5).toFixed(1));
+    }
+
+    const enProgreso = await this.prisma.lms_entregas.findFirst({
+        where: { tarea_guid: recurso_guid, usuario_guid, estado: 'BORRADOR' }
+    });
+
+    if (enProgreso) {
+        await this.prisma.lms_entregas.update({
+            where: { guid: enProgreso.guid },
+            data: {
+                estado: 'CALIFICADA',
+                fecha_entrega: new Date(),
+                contenido_texto: `NOTA: ${nota.toFixed(1)} | ${correctas}/${total} correctas`,
+            }
+        });
+    } else {
+        await this.prisma.lms_entregas.create({
+            data: {
+                usuario_guid,
+                tarea_guid: recurso_guid,
+                estado: 'CALIFICADA',
+                fecha_inicio: new Date(),
+                fecha_entrega: new Date(),
+                contenido_texto: `NOTA: ${nota.toFixed(1)} | ${correctas}/${total} correctas`,
+            }
+        });
+    }
+
+    if (nota >= 3.0) {
+        const existente = await this.prisma.lms_progreso_recurso.findFirst({
+            where: { usuario_guid, recurso_guid }
+        });
+        if (!existente) {
+            await this.prisma.lms_progreso_recurso.create({
+                data: { usuario_guid, recurso_guid }
+            });
+        }
+    }
+
+    return { success: true, nota, correctas, total };
+  }
+
+  async getQuizStatus(recurso_guid: string, usuario_guid: string) {
+    const entregas = await this.prisma.lms_entregas.findMany({
+      where: { tarea_guid: recurso_guid, usuario_guid }
+    });
+    
+    let mejor_nota = 0;
+    let inProgressAttempt: any = null;
+    let validAttempts = 0;
+
+    for (const e of entregas) {
+      if (e.estado === 'BORRADOR') {
+          inProgressAttempt = e;
+      } else if (e.estado === 'CALIFICADA' || e.contenido_texto?.startsWith('NOTA: ')) {
+          validAttempts++;
+          if (e.contenido_texto) {
+              const notaStr = e.contenido_texto.replace('NOTA: ', '').split(' | ')[0];
+              const n = parseFloat(notaStr);
+              if (!isNaN(n) && n > mejor_nota) {
+                mejor_nota = n;
+              }
+          }
+      }
+    }
+    
+    const progreso = await this.prisma.lms_progreso_recurso.findFirst({
+        where: { usuario_guid, recurso_guid }
+    });
+
+    return {
+      intentos_realizados: validAttempts,
+      mejor_nota,
+      completado: !!progreso,
+      in_progress: !!inProgressAttempt,
+      fecha_inicio: inProgressAttempt?.fecha_inicio
+    };
   }
 }

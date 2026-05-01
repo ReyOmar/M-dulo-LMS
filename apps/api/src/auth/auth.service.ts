@@ -44,7 +44,11 @@ export class AuthService {
   async login(email: string, contrasena: string) {
     const user = await this.prisma.usuarios.findUnique({ where: { email } });
     if (!user) {
-      throw new UnauthorizedException('Credenciales inválidas.');
+      const request = await this.prisma.lms_solicitudes_acceso.findUnique({ where: { email } });
+      if (request && request.estado === 'PENDIENTE') {
+        throw new UnauthorizedException('Aún está en espera de autorización.');
+      }
+      throw new UnauthorizedException('El usuario no está registrado.');
     }
 
     if (!contrasena) {
@@ -62,7 +66,7 @@ export class AuthService {
 
     const isValid = await bcrypt.compare(contrasena, user.contrasena);
     if (!isValid) {
-      throw new UnauthorizedException('Credenciales inválidas.');
+      throw new UnauthorizedException('Contraseña incorrecta.');
     }
 
     // Si la contraseña es la predeterminada, fuerza configuración
@@ -134,6 +138,33 @@ export class AuthService {
         updated_at: true,
       }
     });
+  }
+
+  async deleteUser(guid: string) {
+    const user = await this.prisma.usuarios.findUnique({ where: { guid } });
+    if (!user) throw new NotFoundException('Usuario no encontrado.');
+
+    // Reasignar cursos si es PROFESOR o ADMIN para no borrarlos
+    if (user.rol === 'PROFESOR' || user.rol === 'ADMINISTRADOR') {
+      const fallbackAdmin = await this.prisma.usuarios.findFirst({
+        where: { rol: 'ADMINISTRADOR', activo: true, guid: { not: guid } }
+      });
+      
+      if (fallbackAdmin) {
+        await this.prisma.lms_cursos.updateMany({
+          where: { profesor_guid: guid },
+          data: { profesor_guid: fallbackAdmin.guid }
+        });
+      }
+    }
+
+    // Las entregas no tienen onDelete: Cascade en el schema, así que las borramos manualmente (para estudiantes)
+    await this.prisma.lms_entregas.deleteMany({
+      where: { usuario_guid: guid }
+    });
+
+    await this.prisma.usuarios.delete({ where: { guid } });
+    return { message: 'Cuenta eliminada exitosamente. Sus cursos han sido reasignados a otro administrador si los hubiera.' };
   }
 
   async getPendingRequests() {

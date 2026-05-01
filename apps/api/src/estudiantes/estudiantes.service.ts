@@ -95,6 +95,50 @@ export class EstudiantesService {
         data: { usuario_guid }
       });
     }
-    return metricas;
+
+    const matriculas = await this.prisma.lms_matriculas.findMany({
+      where: { usuario_guid },
+      include: {
+        curso: {
+          include: {
+            modulos: {
+              include: {
+                lecciones: {
+                  include: {
+                    recursos: { select: { guid: true } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    let cursos_completados = 0;
+    let total_recursos_completados = 0;
+
+    for (const mat of matriculas) {
+      const recursoGuids = mat.curso.modulos.flatMap((m: any) => m.lecciones.flatMap((l: any) => l.recursos.map((r: any) => r.guid)));
+      if (recursoGuids.length === 0) continue;
+
+      const completados = await this.prisma.lms_progreso_recurso.count({
+        where: { usuario_guid, recurso_guid: { in: recursoGuids } }
+      });
+
+      total_recursos_completados += completados;
+
+      if (completados === recursoGuids.length) {
+        cursos_completados++;
+      }
+    }
+
+    const horas_estimadas = total_recursos_completados * 0.5;
+
+    return {
+      ...metricas,
+      cursos_completados,
+      total_horas_invertidas: Math.max(Number(metricas.total_horas_invertidas), horas_estimadas)
+    };
   }
 }

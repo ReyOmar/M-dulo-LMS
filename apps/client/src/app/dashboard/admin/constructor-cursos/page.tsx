@@ -40,6 +40,42 @@ export default function ConstructorCursosRoot() {
   // Custom confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{open: boolean; title: string; message: string; onConfirm: () => void}>({open: false, title: '', message: '', onConfirm: () => {}});
 
+  // DND States
+  const [draggedItem, setDraggedItem] = useState<{guid: string, moduloId: string, index: number} | null>(null);
+  const [dragOverItem, setDragOverItem] = useState<{guid: string, moduloId: string, index: number} | null>(null);
+
+  const handleReorder = async (moduloId: string, startIndex: number, endIndex: number) => {
+    if (startIndex === endIndex) return;
+    const mod = activeCourse.modulos.find((m: any) => m.guid === moduloId);
+    if (!mod) return;
+    
+    const recursos = [...(mod.lecciones?.[0]?.recursos || [])];
+    const [removed] = recursos.splice(startIndex, 1);
+    recursos.splice(endIndex, 0, removed);
+
+    // Actualización optimista
+    const updatedModulos = activeCourse.modulos.map((m: any) => {
+      if (m.guid === moduloId) {
+        return {
+          ...m,
+          lecciones: [{ ...m.lecciones[0], recursos }]
+        };
+      }
+      return m;
+    });
+    setActiveCourse({ ...activeCourse, modulos: updatedModulos });
+
+    try {
+      const guids = recursos.map(r => r.guid);
+      await api.patch(`/cursos/modulos/${moduloId}/recursos/reorder`, { recursos_guids: guids });
+    } catch (err) {
+      console.error(err);
+      // Revertir si falla
+      const originalCourse = await api.get(`/cursos/${activeCourse.guid}`).then(r => r.data);
+      setActiveCourse(originalCourse);
+    }
+  };
+
   const showConfirm = useCallback((title: string, message: string): Promise<boolean> => {
       return new Promise((resolve) => {
           setConfirmModal({
@@ -75,6 +111,31 @@ export default function ConstructorCursosRoot() {
         .then(r => r.data)
         .then(data => {
             setActiveCourse(data);
+            
+            const resourceId = searchParams?.get('resource');
+            const moduleId = searchParams?.get('module');
+            if (resourceId && moduleId) {
+                const mod = data.modulos?.find((m: any) => m.guid === moduleId);
+                if (mod) {
+                    const rec = mod.lecciones?.[0]?.recursos?.find((r: any) => r.guid === resourceId);
+                    if (rec) {
+                        setSelectedItem({ type: 'RESOURCE', data: rec, moduloId: moduleId });
+                        setExpandedModules(prev => ({...prev, [moduleId]: true}));
+                        setEditingBlockId(rec.guid);
+                        let modalType: 'PARRAFO'|'TAREA'|'CUESTIONARIO'|'ENLACE' = 'PARRAFO';
+                        if (rec.tipo === 'TEXTO') modalType = 'PARRAFO';
+                        if (rec.tipo === 'ENLACE') modalType = 'ENLACE';
+                        if (rec.tipo === 'TAREA' && !rec.titulo.startsWith('[QUIZ]')) modalType = 'TAREA';
+                        if (rec.tipo === 'TAREA' && rec.titulo.startsWith('[QUIZ]')) modalType = 'CUESTIONARIO';
+                        let cleanTitle = rec.titulo;
+                        if (modalType === 'CUESTIONARIO') cleanTitle = cleanTitle.replace('[QUIZ] ', '');
+                        setBloqueTitulo(cleanTitle);
+                        setBloqueHtml(rec.contenido_html || '');
+                        if (modalType === 'ENLACE') setBloqueBase64(rec.url_archivo || rec.contenido_html || '');
+                        setBloqueTipo(modalType);
+                    }
+                }
+            }
         })
         .catch(console.error);
     }
@@ -216,7 +277,7 @@ export default function ConstructorCursosRoot() {
       }
       if (recurso?.archivo_adjunto_nombre && recurso?.archivo_adjunto) {
           extras.push(
-              <a key="file" href={`${API_BASE_URL}/cursos/download/${recurso.archivo_adjunto}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-colors cursor-pointer group">
+              <a key="file" href={`${API_BASE_URL}/cursos/download/${recurso.archivo_adjunto}?originalName=${encodeURIComponent(recurso.archivo_adjunto_nombre)}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-colors cursor-pointer group">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                       <Paperclip className="h-4 w-4 text-primary" />
                   </div>
@@ -228,10 +289,10 @@ export default function ConstructorCursosRoot() {
               </a>
           );
       }
-      if (recurso?.archivo_max_size_mb) {
+      if (recurso?.archivo_max_size_mb && recurso.tipo === 'TAREA' && !recurso.titulo?.startsWith('[QUIZ]')) {
           extras.push(
-              <div key="maxsize" className="flex items-center gap-2 p-2 px-3 bg-muted/20 border border-border/50 rounded-lg text-xs text-muted-foreground">
-                  <span className="font-bold">Peso máximo:</span> {recurso.archivo_max_size_mb} MB (admin y estudiante)
+              <div key="maxsize" className="flex items-center gap-2 p-2 px-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-700 dark:text-amber-500">
+                  <span className="font-bold">Límite de entrega:</span> {recurso.archivo_max_size_mb} MB por estudiante
               </div>
           );
       }
@@ -338,7 +399,7 @@ export default function ConstructorCursosRoot() {
                 {/* Header for Active Course */}
                 <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
                     <div className="flex items-center gap-4 flex-1">
-                        <button type="button" onClick={() => { if (role === 'teacher') { router.push('/dashboard'); } else { setActiveCourse(null); window.history.replaceState({}, '', window.location.pathname); } }} className="p-2 bg-muted rounded-full hover:bg-border transition-colors">
+                        <button type="button" onClick={() => { if (role === 'teacher') { router.push('/dashboard'); } else { setActiveCourse(null); setSelectedItem({type: null, data: null}); setExpandedModules({}); setMenuOpenForModule(null); window.history.replaceState({}, '', window.location.pathname); } }} className="p-2 bg-muted rounded-full hover:bg-border transition-colors">
                             <ArrowLeft className="h-5 w-5 text-muted-foreground" />
                         </button>
                         <div className="flex flex-col flex-1 max-w-xl group">
@@ -378,6 +439,9 @@ export default function ConstructorCursosRoot() {
                                         
                                         const deletedGuid = activeCourse.guid;
                                         setActiveCourse(null);
+                                        setSelectedItem({type: null, data: null});
+                                        setExpandedModules({});
+                                        setMenuOpenForModule(null);
                                         setCursos(prev => prev.filter(c => c.guid !== deletedGuid));
                                         window.history.replaceState({}, '', window.location.pathname);
                                     } catch (err) {
@@ -620,16 +684,43 @@ export default function ConstructorCursosRoot() {
                                                     {recursos.length === 0 ? (
                                                         <div className="text-xs text-muted-foreground py-2 italic text-center">Vacío</div>
                                                     ) : (
-                                                        recursos.map((r: any) => {
+                                                        recursos.map((r: any, rIndex: number) => {
                                                             const isQuiz = r.tipo === 'TAREA' && r.titulo.startsWith('[QUIZ]');
                                                             const displayTitle = isQuiz ? r.titulo.replace('[QUIZ] ', '') : r.titulo;
                                                             const isSelected = selectedItem.type === 'RESOURCE' && selectedItem.data.guid === r.guid;
+                                                            
+                                                            const isDragging = draggedItem?.guid === r.guid;
+                                                            const isDragOver = dragOverItem?.guid === r.guid;
 
                                                             return (
                                                                 <div 
                                                                     key={r.guid}
+                                                                    draggable
+                                                                    onDragStart={(e) => {
+                                                                        e.dataTransfer.effectAllowed = "move";
+                                                                        setDraggedItem({ guid: r.guid, moduloId: mod.guid, index: rIndex });
+                                                                    }}
+                                                                    onDragOver={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.dataTransfer.dropEffect = "move";
+                                                                        if (draggedItem?.moduloId === mod.guid && draggedItem?.guid !== r.guid) {
+                                                                            setDragOverItem({ guid: r.guid, moduloId: mod.guid, index: rIndex });
+                                                                        }
+                                                                    }}
+                                                                    onDrop={(e) => {
+                                                                        e.preventDefault();
+                                                                        if (draggedItem && dragOverItem && draggedItem.moduloId === mod.guid && dragOverItem.moduloId === mod.guid) {
+                                                                            handleReorder(mod.guid, draggedItem.index, dragOverItem.index);
+                                                                        }
+                                                                        setDraggedItem(null);
+                                                                        setDragOverItem(null);
+                                                                    }}
+                                                                    onDragEnd={() => {
+                                                                        setDraggedItem(null);
+                                                                        setDragOverItem(null);
+                                                                    }}
                                                                     onClick={() => openAppEdit(r, mod.guid)}
-                                                                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors text-sm ${isSelected ? 'bg-primary/10 text-primary font-bold' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}
+                                                                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all text-sm ${isSelected ? 'bg-primary/10 text-primary font-bold' : 'hover:bg-muted text-muted-foreground hover:text-foreground'} ${isDragging ? 'opacity-50 border border-dashed border-primary' : ''} ${isDragOver ? 'border-t-2 border-t-primary' : ''}`}
                                                                 >
                                                                     {r.tipo === 'TEXTO' && <Type className="h-4 w-4 shrink-0" />}
                                                                     {r.tipo === 'ENLACE' && (r.contenido_html?.startsWith('data:image') || r.url_archivo?.startsWith('data:image')) && <ImageIcon className="h-4 w-4 shrink-0" />}
@@ -678,6 +769,9 @@ export default function ConstructorCursosRoot() {
                                 const resDetails = await api.get(`/cursos/${curso.guid}`);
                                 const data = resDetails.data;
                                 setActiveCourse(data);
+                                setSelectedItem({type: null, data: null});
+                                setExpandedModules({});
+                                setMenuOpenForModule(null);
                                 // Update URL without reloading so F5 works
                                 window.history.pushState({}, '', `?curso=${curso.guid}`);
                             } catch(e) { console.error(e) }
