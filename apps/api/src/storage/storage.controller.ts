@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Res, Body, Query } from '@nestjs/common';
+import { Controller, Post, Get, Param, Res, Body, Query, StreamableFile, BadRequestException } from '@nestjs/common';
 import { StorageService } from './storage.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -19,10 +19,10 @@ export class StorageController {
 
   @Public()
   @Get('/download/:filename')
-  async downloadFile(@Param('filename') filename: string, @Query('originalName') originalName: string, @Res() res: any) {
+  async downloadFile(@Param('filename') filename: string, @Query('originalName') originalName: string, @Res({ passthrough: true }) res: any) {
     const sanitized = path.basename(filename);
     if (!sanitized || sanitized !== filename) {
-      return res.status(400).send({ message: 'Nombre de archivo inválido.' });
+      throw new BadRequestException('Nombre de archivo inválido.');
     }
 
     const filePath = this.storageService.getUploadPath(sanitized);
@@ -37,6 +37,6 @@ export class StorageController {
 
     res.header('Content-Type', contentType);
     res.header('Content-Disposition', `attachment; filename="${downloadName}"`);
-    return res.send(stream);
+    return new StreamableFile(stream);
   }
 }

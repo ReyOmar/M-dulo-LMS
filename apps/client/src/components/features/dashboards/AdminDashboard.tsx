@@ -24,6 +24,7 @@ export function AdminDashboard() {
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { subscribe } = useWS();
 
   const fetchDashboardData = () => {
@@ -34,6 +35,7 @@ export function AdminDashboard() {
       const pending = Array.isArray(solicitudes) ? solicitudes.filter((s: any) => s.estado === 'PENDIENTE').length : 0;
       setSolicitudesPendientes(pending);
       setStats(dashStats);
+      setLastUpdated(new Date());
       setLoading(false);
     });
   };
@@ -66,9 +68,15 @@ export function AdminDashboard() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Panel Administrativo</h1>
           <p className="text-muted-foreground mt-1">Visión de estado general de la plataforma y métricas maestras.</p>
         </div>
-        <p className="text-xs text-muted-foreground font-medium">
-          Última actualización: <span className="text-foreground font-semibold">{stats?.timestamp ? new Date(stats.timestamp).toLocaleString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '...'}</span>
-        </p>
+        <div className="flex items-center gap-2 bg-muted/20 border border-border/50 px-3 py-1.5 rounded-full">
+          <span className="flex h-2 w-2 relative" title="Conexión en tiempo real activa">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <p className="text-xs text-muted-foreground font-medium">
+            Última actualización: <span className="text-foreground font-bold">{lastUpdated ? lastUpdated.toLocaleString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) : '...'}</span>
+          </p>
+        </div>
       </header>
 
       {/* =================== KPI CARDS =================== */}

@@ -57,19 +57,37 @@ export default function BaseUsuarios() {
     // Auto-refresh user list when new users are created or deleted via WS
     const unsub1 = subscribe('user:created', fetchUsuarios);
     const unsub2 = subscribe('user:deleted', fetchUsuarios);
+    const unsub_updated = subscribe('user:updated', () => {
+      fetchUsuarios();
+      if (selectedUser) {
+        // Also refresh selected user profile? Actually just fetchUsuarios will update the list
+        // and selectedUser is just state. Let's rely on dashboard:refresh for deep refresh.
+      }
+    });
     const unsub3 = subscribe('presence:update', () => {
       // Force re-render to update online status dots, even if list doesn't change
       setUsuarios(prev => [...prev]); 
     });
-    const unsub4 = subscribe('dashboard:refresh', fetchUsuarios);
+    const unsub4 = subscribe('dashboard:refresh', () => {
+      fetchUsuarios();
+      if (selectedUser) {
+        api.get(`/cursos/usuario-cursos?usuario_guid=${selectedUser.guid}&rol=${selectedUser.rol}`)
+          .then(res => setUserCourses(Array.isArray(res.data) ? res.data : []))
+          .catch(console.error);
+        if (selectedUser.rol === 'ADMINISTRADOR') {
+          api.get('/auth/admin-stats').then(res => setAdminStats(res.data)).catch(console.error);
+        }
+      }
+    });
     
     return () => {
       unsub1();
       unsub2();
+      unsub_updated();
       unsub3();
       unsub4();
     };
-  }, [realRole, subscribe]);
+  }, [realRole, subscribe, selectedUser]);
 
   const fetchUsuarios = async () => {
     try {
@@ -387,7 +405,15 @@ export default function BaseUsuarios() {
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {userCourses.map(curso => (
-                    <div key={curso.guid} className="flex items-center justify-between p-3 bg-muted/10 rounded-xl border border-border/30 hover:border-primary/30 transition-colors">
+                    <div 
+                      key={curso.guid} 
+                      onClick={() => {
+                        if (selectedUser?.rol === 'PROFESOR') {
+                           window.location.href = `/dashboard/admin/asignacion-cursos?curso=${curso.guid}`;
+                        }
+                      }}
+                      className={`flex items-center justify-between p-3 bg-muted/10 rounded-xl border border-border/30 transition-colors ${selectedUser?.rol === 'PROFESOR' ? 'cursor-pointer hover:border-primary hover:bg-primary/5' : 'hover:border-primary/30'}`}
+                    >
                       <div className="flex items-center gap-3">
                         <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center">
                           <BookOpen className="h-4 w-4 text-primary" />
@@ -395,7 +421,7 @@ export default function BaseUsuarios() {
                         <div>
                           <p className="text-sm font-bold">{curso.titulo}</p>
                           <p className="text-xs text-muted-foreground">
-                            {selectedUser?.rol === 'PROFESOR' || selectedUser?.rol === 'ADMINISTRADOR' ? 'Creado' : 'Matriculado'}: {(() => {
+                            {selectedUser?.rol === 'PROFESOR' ? 'Asignado' : selectedUser?.rol === 'ADMINISTRADOR' ? 'Creado' : 'Matriculado'}: {(() => {
                               const d = curso.fecha_asignacion || curso.updated_at || curso.created_at;
                               return d ? new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Sin fecha';
                             })()}

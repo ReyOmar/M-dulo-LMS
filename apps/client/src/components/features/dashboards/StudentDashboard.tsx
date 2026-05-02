@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Play, BookOpen, Clock, GraduationCap, Bell, ChevronLeft, ChevronRight, Loader2, X, Flame } from "lucide-react";
+import { Play, BookOpen, Clock, GraduationCap, Bell, ChevronLeft, ChevronRight, Loader2, X, Flame, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
 import { useWS } from "@/contexts/WebSocketContext";
@@ -9,7 +9,7 @@ import api from "@/lib/api";
 
 export function StudentDashboard() {
   const { user } = useRole();
-  const { subscribe } = useWS();
+  const { subscribe, maintenanceCourses } = useWS();
   const router = useRouter();
 
   const [cursos, setCursos] = useState<any[]>([]);
@@ -101,7 +101,8 @@ export function StudentDashboard() {
   };
 
   const unreadCount = notificaciones.filter(n => !n.leida).length;
-  const lastCurso = cursos.length > 0 ? cursos[0] : null;
+  const lastCurso = cursos.length > 0 ? (cursos.find(c => c.estado === 'PUBLICADO' && !maintenanceCourses[c.guid]) || cursos[0]) : null;
+  const lastCursoInMaintenance = lastCurso ? (lastCurso.estado === 'BORRADOR' || !!maintenanceCourses[lastCurso.guid]) : false;
 
   // --- Calendar helpers ---
   const calYear = calendarDate.getFullYear();
@@ -217,12 +218,18 @@ export function StudentDashboard() {
                 <p className="text-primary-foreground/70 mb-6">
                   {lastCurso.modulos?.length || 0} módulos · {progreso.completados}/{progreso.total} recursos completados
                 </p>
-                <button
-                  onClick={() => router.push(`/cursos/${lastCurso.guid}`)}
-                  className="flex items-center gap-2 bg-white text-primary px-6 py-3 rounded-xl font-bold hover:scale-105 transition-transform shadow-md"
-                >
-                  <Play className="h-4 w-4 fill-primary" /> Retomar Curso
-                </button>
+                {lastCursoInMaintenance ? (
+                  <div className="flex items-center gap-2 bg-amber-500/20 text-amber-100 px-6 py-3 rounded-xl font-bold border border-amber-400/30">
+                    <AlertTriangle className="h-4 w-4" /> En Mantenimiento
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => router.push(`/cursos/${lastCurso.guid}`)}
+                    className="flex items-center gap-2 bg-white text-primary px-6 py-3 rounded-xl font-bold hover:scale-105 transition-transform shadow-md"
+                  >
+                    <Play className="h-4 w-4 fill-primary" /> Retomar Curso
+                  </button>
+                )}
               </>
             ) : (
               <>

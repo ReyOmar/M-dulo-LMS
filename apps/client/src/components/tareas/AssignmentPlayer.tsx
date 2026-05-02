@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Check, UploadCloud, File as FileIcon, Loader2, Trophy, Clock, AlertTriangle, Paperclip, CheckCircle2, Download, Award } from "lucide-react";
 import api, { API_BASE_URL } from "@/lib/api";
+import { useWS } from "@/contexts/WebSocketContext";
 
 interface AssignmentPlayerProps {
     curso_id: string;
@@ -33,6 +34,7 @@ export default function AssignmentPlayer({
     const [isDragging, setIsDragging] = useState(false);
     const [entrega, setEntrega] = useState<any>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { subscribe } = useWS();
 
     const fetchStatus = async () => {
         try {
@@ -68,6 +70,15 @@ export default function AssignmentPlayer({
     useEffect(() => {
         fetchStatus();
     }, [recurso_guid]);
+
+    useEffect(() => {
+        const unsub = subscribe('submission:graded', (data: any) => {
+            if (data.tarea_guid === recurso_guid) {
+                fetchStatus();
+            }
+        });
+        return unsub;
+    }, [recurso_guid, subscribe]);
 
     const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -149,7 +160,7 @@ export default function AssignmentPlayer({
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {url_referencia && (
-                            <a href={url_referencia} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-background border border-border rounded-xl hover:border-blue-500/50 hover:shadow-md transition-all group">
+                            <a href={(() => { const u = url_referencia || ''; return /^https?:\/\//i.test(u) || u.startsWith('//') ? u : `https://${u}`; })()} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-background border border-border rounded-xl hover:border-blue-500/50 hover:shadow-md transition-all group">
                                 <div className="h-10 w-10 bg-blue-500/10 text-blue-500 flex items-center justify-center rounded-lg group-hover:scale-110 transition-transform">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
                                 </div>
@@ -177,6 +188,30 @@ export default function AssignmentPlayer({
             {/* STATUS / UPLOAD PANEL */}
             <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
                 
+                {/* Feedback del Examinador (Sólo si está calificada o tiene comentario) */}
+                {entrega?.estado === 'CALIFICADA' && (
+                    <div className="bg-amber-500/5 border-b border-amber-500/20 p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="flex items-start gap-4 flex-1">
+                            <div className="h-12 w-12 bg-amber-500/20 text-amber-600 flex items-center justify-center rounded-xl shrink-0 mt-1">
+                                <Award className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-amber-700 dark:text-amber-400 text-lg">Tarea Calificada</h3>
+                                <p className="text-sm text-amber-600/80 mb-2">Tu examinador ha revisado y calificado tu entrega.</p>
+                                {comentarioStr && (
+                                    <div className="bg-background/80 border border-amber-500/20 rounded-lg p-3 text-sm italic text-foreground">
+                                        "{comentarioStr}"
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="text-right shrink-0 bg-background/50 p-4 rounded-xl border border-amber-500/20">
+                            <div className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Calificación Obtenida</div>
+                            <div className="text-4xl font-black text-amber-500">{notaStr} <span className="text-base text-amber-500/50">/ 5.0</span></div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Zona de Subida / Entrega Realizada */}
                 <div 
                     className={`relative p-8 transition-all duration-300 
@@ -271,29 +306,6 @@ export default function AssignmentPlayer({
                     )}
                 </div>
 
-                {/* Feedback del Examinador (Sólo si está calificada o tiene comentario) */}
-                {entrega?.estado === 'CALIFICADA' && (
-                    <div className="bg-amber-500/5 border-t border-amber-500/20 p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-                        <div className="flex items-start gap-4 flex-1">
-                            <div className="h-12 w-12 bg-amber-500/20 text-amber-600 flex items-center justify-center rounded-xl shrink-0 mt-1">
-                                <Award className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-amber-700 dark:text-amber-400 text-lg">Tarea Calificada</h3>
-                                <p className="text-sm text-amber-600/80 mb-2">Tu examinador ha revisado y calificado tu entrega.</p>
-                                {comentarioStr && (
-                                    <div className="bg-background/80 border border-amber-500/20 rounded-lg p-3 text-sm italic text-foreground">
-                                        "{comentarioStr}"
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="text-right shrink-0 bg-background/50 p-4 rounded-xl border border-amber-500/20">
-                            <div className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Calificación Obtenida</div>
-                            <div className="text-4xl font-black text-amber-500">{notaStr} <span className="text-base text-amber-500/50">/ 5.0</span></div>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

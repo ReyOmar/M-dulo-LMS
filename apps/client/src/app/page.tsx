@@ -1,6 +1,12 @@
-﻿import { GraduationCap, ArrowRight, ShieldCheck, BookOpen } from "lucide-react";
+"use client";
+
+import { GraduationCap, ArrowRight, ShieldCheck, BookOpen } from "lucide-react";
+import { useConfig } from "@/contexts/ConfigContext";
 
 export default function Home() {
+  const { config } = useConfig();
+  const platformName = config?.nombre_plataforma || "PESV Education";
+
   return (
     <div className="flex flex-col min-h-screen bg-background relative overflow-hidden">
       {/* Dynamic Background Effects */}
@@ -12,8 +18,12 @@ export default function Home() {
       <header className="px-6 h-20 flex items-center border-b border-border/40 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-xl text-primary drop-shadow-sm">
-            <GraduationCap className="h-6 w-6 text-primary" />
-            <span>PESV Education</span>
+            {config?.logo_url ? (
+              <img src={config.logo_url} alt="Logo" className="max-h-10 max-w-[40px] object-contain" />
+            ) : (
+              <GraduationCap className="h-6 w-6 text-primary" />
+            )}
+            <span>{platformName}</span>
           </div>
           <nav className="hidden md:flex gap-6 items-center text-sm font-medium text-muted-foreground">
             <a href="#features" className="hover:text-primary transition-colors">Características</a>
@@ -77,7 +87,7 @@ export default function Home() {
       
       <footer className="border-t border-border/40 py-8 px-6 mt-12 bg-muted/20">
         <div className="container mx-auto flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground">
-          <p>Â© 2026 PESV Education Platform.</p>
+          <p>Â© {new Date().getFullYear()} {platformName} Platform.</p>
           <p className="mt-4 md:mt-0 flex items-center gap-1">Diseñado para alto rendimiento y seguridad corporativa</p>
         </div>
       </footer>

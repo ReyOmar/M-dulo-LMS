@@ -24,6 +24,10 @@ export class UpdateCursoDto {
   @IsOptional()
   @IsString()
   estado?: string;
+
+  @IsOptional()
+  @IsString()
+  imagen_portada?: string;
 }
 
 export class CreateModuloDto {

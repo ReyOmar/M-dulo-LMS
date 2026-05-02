@@ -2,8 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { WebSocketGateway, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
 import { IncomingMessage } from 'http';
 import * as WebSocket from 'ws';
+
+interface CourseEditor {
+  guid: string;
+  role: string;
+  nombre: string;
+}
 
 interface ConnectedClient {
   socket: WebSocket;
@@ -37,10 +44,12 @@ interface ConnectedClient {
 @Injectable()
 export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private clients: ConnectedClient[] = [];
+  private courseEditors: Map<string, CourseEditor> = new Map();
 
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
+    private prisma: PrismaService,
   ) {}
 
   async handleConnection(client: WebSocket, req: IncomingMessage): Promise<void> {
@@ -48,33 +57,69 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const url = new URL(req.url || '', 'http://localhost');
       const token = url.searchParams.get('token');
 
-      if (!token) {
-        client.close(4001, 'Token requerido');
-        return;
-      }
+      let payload: any = null;
+      if (token) {
+        payload = await this.jwtService.verifyAsync(token, {
+          secret: this.configService.get<string>('JWT_SECRET'),
+        });
 
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get<string>('JWT_SECRET'),
-      });
-
-      if (!payload?.sub) {
-        client.close(4002, 'Token inválido');
-        return;
+        if (!payload?.sub) {
+          client.close(4002, 'Token inválido');
+          return;
+        }
       }
 
       const connectedClient: ConnectedClient = {
         socket: client,
-        guid: payload.sub,
-        role: payload.role,
+        guid: payload?.sub || `guest-${Math.random().toString(36).substring(7)}`,
+        role: payload?.role || 'GUEST',
       };
 
       this.clients.push(connectedClient);
 
-      // Notify all clients about this user coming online
-      this.broadcast('presence:update', {
-        guid: payload.sub,
-        status: 'online',
-        onlineUsers: this.getOnlineUserGuids(),
+      // Only notify presence for authenticated users
+      if (payload?.sub) {
+        this.broadcast('presence:update', {
+          guid: payload.sub,
+          status: 'online',
+          onlineUsers: this.getOnlineUserGuids(),
+        });
+      }
+
+      // Send current course editing state to the newly connected client
+      if (this.courseEditors.size > 0) {
+        const editingState: Record<string, CourseEditor> = {};
+        this.courseEditors.forEach((editor, cursoGuid) => {
+          editingState[cursoGuid] = editor;
+        });
+        const syncMsg = JSON.stringify({ event: 'course:editing-sync', data: editingState, timestamp: Date.now() });
+        try { client.send(syncMsg); } catch {}
+      }
+
+      // Listen for incoming messages from this client (course:lock / course:unlock)
+      client.on('message', async (raw: WebSocket.Data) => {
+        try {
+          const msg = JSON.parse(raw.toString());
+          if (msg.action === 'course:lock' && msg.curso_guid && connectedClient.guid) {
+            // Look up user name
+            let nombre = 'Usuario';
+            try {
+              const u = await this.prisma.usuarios.findUnique({ where: { guid: connectedClient.guid }, select: { nombre: true, apellido: true } });
+              if (u) nombre = `${u.nombre} ${u.apellido}`;
+            } catch {}
+            const rolLabel = connectedClient.role === 'ADMINISTRADOR' ? 'Administrador' : 'Examinador';
+            const editor: CourseEditor = { guid: connectedClient.guid, role: rolLabel, nombre };
+            this.courseEditors.set(msg.curso_guid, editor);
+            this.broadcast('course:editing', { curso_guid: msg.curso_guid, editor });
+          }
+          if (msg.action === 'course:unlock' && msg.curso_guid) {
+            const current = this.courseEditors.get(msg.curso_guid);
+            if (current && current.guid === connectedClient.guid) {
+              this.courseEditors.delete(msg.curso_guid);
+              this.broadcast('course:editing-released', { curso_guid: msg.curso_guid });
+            }
+          }
+        } catch {}
       });
 
     } catch {
@@ -96,6 +141,18 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect {
           status: 'offline',
           onlineUsers: this.getOnlineUserGuids(),
         });
+
+        // Release any courses this user was editing
+        const toRelease: string[] = [];
+        this.courseEditors.forEach((editor, cursoGuid) => {
+          if (editor.guid === disconnectedGuid) {
+            toRelease.push(cursoGuid);
+          }
+        });
+        for (const cursoGuid of toRelease) {
+          this.courseEditors.delete(cursoGuid);
+          this.broadcast('course:editing-released', { curso_guid: cursoGuid });
+        }
       }
     }
   }

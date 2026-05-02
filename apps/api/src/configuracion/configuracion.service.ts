@@ -24,7 +24,7 @@ export class ConfiguracionService implements OnModuleInit {
           color_secundario: '#ea580c',
           fuente: 'Inter',
           border_radius: 12,
-          mensaje_bienvenida: 'Bienvenido PESV',
+          mensaje_bienvenida: 'Bienvenido a PESV Education',
           idioma: 'es',
         },
       });

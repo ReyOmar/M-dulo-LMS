@@ -34,9 +34,10 @@ import { WsModule } from './ws/ws.module';
       }),
     }),
 
-    // Rate Limiting — 60 requests per minute per IP (global)
+    // Rate Limiting — 200 requests per minute per IP (global)
+    // Higher limit needed because WebSocket events trigger refetches across multiple mounted components
     ThrottlerModule.forRoot({
-      throttlers: [{ ttl: 60000, limit: 60 }],
+      throttlers: [{ ttl: 60000, limit: 200 }],
     }),
 
     ConfiguracionModule,

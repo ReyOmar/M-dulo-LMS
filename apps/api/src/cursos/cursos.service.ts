@@ -29,10 +29,21 @@ export class CursosService {
   }
 
   async asignarCurso(curso_guid: string, profesor_guid: string) {
-    return this.prisma.lms_cursos.update({
+    const updated = await this.prisma.lms_cursos.update({
         where: { guid: curso_guid },
         data: { profesor_guid }
     });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_assigned' });
+    return updated;
+  }
+
+  async desasignarCurso(curso_guid: string, admin_guid: string) {
+    const updated = await this.prisma.lms_cursos.update({
+        where: { guid: curso_guid },
+        data: { profesor_guid: admin_guid }
+    });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_unassigned' });
+    return updated;
   }
 
   async getCursosDeProfesor(profesor_guid: string) {
@@ -44,7 +55,7 @@ export class CursosService {
 
   async getCursosDeEstudiante(estudiante_guid: string) {
     const matriculas = await this.prisma.lms_matriculas.findMany({
-      where: { usuario_guid: estudiante_guid, curso: { estado: 'PUBLICADO' } },
+      where: { usuario_guid: estudiante_guid },
       include: { curso: true },
       orderBy: { fecha_matricula: 'desc' }
     });
@@ -61,7 +72,7 @@ export class CursosService {
 
   async getCursosDeEstudianteConFecha(estudiante_guid: string) {
     const matriculas = await this.prisma.lms_matriculas.findMany({
-      where: { usuario_guid: estudiante_guid, curso: { estado: 'PUBLICADO' } },
+      where: { usuario_guid: estudiante_guid },
       include: { curso: { select: { guid: true, titulo: true, estado: true } } },
       orderBy: { fecha_matricula: 'desc' }
     });
@@ -115,12 +126,60 @@ export class CursosService {
     return curso;
   }
 
-  async updateCurso(curso_guid: string, data: { titulo?: string; estado?: string }) {
+  async updateCurso(curso_guid: string, data: { titulo?: string; estado?: string; imagen_portada?: string }) {
+    // GUARD: If switching to BORRADOR, check for active quiz attempts
+    if (data.estado === 'BORRADOR') {
+      const curso = await this.prisma.lms_cursos.findUnique({ where: { guid: curso_guid } });
+      if (curso && curso.estado === 'PUBLICADO') {
+        // Get all quiz resources (TAREA with title starting with [QUIZ]) for this course
+        const quizResources = await this.prisma.lms_recursos.findMany({
+          where: {
+            tipo: 'TAREA',
+            titulo: { startsWith: '[QUIZ]' },
+            leccion: {
+              modulo: { curso_guid }
+            }
+          },
+          select: { guid: true }
+        });
+
+        if (quizResources.length > 0) {
+          const quizGuids = quizResources.map(r => r.guid);
+          // Check for in-progress quiz attempts (estado = BORRADOR means quiz started but not submitted)
+          const activeQuizAttempts = await this.prisma.lms_entregas.findMany({
+            where: { tarea_guid: { in: quizGuids }, estado: 'BORRADOR' },
+            select: { usuario_guid: true }
+          });
+
+          if (activeQuizAttempts.length > 0) {
+            throw new BadRequestException(
+              `No se puede pasar a Borrador: hay ${activeQuizAttempts.length} estudiante(s) realizando un quiz actualmente. Espera a que terminen.`
+            );
+          }
+        }
+
+        // No active quizzes — notify enrolled students about maintenance
+        const matriculas = await this.prisma.lms_matriculas.findMany({
+          where: { curso_guid },
+          select: { usuario_guid: true }
+        });
+        const enrolledGuids = matriculas.map(m => m.usuario_guid);
+
+        if (enrolledGuids.length > 0) {
+          this.lmsGateway.broadcast('course:maintenance', {
+            curso_guid,
+            titulo: curso.titulo
+          }, enrolledGuids);
+        }
+      }
+    }
+
     const updated = await this.prisma.lms_cursos.update({
         where: { guid: curso_guid },
         data: {
             ...(data.titulo !== undefined && { titulo: data.titulo }),
             ...(data.estado !== undefined && { estado: data.estado as lms_estado_curso }),
+            ...(data.imagen_portada !== undefined && { imagen_portada: data.imagen_portada }),
         }
     });
 

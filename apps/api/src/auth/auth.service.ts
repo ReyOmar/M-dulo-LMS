@@ -84,7 +84,7 @@ export class AuthService {
 
     const isValid = await bcrypt.compare(contrasena, user.contrasena);
     if (!isValid) {
-      throw new UnauthorizedException('Contraseña incorrecta.');
+      throw new UnauthorizedException('Credenciales inválidas.');
     }
 
     // Si la contraseña es la predeterminada, fuerza configuración
@@ -136,6 +136,8 @@ export class AuthService {
       where: { email },
       data: { contrasena: hashed }
     });
+
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_password_setup' });
 
     return { message: 'Contraseña establecida exitosamente.' };
   }
@@ -321,6 +323,9 @@ export class AuthService {
       where: { guid },
       data: updateData
     });
+
+    this.lmsGateway.broadcast('user:updated', { guid: updated.guid });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_updated' });
 
     return { message: 'Perfil actualizado exitosamente.', user: { guid: updated.guid, role: updated.rol, nombre: updated.nombre, apellido: updated.apellido, email: updated.email } };
   }

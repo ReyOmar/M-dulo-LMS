@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { BookOpen, Users, GraduationCap, Presentation, Plus, X, Loader2, CheckCircle, Search, UserPlus, UserMinus } from "lucide-react";
 import { PageLoader } from "@/components/ui/PageLoader";
+import { useWS } from "@/contexts/WebSocketContext";
 import api from "@/lib/api";
 
 interface Curso {
@@ -45,10 +46,31 @@ export default function AsignacionCursosPage() {
 
   // Feedback
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  
+  const { subscribe } = useWS();
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const unsub1 = subscribe('enrollment:changed', () => {
+      fetchData();
+      if (selectedCursoEstudiante) {
+        fetchMatriculas(selectedCursoEstudiante);
+      }
+    });
+    const unsub2 = subscribe('dashboard:refresh', () => {
+      fetchData();
+      if (selectedCursoEstudiante) {
+        fetchMatriculas(selectedCursoEstudiante);
+      }
+    });
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [subscribe, selectedCursoEstudiante]);
 
   const fetchData = async () => {
     try {
@@ -63,6 +85,17 @@ export default function AsignacionCursosPage() {
       setCursos(Array.isArray(cursosData) ? cursosData : []);
       setProfesores(Array.isArray(profesoresData) ? profesoresData : []);
       setEstudiantes(Array.isArray(estudiantesData) ? estudiantesData : []);
+
+      // Pre-select course if specified in URL
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const cursoId = urlParams.get('curso');
+        if (cursoId) {
+          setSelectedCursoProfesor(cursoId);
+          // Optional: Remove query param without reloading to clean up URL
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -124,6 +157,18 @@ export default function AsignacionCursosPage() {
       setCursos(prev => prev.map(c => c.guid === selectedCursoProfesor ? { ...c, profesor_guid } : c));
     } catch (err) {
       showFeedback('error', 'Error al asignar profesor');
+    }
+  };
+
+  const desasignarProfesor = async () => {
+    if (!selectedCursoProfesor) return;
+    try {
+      await api.post(`/cursos/${selectedCursoProfesor}/desasignar`);
+      showFeedback('success', 'Profesor desasignado del curso');
+      // Update local state by refetching or finding current admin (simpler to refetch for accuracy)
+      fetchData();
+    } catch (err) {
+      showFeedback('error', 'Error al desasignar profesor');
     }
   };
 
@@ -313,15 +358,24 @@ export default function AsignacionCursosPage() {
               </h3>
 
               {profesorActual ? (
-                <div className="flex items-center gap-3 p-4 bg-blue-500/10 rounded-xl border border-blue-500/20 mb-6">
-                  <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
-                    {profesorActual.nombre.charAt(0)}{profesorActual.apellido.charAt(0)}
+                  <div className="flex items-center justify-between p-4 bg-blue-500/10 rounded-xl border border-blue-500/20 mb-6 group">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
+                        {profesorActual.nombre.charAt(0)}{profesorActual.apellido.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-bold">{profesorActual.nombre} {profesorActual.apellido}</p>
+                        <p className="text-xs text-muted-foreground">{profesorActual.email}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={desasignarProfesor}
+                      className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs font-bold"
+                      title="Quitar asignación"
+                    >
+                      <UserMinus className="h-4 w-4" /> Quitar
+                    </button>
                   </div>
-                  <div>
-                    <p className="font-bold">{profesorActual.nombre} {profesorActual.apellido}</p>
-                    <p className="text-xs text-muted-foreground">{profesorActual.email}</p>
-                  </div>
-                </div>
               ) : (
                 <p className="text-sm text-muted-foreground py-4 text-center bg-muted/10 rounded-xl border border-dashed border-border mb-6">Sin profesor asignado</p>
               )}

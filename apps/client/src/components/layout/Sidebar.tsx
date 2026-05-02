@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { UserSettingsModal } from "@/components/features/UserSettingsModal";
 import { useState, useRef, useEffect } from "react";
 import api from "@/lib/api";
+import { useWS } from "@/contexts/WebSocketContext";
 
 export function Sidebar() {
   const { role, realRole, simulatedRole, setSimulatedRole, user, logout } = useRole();
@@ -31,6 +32,8 @@ export function Sidebar() {
     return () => document.removeEventListener('mousedown', handler);
   }, [showUserMenu]);
 
+  const { subscribe } = useWS();
+
   // Real-time solicitudes count for admin
   useEffect(() => {
     if (realRole !== "admin") return;
@@ -45,9 +48,17 @@ export function Sidebar() {
     };
 
     fetchCount();
-    const interval = setInterval(fetchCount, 15000); // Check every 15 seconds
-    return () => clearInterval(interval);
-  }, [realRole]);
+    
+    const unsub1 = subscribe('request:new', fetchCount);
+    const unsub2 = subscribe('dashboard:refresh', fetchCount);
+    const unsub3 = subscribe('user:created', fetchCount);
+    
+    return () => {
+      unsub1();
+      unsub2();
+      unsub3();
+    };
+  }, [realRole, subscribe]);
 
   const isActive = (path: string) => {
     if (path === '/dashboard') return pathname === '/dashboard';
@@ -69,8 +80,12 @@ export function Sidebar() {
       <aside className="w-80 border-r border-border bg-card flex flex-col fixed h-full z-10 transition-all">
         <div className="h-20 flex items-center px-6 border-b border-border/40 shrink-0">
           <div className="flex items-center gap-2 font-bold text-lg text-primary">
-            <GraduationCap className="h-6 w-6 text-primary" />
-            <span>{config?.nombre_plataforma || 'PESV Education'} {simulatedRole && "(Simulado)"}</span>
+            {config?.logo_url ? (
+               <img src={config.logo_url} alt="Logo" className="max-h-12 max-w-[40px] object-contain" />
+            ) : (
+               <GraduationCap className="h-6 w-6 text-primary" />
+            )}
+            <span className={config?.logo_url ? "hidden sm:inline truncate" : "truncate"}>{config?.nombre_plataforma || 'PESV Education'} {simulatedRole && "(Simulado)"}</span>
           </div>
         </div>
         

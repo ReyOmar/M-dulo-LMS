@@ -1,19 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BookOpen, Lock, AlertCircle, ArrowRight, Loader2 } from "lucide-react";
+import { BookOpen, Lock, AlertCircle, ArrowRight, Loader2, Eye, EyeOff, Search, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
 import { useWS } from "@/contexts/WebSocketContext";
-import api from "@/lib/api";
+import api, { API_BASE_URL } from "@/lib/api";
 
 export function TeacherDashboard() {
   const { user } = useRole();
-  const { subscribe } = useWS();
+  const { subscribe, editingCourses } = useWS();
   const router = useRouter();
 
   const [cursos, setCursos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("todos");
 
   const fetchCursos = async () => {
     try {
@@ -35,10 +37,12 @@ export function TeacherDashboard() {
     if (!user?.guid) return;
     const unsub1 = subscribe('course:updated', fetchCursos);
     const unsub2 = subscribe('course:created', fetchCursos);
+    const unsub3 = subscribe('dashboard:refresh', fetchCursos);
     
     return () => {
       unsub1();
       unsub2();
+      unsub3();
     };
   }, [user?.guid, subscribe]);
 
@@ -68,16 +72,67 @@ export function TeacherDashboard() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cursos.map((curso: any) => (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="relative w-full sm:max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar curso asignado por título..."
+                className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-medium shadow-sm"
+              />
+            </div>
+            <div className="relative w-full sm:w-[200px]">
+              <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full bg-card border border-border rounded-xl pl-4 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-medium shadow-sm appearance-none"
+              >
+                  <option value="todos">Todos los estados</option>
+                  <option value="PUBLICADO">Publicados</option>
+                  <option value="BORRADOR">Borradores</option>
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {cursos.filter(c => c.titulo.toLowerCase().includes(search.toLowerCase()) && (statusFilter === 'todos' || c.estado === statusFilter)).map((curso: any) => {
+            const editorInfo = editingCourses[curso.guid];
+            const isLockedByOther = editorInfo && editorInfo.guid !== user?.guid;
+
+            return (
             <div
               key={curso.guid}
-              onClick={() => router.push(`/dashboard/admin/constructor-cursos?curso=${curso.guid}`)}
-              className="flex flex-col bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/50 hover:shadow-md transition-all shadow-sm cursor-pointer group"
+              onClick={() => {
+                if (isLockedByOther) return;
+                router.push(`/dashboard/admin/constructor-cursos?curso=${curso.guid}`);
+              }}
+              className={`flex flex-col bg-card border rounded-2xl overflow-hidden transition-all shadow-sm relative ${
+                isLockedByOther
+                  ? 'border-border/50 opacity-50 grayscale cursor-not-allowed'
+                  : 'border-border/50 hover:border-primary/50 hover:shadow-md cursor-pointer group'
+              }`}
             >
+              {/* Lock overlay */}
+              {isLockedByOther && (
+                <div className="absolute inset-0 z-10 bg-background/40 backdrop-blur-[1px] flex flex-col items-center justify-center gap-2 rounded-2xl">
+                  <div className="bg-card/90 backdrop-blur-sm border border-border shadow-lg rounded-xl px-4 py-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                      <Lock className="h-4 w-4 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">En edición</p>
+                      <p className="text-[11px] text-muted-foreground">{editorInfo.role}: {editorInfo.nombre}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="h-32 bg-gradient-to-br from-primary/10 to-secondary/10 relative flex items-center justify-center overflow-hidden">
                 {curso.imagen_portada ? (
-                  <img src={curso.imagen_portada} alt={curso.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                  <img src={`${API_BASE_URL}/cursos/download/${curso.imagen_portada}`} alt={curso.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                 ) : (
                   <BookOpen className="h-12 w-12 text-primary/30 group-hover:scale-110 transition-transform" />
                 )}
@@ -87,20 +142,26 @@ export function TeacherDashboard() {
                   {curso.titulo}
                 </h2>
                 <div className="flex justify-between items-center mt-auto pt-4 border-t border-border/30">
-                  <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm ${
                     curso.estado === 'PUBLICADO'
-                      ? 'bg-emerald-500/10 text-emerald-600'
-                      : 'bg-amber-500/10 text-amber-600'
+                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                      : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
                   }`}>
+                    {curso.estado === 'PUBLICADO' ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                     {curso.estado}
-                  </span>
-                  <span className="text-sm font-semibold text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                    Administrar <ArrowRight className="h-3 w-3" />
-                  </span>
+                  </div>
+                  {isLockedByOther ? (
+                    <span className="text-xs font-bold text-amber-500 flex items-center gap-1"><Lock className="h-3 w-3" /> Bloqueado</span>
+                  ) : (
+                    <span className="text-sm font-semibold text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                      Administrar <ArrowRight className="h-3 w-3" />
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
 
           {/* Slot vacío decorativo */}
           <div className="flex flex-col bg-muted/20 border border-dashed border-border rounded-2xl items-center justify-center p-6 text-center opacity-50">
@@ -110,6 +171,7 @@ export function TeacherDashboard() {
             <h3 className="font-bold text-muted-foreground text-sm">Sin más asignaciones</h3>
             <p className="text-xs text-muted-foreground mt-1 max-w-[180px]">Pide a un administrador que te asigne otro curso.</p>
           </div>
+        </div>
         </div>
       )}
     </div>

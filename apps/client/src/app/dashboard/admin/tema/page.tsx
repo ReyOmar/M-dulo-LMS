@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useConfig, GOOGLE_FONTS } from "@/contexts/ConfigContext";
 import { useRole } from "@/contexts/RoleContext";
@@ -73,10 +73,15 @@ export default function TemaPage() {
               <label className="text-sm font-bold text-muted-foreground mb-2 block uppercase tracking-wider">Logo</label>
               <div 
                 onClick={() => logoInputRef.current?.click()}
-                className="h-32 border-2 border-dashed border-border hover:border-primary/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-muted/20 group"
+                className="h-32 border-2 border-dashed border-border hover:border-primary/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-muted/20 group relative overflow-hidden"
               >
                 {config?.logo_url ? (
-                  <img src={config.logo_url} alt="Logo" className="max-h-24 max-w-full object-contain" />
+                  <>
+                    <img src={config.logo_url} alt="Logo" className="max-h-24 max-w-full object-contain relative z-0" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 rounded-xl">
+                      <p className="text-xs font-bold text-white">Cambiar</p>
+                    </div>
+                  </>
                 ) : (
                   <>
                     <Upload className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
@@ -85,6 +90,20 @@ export default function TemaPage() {
                 )}
               </div>
               <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload('logo_url')} />
+              <div className="flex justify-between items-start mt-1.5">
+                <p className="text-xs text-muted-foreground">Formato sugerido: PNG, SVG</p>
+                {config?.logo_url && (
+                  <div className="flex gap-3">
+                    <a href={config.logo_url} download="logo-plataforma.png" className="text-xs text-primary hover:underline font-bold transition-colors">Descargar</a>
+                    <button 
+                      onClick={() => updateConfig({ logo_url: null })}
+                      className="text-xs text-destructive hover:underline font-bold transition-colors"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Favicon Upload */}
@@ -92,10 +111,15 @@ export default function TemaPage() {
               <label className="text-sm font-bold text-muted-foreground mb-2 block uppercase tracking-wider">Favicon</label>
               <div 
                 onClick={() => faviconInputRef.current?.click()}
-                className="h-32 border-2 border-dashed border-border hover:border-primary/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-muted/20 group"
+                className="h-32 border-2 border-dashed border-border hover:border-primary/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-muted/20 group relative overflow-hidden"
               >
                 {config?.favicon_url ? (
-                  <img src={config.favicon_url} alt="Favicon" className="h-12 w-12 object-contain" />
+                  <>
+                    <img src={config.favicon_url} alt="Favicon" className="h-12 w-12 object-contain relative z-0" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 rounded-xl">
+                      <p className="text-xs font-bold text-white">Cambiar</p>
+                    </div>
+                  </>
                 ) : (
                   <>
                     <Upload className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
@@ -104,7 +128,20 @@ export default function TemaPage() {
                 )}
               </div>
               <input ref={faviconInputRef} type="file" accept="image/x-icon,image/png,image/svg+xml" className="hidden" onChange={handleFileUpload('favicon_url')} />
-              <p className="text-xs text-muted-foreground mt-1.5">Ícono de la pestaña del navegador (.ico, .png, .svg)</p>
+              <div className="flex justify-between items-start mt-1.5">
+                <p className="text-xs text-muted-foreground">Ícono de la pestaña (.ico, .png, .svg)</p>
+                {config?.favicon_url && (
+                  <div className="flex gap-3">
+                    <a href={config.favicon_url} download="favicon-plataforma.png" className="text-xs text-primary hover:underline font-bold transition-colors">Descargar</a>
+                    <button 
+                      onClick={() => updateConfig({ favicon_url: null })}
+                      className="text-xs text-destructive hover:underline font-bold transition-colors"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -270,7 +307,7 @@ export default function TemaPage() {
               value={config?.mensaje_bienvenida || ''}
               onChange={(e) => updateConfig({ mensaje_bienvenida: e.target.value })}
               className="w-full sm:w-96 h-11 px-4 rounded-xl border border-border bg-background text-foreground font-medium focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all"
-              placeholder="Bienvenido PESV"
+              placeholder="Bienvenido a PESV Education"
             />
             <p className="text-xs text-muted-foreground mt-1.5">Se muestra en grande dentro del formulario de acceso</p>
           </div>
@@ -284,7 +321,7 @@ export default function TemaPage() {
             >
               {config?.login_fondo_url ? (
                 <>
-                  <img src={config.login_fondo_url} alt="Fondo login" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                  <img src={config.login_fondo_url} alt="Fondo login" className="absolute inset-0 w-full h-full object-cover opacity-100" />
                   <div className="relative z-10 bg-card/80 backdrop-blur-sm px-4 py-2 rounded-lg">
                     <p className="text-xs font-bold">Click para cambiar imagen</p>
                   </div>
@@ -293,19 +330,25 @@ export default function TemaPage() {
                 <>
                   <Upload className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
                   <p className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">Click para subir imagen de fondo</p>
-                  <p className="text-xs text-muted-foreground mt-1">Recomendado: 1920Ã—1080 o mayor</p>
+                  <p className="text-xs text-muted-foreground mt-1">Recomendado: 1920x1080 o mayor</p>
                 </>
               )}
             </div>
             <input ref={loginBgInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload('login_fondo_url')} />
-            {config?.login_fondo_url && (
-              <button 
-                onClick={() => updateConfig({ login_fondo_url: null })}
-                className="text-xs text-destructive hover:text-destructive/80 font-medium mt-2 transition-colors"
-              >
-                Eliminar fondo personalizado
-              </button>
-            )}
+            <div className="flex justify-between items-start mt-1.5">
+              <p className="text-xs text-muted-foreground">Opcional para personalizar la pantalla de acceso</p>
+              {config?.login_fondo_url && (
+                <div className="flex gap-3">
+                  <a href={config.login_fondo_url} download="fondo-login.png" className="text-xs text-primary hover:underline font-bold transition-colors">Descargar</a>
+                  <button 
+                    onClick={() => updateConfig({ login_fondo_url: null })}
+                    className="text-xs text-destructive hover:underline font-bold transition-colors"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </section>

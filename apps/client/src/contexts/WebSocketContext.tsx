@@ -6,11 +6,16 @@ type WebSocketEvent =
   | 'session:revoked'
   | 'user:deleted'
   | 'user:created'
+  | 'user:updated'
   | 'request:new'
   | 'request:resolved'
   | 'course:updated'
   | 'course:created'
   | 'course:deleted'
+  | 'course:editing'
+  | 'course:editing-released'
+  | 'course:editing-sync'
+  | 'course:maintenance'
   | 'enrollment:changed'
   | 'submission:new'
   | 'submission:graded'
@@ -18,36 +23,52 @@ type WebSocketEvent =
   | 'presence:update'
   | 'dashboard:refresh';
 
+interface CourseEditor {
+  guid: string;
+  role: string;
+  nombre: string;
+}
+
 interface WebSocketContextType {
   isConnected: boolean;
   subscribe: (event: WebSocketEvent, callback: (data: any) => void) => () => void;
+  send: (action: string, data: any) => void;
   onlineUsers: string[];
+  editingCourses: Record<string, CourseEditor>;
+  maintenanceCourses: Record<string, string>;
 }
 
 const WebSocketContext = createContext<WebSocketContextType>({
   isConnected: false,
   subscribe: () => () => {},
+  send: () => {},
   onlineUsers: [],
+  editingCourses: {},
+  maintenanceCourses: {},
 });
 
 export function WebSocketProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [editingCourses, setEditingCourses] = useState<Record<string, CourseEditor>>({});
+  const [maintenanceCourses, setMaintenanceCourses] = useState<Record<string, string>>({});
   const wsRef = useRef<WebSocket | null>(null);
   const listenersRef = useRef<Map<WebSocketEvent, Set<(data: any) => void>>>(new Map());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const retryCountRef = useRef(0);
+  const debounceTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const connect = useCallback(() => {
-    // Only connect if we have a token
-    const token = localStorage.getItem('lms_token');
-    if (!token) return;
-
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     // Use environment variable for API URL or default
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
-    const wsUrl = apiBaseUrl.replace(/^http/, 'ws').replace('/api', '') + '/ws?token=' + token;
+    const token = localStorage.getItem('lms_token');
+    
+    let wsUrl = apiBaseUrl.replace(/^http/, 'ws').replace('/api', '') + '/ws';
+    if (token) {
+      wsUrl += '?token=' + token;
+    }
 
     const ws = new WebSocket(wsUrl);
 
@@ -77,19 +98,56 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // Notify all registered listeners for this event
-        const listeners = listenersRef.current.get(event);
-        if (listeners) {
-          listeners.forEach(cb => cb(data));
+        // Handle course editing lock events internally
+        if (event === 'course:editing') {
+          setEditingCourses(prev => ({ ...prev, [data.curso_guid]: data.editor }));
+        }
+        if (event === 'course:editing-released') {
+          setEditingCourses(prev => {
+            const next = { ...prev };
+            delete next[data.curso_guid];
+            return next;
+          });
+        }
+        if (event === 'course:editing-sync') {
+          // Full sync of all currently editing courses (received on connect)
+          setEditingCourses(data || {});
         }
 
-        // Dashboard refresh can be generic or mapped to specific events
-        if (event === 'dashboard:refresh') {
-          const refreshListeners = listenersRef.current.get('dashboard:refresh');
-          if (refreshListeners) {
-            refreshListeners.forEach(cb => cb(data));
-          }
+        // Handle course maintenance events
+        if (event === 'course:maintenance') {
+          setMaintenanceCourses(prev => ({ ...prev, [data.curso_guid]: data.titulo }));
         }
+        // Clear maintenance when course is republished
+        if (event === 'course:updated' && data.estado === 'PUBLICADO') {
+          setMaintenanceCourses(prev => {
+            const next = { ...prev };
+            delete next[data.guid];
+            return next;
+          });
+        }
+
+        // Notify all registered listeners for this event (debounced to prevent API bursts)
+        const notifyListeners = (targetEvent: WebSocketEvent, eventData: any) => {
+          const listeners = listenersRef.current.get(targetEvent);
+          if (!listeners || listeners.size === 0) return;
+
+          // Clear any existing debounce timer for this event
+          const existingTimer = debounceTimersRef.current.get(targetEvent);
+          if (existingTimer) clearTimeout(existingTimer);
+
+          // Debounce: wait 300ms before firing to coalesce rapid events
+          const timer = setTimeout(() => {
+            debounceTimersRef.current.delete(targetEvent);
+            const currentListeners = listenersRef.current.get(targetEvent);
+            if (currentListeners) {
+              currentListeners.forEach(cb => cb(eventData));
+            }
+          }, 300);
+          debounceTimersRef.current.set(targetEvent, timer);
+        };
+
+        notifyListeners(event, data);
       } catch (err) {
         console.error('Error parseando mensaje WS:', err);
       }
@@ -99,11 +157,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       setIsConnected(false);
       wsRef.current = null;
       
-      // If code is 4004 (session revoked), do not reconnect
+      // If code is 4004 (session revoked), do not reconnect automatically as guest immediately,
+      // wait until login redirect happens to avoid loop.
       if (event.code === 4004) return;
-      
-      // If token is missing, do not reconnect
-      if (!localStorage.getItem('lms_token')) return;
 
       // Exponential backoff for reconnection
       const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000);
@@ -124,23 +180,21 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     // Initial connection attempt
     connect();
 
-    // Listen for storage changes to connect/disconnect when login state changes across tabs
+    // Listen for storage changes to reconnect with token if login state changes across tabs
     const handleStorageChange = () => {
-      if (!localStorage.getItem('lms_token')) {
-        if (wsRef.current) {
-          wsRef.current.close();
-          wsRef.current = null;
-        }
-      } else if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
+      if (wsRef.current) {
+        // Close and reconnect to upgrade/downgrade session
+        wsRef.current.close(1000, 'Auth changed');
+      } else {
         connect();
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
     
-    // Check periodically if we have a token but no connection
+    // Check periodically to ensure connection
     const connectionCheck = setInterval(() => {
-      if (localStorage.getItem('lms_token') && !wsRef.current) {
+      if (!wsRef.current) {
         connect();
       }
     }, 10000);
@@ -173,8 +227,14 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const send = useCallback((action: string, data: any) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ action, ...data }));
+    }
+  }, []);
+
   return (
-    <WebSocketContext.Provider value={{ isConnected, subscribe, onlineUsers }}>
+    <WebSocketContext.Provider value={{ isConnected, subscribe, send, onlineUsers, editingCourses, maintenanceCourses }}>
       {children}
     </WebSocketContext.Provider>
   );

@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, FileText, Type, CheckCircle, Trophy, Lock, PlayCircle, Paperclip, UploadCloud, Loader2, ExternalLink } from "lucide-react";
+import { ArrowLeft, BookOpen, FileText, Type, CheckCircle, Trophy, Lock, PlayCircle, Paperclip, UploadCloud, Loader2, ExternalLink, AlertTriangle } from "lucide-react";
 import { PageLoader } from "@/components/ui/PageLoader";
 import Link from "next/link";
 import api, { API_BASE_URL } from "@/lib/api";
+import { useWS } from "@/contexts/WebSocketContext";
 import QuizPlayer from "@/components/quiz/QuizPlayer";
 import AssignmentPlayer from "@/components/tareas/AssignmentPlayer";
 
@@ -19,6 +20,8 @@ export default function CursoVisorPage() {
   const [selectedModuloGuid, setSelectedModuloGuid] = useState<string>('');
   const [userGuid, setUserGuid] = useState<string>('');
   const [progresoLoaded, setProgresoLoaded] = useState(false);
+  const [inMaintenance, setInMaintenance] = useState(false);
+  const { subscribe, maintenanceCourses } = useWS();
 
   useEffect(() => {
     const savedUser = localStorage.getItem("lms_user");
@@ -28,16 +31,52 @@ export default function CursoVisorPage() {
   }, []);
 
   useEffect(() => {
-    if (curso_id) fetchCurso();
-  }, [curso_id]);
+    if (!curso_id) return;
+    
+    fetchCurso();
+
+    const unsub1 = subscribe('course:updated', fetchCurso);
+    const unsub2 = subscribe('dashboard:refresh', fetchCurso);
+    
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [curso_id, subscribe]);
 
   useEffect(() => {
-    if (curso_id && userGuid) fetchProgreso();
-  }, [curso_id, userGuid]);
+    if (!curso_id || !userGuid) return;
+    
+    fetchProgreso();
+
+    const unsub1 = subscribe('submission:graded', fetchProgreso);
+    const unsub2 = subscribe('dashboard:refresh', fetchProgreso);
+    
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [curso_id, userGuid, subscribe]);
 
   useEffect(() => {
     import('@justinribeiro/lite-youtube').catch(console.error);
   }, []);
+
+  // Listen for maintenance events on this specific course
+  useEffect(() => {
+    if (maintenanceCourses[curso_id as string]) {
+      setInMaintenance(true);
+    }
+  }, [maintenanceCourses, curso_id]);
+
+  useEffect(() => {
+    const unsub = subscribe('course:maintenance', (data: any) => {
+      if (data.curso_guid === curso_id) {
+        setInMaintenance(true);
+      }
+    });
+    return unsub;
+  }, [subscribe, curso_id]);
 
   const fetchCurso = async () => {
     try {
@@ -74,6 +113,14 @@ export default function CursoVisorPage() {
   }, [userGuid, completados]);
 
 
+
+
+  // Helper to ensure URLs are absolute
+  const ensureAbsoluteUrl = (url: string) => {
+    if (!url) return url;
+    if (/^https?:\/\//i.test(url) || url.startsWith('//')) return url;
+    return `https://${url}`;
+  };
 
   const modulos = curso?.modulos || [];
 
@@ -191,6 +238,33 @@ export default function CursoVisorPage() {
     );
   }
 
+  // MAINTENANCE OVERLAY
+  if (inMaintenance) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 animate-in fade-in duration-500">
+        <div className="max-w-md w-full bg-card border border-amber-500/30 rounded-3xl p-12 text-center shadow-xl">
+          <div className="w-24 h-24 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+            <AlertTriangle className="h-12 w-12 text-amber-500" />
+          </div>
+          <h1 className="text-3xl font-black mb-4 text-foreground tracking-tight">Curso en Mantenimiento</h1>
+          <p className="text-muted-foreground mb-2 text-lg leading-relaxed">
+            El administrador o examinador ha iniciado un período de mantenimiento para el curso <strong className="text-foreground">{curso.titulo}</strong>.
+          </p>
+          <p className="text-muted-foreground mb-10 text-sm">
+            Todos los contenidos se conservan intactos. Vuelve más tarde cuando el curso sea publicado de nuevo.
+          </p>
+          <Link
+            href="/dashboard/student/cursos"
+            className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 rounded-2xl font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
+          >
+            <ArrowLeft className="h-5 w-5" />
+            Volver a Mis Cursos
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Navbar */}
@@ -293,7 +367,7 @@ export default function CursoVisorPage() {
                 <div className="space-y-6">
                   <div className="prose prose-slate dark:prose-invert max-w-none bg-card rounded-2xl p-8 border border-border/50 shadow-sm" dangerouslySetInnerHTML={{ __html: selectedRecurso.contenido_html || '<p class="text-muted-foreground italic">Sin contenido.</p>' }} />
                   {selectedRecurso.url_referencia && (
-                    <a href={selectedRecurso.url_referencia} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl text-sm text-primary font-medium hover:bg-primary/10 transition-colors">
+                    <a href={ensureAbsoluteUrl(selectedRecurso.url_referencia)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl text-sm text-primary font-medium hover:bg-primary/10 transition-colors">
                       <ExternalLink className="h-4 w-4" /> {selectedRecurso.url_referencia}
                     </a>
                   )}

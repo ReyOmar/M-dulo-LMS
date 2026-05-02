@@ -11,7 +11,7 @@ export class UpdateConfiguracionDto {
 
   @IsOptional()
   @IsString()
-  login_fondo_url?: string;
+  login_fondo_url?: string | null;
 
   @IsOptional()
   @IsString()
@@ -27,11 +27,11 @@ export class UpdateConfiguracionDto {
 
   @IsOptional()
   @IsString()
-  logo_url?: string;
+  logo_url?: string | null;
 
   @IsOptional()
   @IsString()
-  favicon_url?: string;
+  favicon_url?: string | null;
 
   @IsOptional()
   @IsString()

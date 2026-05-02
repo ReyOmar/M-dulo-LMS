@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, Mail, ArrowRight, GraduationCap, ShieldCheck, User, Info, Eye, EyeOff } from "lucide-react";
+import { Lock, Mail, ArrowRight, GraduationCap, ShieldCheck, User, Info, Eye, EyeOff, ShieldAlert } from "lucide-react";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
@@ -27,21 +27,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
-  const [view, setView] = useState<"LOGIN" | "SETUP_PASSWORD" | "REQUEST_ACCESS" | "REQUEST_SUCCESS">("LOGIN");
+  const [view, setView] = useState<"LOGIN" | "SETUP_PASSWORD" | "REQUEST_ACCESS" | "REQUEST_SUCCESS" | "REVOKED">("LOGIN");
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const { showAlert } = useAlert();
 
   useEffect(() => {
     if (searchParams?.get("revoked") === "true") {
-      showAlert.error(
-        "Sesión Revocada",
-        "Tu sesión ha sido cerrada por un administrador o tu cuenta ha sido desactivada."
-      );
-      // Clean up the URL
+      setView("REVOKED");
+      // Clean up the URL without triggering a full reload
       router.replace("/login");
     }
-  }, [searchParams, showAlert, router]);
+  }, [searchParams, router]);
 
   const handleGoToLogin = () => {
     setEmail("");
@@ -166,23 +163,29 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4 transition-colors relative overflow-hidden">
         {/* Dynamic Background - custom image or abstract blobs */}
         {config?.login_fondo_url ? (
-          <img src={config.login_fondo_url} alt="" className="absolute inset-0 w-full h-full object-cover -z-10 opacity-40" />
+          <img src={config.login_fondo_url} alt="" className="absolute inset-0 w-full h-full object-cover z-0 opacity-100" />
         ) : (
           <>
-            <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-primary/20 blur-[100px] -z-10" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-secondary/30 blur-[100px] -z-10" />
+            <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-primary/20 blur-[100px] z-0" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-secondary/30 blur-[100px] z-0" />
           </>
         )}
 
       <div className="w-full max-w-md bg-card border border-border/50 rounded-3xl shadow-xl p-8 relative z-10 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-8 duration-700">
         
         <div className="flex flex-col items-center text-center space-y-4 mb-8">
-          <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-2 ring-1 ring-primary/20">
-            {view === "SETUP_PASSWORD" ? <ShieldCheck className="h-7 w-7 text-emerald-500" /> : <GraduationCap className="h-7 w-7 text-primary" />}
-          </div>
+          {config?.logo_url && view === "LOGIN" ? (
+            <div className="flex items-center justify-center mb-2">
+              <img src={config.logo_url} alt="Logo" className="max-h-24 max-w-[200px] object-contain" />
+            </div>
+          ) : (
+            <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-2 ring-1 ring-primary/20">
+              {view === "SETUP_PASSWORD" ? <ShieldCheck className="h-7 w-7 text-emerald-500" /> : <GraduationCap className="h-7 w-7 text-primary" />}
+            </div>
+          )}
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
-                {view === "LOGIN" && (config?.mensaje_bienvenida || "Bienvenido PESV")}
+                {view === "LOGIN" && (config?.mensaje_bienvenida || "Bienvenido a PESV Education")}
                 {view === "SETUP_PASSWORD" && "Aprobado: Setup Guardián"}
                 {view === "REQUEST_ACCESS" && "Solicitar Acceso Privado"}
                 {view === "REQUEST_SUCCESS" && "Petición en Tránsito"}
@@ -192,6 +195,7 @@ export default function LoginPage() {
                 {view === "SETUP_PASSWORD" && "Tu cuenta fue dada de alta por la Administración. Ingresa una contraseña personal y secreta solo para ti."}
                 {view === "REQUEST_ACCESS" && "Registro cerrado. Envía tu información para que la administración determine tu pase."}
                 {view === "REQUEST_SUCCESS" && "Tu petición se ha registrado y está en espera de aprobación, contacta al administrador."}
+                {view === "REVOKED" && "No tienes autorización para acceder al sistema."}
             </p>
           </div>
         </div>
@@ -333,6 +337,21 @@ export default function LoginPage() {
                 </div>
                 <button onClick={handleGoToLogin} className="h-11 w-full rounded-xl bg-card border border-border hover:bg-muted font-bold text-sm shadow-sm transition-colors">
                     Volver al Inicio
+                </button>
+            </div>
+        )}
+
+        {/* ===================== VIEW: REVOKED ===================== */}
+        {view === "REVOKED" && (
+            <div className="flex flex-col items-center text-center animate-in zoom-in-95">
+                <div className="h-16 w-16 rounded-3xl bg-red-500/10 flex items-center justify-center mb-6 ring-1 ring-red-500/20">
+                  <ShieldAlert className="h-8 w-8 text-red-500" />
+                </div>
+                <div className="text-muted-foreground p-2 mb-6">
+                    Tu sesión ha sido cerrada por un administrador o tu cuenta ha sido <span className="font-bold text-foreground">eliminada del sistema</span> de forma permanente.
+                </div>
+                <button onClick={handleGoToLogin} className="h-11 w-full rounded-xl bg-red-600 text-white hover:bg-red-700 font-bold text-sm shadow-sm transition-colors">
+                    Volver al Inicio Seguro
                 </button>
             </div>
         )}

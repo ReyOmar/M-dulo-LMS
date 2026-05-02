@@ -36,7 +36,8 @@ export class EvaluacionesService {
                 usuario_guid: data.usuario_guid,
                 url_archivo_adjunto: serverFilename,
                 respuesta_texto: data.nombre_archivo,
-                estado: 'ENTREGADA'
+                estado: 'ENTREGADA',
+                fecha_entrega: new Date()
             }
         });
     }
@@ -100,14 +101,14 @@ export class EvaluacionesService {
     });
 
     const tareaGuids: string[] = [];
-    const tareaInfo: Record<string, { titulo: string; curso_titulo: string }> = {};
+    const tareaInfo: Record<string, { titulo: string; curso_titulo: string; curso_guid: string }> = {};
 
     for (const curso of cursos) {
       for (const mod of curso.modulos) {
         for (const lec of mod.lecciones) {
           for (const rec of lec.recursos) {
             tareaGuids.push(rec.guid);
-            tareaInfo[rec.guid] = { titulo: rec.titulo, curso_titulo: curso.titulo };
+            tareaInfo[rec.guid] = { titulo: rec.titulo, curso_titulo: curso.titulo, curso_guid: curso.guid };
           }
         }
       }
@@ -133,12 +134,13 @@ export class EvaluacionesService {
       tarea_guid: e.tarea_guid,
       tarea_titulo: tareaInfo[e.tarea_guid || '']?.titulo || 'Sin título',
       curso_titulo: tareaInfo[e.tarea_guid || '']?.curso_titulo || 'Sin curso',
+      curso_guid: tareaInfo[e.tarea_guid || '']?.curso_guid || null,
       estudiante: studentMap[e.usuario_guid] || { nombre: 'Desconocido', apellido: '', email: '' },
       archivo_nombre: e.respuesta_texto,
       archivo_servidor: e.url_archivo_adjunto,
       estado: e.estado,
       fecha_entrega: e.fecha_entrega,
-      contenido_texto: e.contenido_texto,
+      contenido_texto: e.contenido_texto
     }));
   }
 
@@ -171,13 +173,14 @@ export class EvaluacionesService {
       }
     }
 
-    // Notify the student that their assignment has been graded
+    // Notify everyone (especially student and other examiners/admins)
     this.lmsGateway.broadcast('submission:graded', {
       guid,
       tarea_guid: entrega.tarea_guid,
-      calificacion: data.calificacion
-    }, [entrega.usuario_guid]);
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'submission_graded' }, [entrega.usuario_guid]);
+      calificacion: data.calificacion,
+      usuario_guid: entrega.usuario_guid
+    });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'submission_graded' });
 
     return entrega;
   }

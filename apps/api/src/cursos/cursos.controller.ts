@@ -65,12 +65,20 @@ export class CursosController {
   }
 
   @Roles('ADMINISTRADOR')
+  @Post('/:guid/desasignar')
+  async desasignarCurso(@Param('guid') guid: string, @CurrentUser() user: any) {
+    const adminGuid = user?.sub || user?.guid;
+    if (!adminGuid) throw new BadRequestException('Falta guid del administrador');
+    return this.cursosService.desasignarCurso(guid, adminGuid);
+  }
+
+  @Roles('ADMINISTRADOR', 'PROFESOR')
   @Patch('/:guid')
   async updateCurso(@Param('guid') guid: string, @Body() body: UpdateCursoDto) {
     return this.cursosService.updateCurso(guid, body);
   }
 
-  @Roles('ADMINISTRADOR')
+  @Roles('ADMINISTRADOR', 'PROFESOR')
   @Delete('/:guid')
   async deleteCurso(@Param('guid') guid: string) {
     return this.cursosService.deleteCurso(guid);

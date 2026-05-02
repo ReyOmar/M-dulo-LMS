@@ -66,6 +66,16 @@ export default function QuizPlayer({
         }
     }, []);
 
+    // localStorage key for persisting quiz answers
+    const storageKey = `quiz_answers_${recurso_guid}_${userGuid}`;
+
+    // Persist answers to localStorage whenever they change
+    useEffect(() => {
+        if (started && userGuid && Object.keys(respuestas).length > 0) {
+            try { localStorage.setItem(storageKey, JSON.stringify(respuestas)); } catch {}
+        }
+    }, [respuestas, started, userGuid, storageKey]);
+
     const fetchStatus = useCallback(async () => {
         if (!userGuid) return;
         try {
@@ -87,6 +97,18 @@ export default function QuizPlayer({
             if (status.in_progress && status.fecha_inicio && configParsed) {
                 setStarted(true);
                 if (onQuizStateChange) onQuizStateChange(true);
+                
+                // Restore saved answers from localStorage
+                const savedKey = `quiz_answers_${recurso_guid}_${userGuid}`;
+                try {
+                    const savedAnswers = localStorage.getItem(savedKey);
+                    if (savedAnswers) {
+                        const parsed = JSON.parse(savedAnswers);
+                        if (parsed && typeof parsed === 'object') {
+                            setRespuestas(parsed);
+                        }
+                    }
+                } catch {}
                 
                 const startTime = new Date(status.fecha_inicio).getTime();
                 const now = new Date().getTime();
@@ -164,6 +186,8 @@ export default function QuizPlayer({
             const res = await api.post(`/cursos/student/quiz/${recurso_guid}/submit?usuario_guid=${userGuid}`, {
                 respuestas
             });
+            // Clear saved answers from localStorage on successful submit
+            try { localStorage.removeItem(storageKey); } catch {}
             setShowResultModal({
                 nota: res.data.nota,
                 correctas: res.data.correctas,
@@ -173,6 +197,7 @@ export default function QuizPlayer({
         } catch (err) {
             console.error(err);
             showAlert.error("Error", "Error al enviar las respuestas. Inténtalo de nuevo.");
+        } finally {
             setSubmitting(false);
         }
     };
@@ -188,7 +213,10 @@ export default function QuizPlayer({
         setTimeLeft(null);
         setRespuestas({});
         setShowResultModal(null);
+        setSubmitting(false);
         setLoading(true);
+        // Clear saved answers from localStorage
+        try { localStorage.removeItem(storageKey); } catch {}
         if (onQuizStateChange) onQuizStateChange(false);
         await fetchStatus();
         onFinish(); // Callback to refresh course progress
@@ -294,7 +322,7 @@ export default function QuizPlayer({
                         {(url_referencia || archivo_adjunto) && (
                             <div className="mt-8 space-y-3">
                                 {url_referencia && (
-                                    <a href={url_referencia} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-background/50 border border-primary/20 rounded-2xl text-sm text-primary font-bold hover:bg-primary/5 transition-all group">
+                                    <a href={(() => { const u = url_referencia || ''; return /^https?:\/\//i.test(u) || u.startsWith('//') ? u : `https://${u}`; })()} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-background/50 border border-primary/20 rounded-2xl text-sm text-primary font-bold hover:bg-primary/5 transition-all group">
                                         <ExternalLink className="h-5 w-5 group-hover:scale-110 transition-transform" /> 
                                         <span className="truncate">{url_referencia}</span>
                                     </a>

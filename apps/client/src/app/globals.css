@@ -106,3 +106,9 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+/* Ocultar el icono del ojito nativo en navegadores basados en Edge/Chromium para evitar duplicación */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}

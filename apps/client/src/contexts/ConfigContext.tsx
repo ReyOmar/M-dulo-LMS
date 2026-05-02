@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import api from "@/lib/api";
+import { useWS } from "./WebSocketContext";
 
 export interface LMSConfig {
   id: number;
@@ -69,6 +70,8 @@ function loadGoogleFont(fontName: string) {
 }
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
+  const { subscribe } = useWS();
+  
   const [config, setConfig] = useState<LMSConfig | null>(() => {
     // Instantly restore cached config to prevent flash of default theme
     if (typeof window !== 'undefined') {
@@ -99,7 +102,20 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       .catch((err) => console.error("Could not load config", err));
   }, []);
 
+  useEffect(() => {
+    const unsub = subscribe('config:updated', (newConfig: any) => {
+      if (newConfig) {
+        setConfig(newConfig);
+        applyAllToDOM(newConfig);
+        if (newConfig.nombre_plataforma) document.title = newConfig.nombre_plataforma;
+        try { localStorage.setItem('lms_config_cache', JSON.stringify(newConfig)); } catch {}
+      }
+    });
+    return () => unsub();
+  }, [subscribe]);
+
   const applyAllToDOM = (cfg: LMSConfig) => {
+    // ── Colors ──
     if (cfg.color_primario) {
       const primHsl = hexToHsl(cfg.color_primario);
       document.documentElement.style.setProperty('--primary', primHsl);
@@ -109,23 +125,57 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       const secHsl = hexToHsl(cfg.color_secundario);
       document.documentElement.style.setProperty('--secondary', secHsl);
     }
+
+    // ── Font — load Google Font and inject a global style tag so ALL elements pick it up ──
     if (cfg.fuente) {
       loadGoogleFont(cfg.fuente);
-      document.documentElement.style.setProperty('--font-sans', `"${cfg.fuente}", ui-sans-serif, system-ui, sans-serif`);
-      document.body.style.fontFamily = `"${cfg.fuente}", ui-sans-serif, system-ui, sans-serif`;
+      const fontFamily = `"${cfg.fuente}", ui-sans-serif, system-ui, sans-serif`;
+      document.documentElement.style.setProperty('--font-sans', fontFamily);
+      document.body.style.fontFamily = fontFamily;
     }
-    if (cfg.border_radius !== undefined) {
-      document.documentElement.style.setProperty('--radius', `${cfg.border_radius}px`);
+
+    // ── Border Radius — inject/update a persistent <style> tag that overrides every element ──
+    // Tailwind v4 compiles --radius at build time, so runtime setProperty alone isn't enough.
+    // We inject a global override style tag that wins via specificity.
+    const radiusPx = cfg.border_radius ?? 12;
+    const fontFamily2 = cfg.fuente ? `"${cfg.fuente}", ui-sans-serif, system-ui, sans-serif` : null;
+
+    let styleTag = document.getElementById('lms-theme-override') as HTMLStyleElement | null;
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = 'lms-theme-override';
+      document.head.appendChild(styleTag);
     }
-    if (cfg.favicon_url) {
-      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-      if (!link) {
-        link = document.createElement('link');
-        link.rel = 'icon';
-        document.head.appendChild(link);
+
+    const fontRule = fontFamily2 ? `
+      *, *::before, *::after { font-family: ${fontFamily2} !important; }
+    ` : '';
+
+    styleTag.textContent = `
+      :root {
+        --radius: ${radiusPx}px !important;
+        --radius-sm: ${Math.max(0, radiusPx - 4)}px !important;
+        --radius-md: ${Math.max(0, radiusPx - 2)}px !important;
+        --radius-lg: ${radiusPx}px !important;
+        --radius-xl: ${radiusPx > 0 ? radiusPx + 4 : 0}px !important;
+        --radius-2xl: ${radiusPx > 0 ? radiusPx + 8 : 0}px !important;
+        --radius-3xl: ${radiusPx > 0 ? radiusPx + 12 : 0}px !important;
+        --radius-4xl: ${radiusPx > 0 ? radiusPx + 16 : 0}px !important;
       }
-      link.href = cfg.favicon_url;
-    }
+      ${fontRule}
+    `;
+
+    // ── Favicon ──
+    const targetFavicon = cfg.favicon_url || `/favicon.ico?v=${Date.now()}`;
+    
+    // Remove all existing icon links to force browser refresh
+    document.querySelectorAll("link[rel~='icon'], link[rel='shortcut icon'], link[rel='apple-touch-icon']").forEach(e => e.remove());
+    
+    // Create and append the new favicon link
+    const newLink = document.createElement('link');
+    newLink.rel = 'icon';
+    newLink.href = targetFavicon;
+    document.head.appendChild(newLink);
   };
 
   const updateLocalTheme = (primary: string, secondary: string) => {

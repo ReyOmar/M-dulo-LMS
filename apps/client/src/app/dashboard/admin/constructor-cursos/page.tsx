@@ -2,25 +2,34 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRole } from "@/contexts/RoleContext";
+import { useWS } from "@/contexts/WebSocketContext";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { Plus, BookOpen, Layers, ArrowRight, ArrowLeft, ShieldAlert, UserCheck, Image as ImageIcon, Type, FileText, CheckCircle, UploadCloud, Save, X, Eye, Trash2, Edit3, Link as LinkIcon, ChevronDown, ChevronRight, PlayCircle, AlertTriangle, Paperclip, ExternalLink, Clock, RefreshCcw } from "lucide-react";
+import { Plus, BookOpen, Layers, ArrowRight, ArrowLeft, ShieldAlert, UserCheck, Image as ImageIcon, Type, FileText, CheckCircle, UploadCloud, Save, X, Eye, EyeOff, Trash2, Edit3, Link as LinkIcon, ChevronDown, ChevronRight, PlayCircle, AlertTriangle, Paperclip, ExternalLink, Clock, RefreshCcw, Lock, Unlock, Search, Loader2, Download } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import api, { API_BASE_URL } from "@/lib/api";
+import { useAlert } from "@/contexts/AlertContext";
 
 export default function ConstructorCursosRoot() {
   const { role, user } = useRole();
+  const { subscribe, send, editingCourses } = useWS();
+  const { showAlert } = useAlert();
   const router = useRouter();
   const searchParams = useSearchParams();
   
   const [cursos, setCursos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("todos");
   const [activeCourse, setActiveCourse] = useState<any>(null);
 
   // Examiner assignment state
   const [profesores, setProfesores] = useState<any[]>([]);
   const [selectedProfesorGuid, setSelectedProfesorGuid] = useState('');
   const [assigning, setAssigning] = useState(false);
+
+  // Cover upload state
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   // States for new UI Layout
   const [savingCourse, setSavingCourse] = useState(false);
@@ -39,6 +48,12 @@ export default function ConstructorCursosRoot() {
 
   // Custom confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{open: boolean; title: string; message: string; onConfirm: () => void}>({open: false, title: '', message: '', onConfirm: () => {}});
+
+  // Published course warning modal
+  const [publishedWarning, setPublishedWarning] = useState<{open: boolean; onSwitchDraft: () => void}>({open: false, onSwitchDraft: () => {}});
+
+  // Exit reminder modal (when leaving a BORRADOR course)
+  const [exitReminder, setExitReminder] = useState(false);
 
   // DND States
   const [draggedItem, setDraggedItem] = useState<{guid: string, moduloId: string, index: number} | null>(null);
@@ -101,6 +116,118 @@ export default function ConstructorCursosRoot() {
     import('@justinribeiro/lite-youtube').catch(console.error);
   }, []);
 
+  // WebSockets for real-time sync
+  useEffect(() => {
+    if (role !== 'admin' && role !== 'teacher') return;
+    
+    const unsub1 = subscribe('course:created', fetchData);
+    const unsub2 = subscribe('course:deleted', fetchData);
+    const unsub3 = subscribe('course:updated', () => {
+      fetchData();
+    });
+    const unsub4 = subscribe('dashboard:refresh', () => {
+      fetchData();
+      if (activeCourse) {
+        api.get(`/cursos/${activeCourse.guid}`)
+           .then(res => setActiveCourse(res.data))
+           .catch(console.error);
+      }
+    });
+
+    return () => {
+      unsub1();
+      unsub2();
+      unsub3();
+      unsub4();
+    };
+  }, [role, subscribe, activeCourse?.guid]);
+
+  // Lock/unlock course editing via WebSocket
+  useEffect(() => {
+    if (!activeCourse?.guid) return;
+    send('course:lock', { curso_guid: activeCourse.guid });
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      send('course:unlock', { curso_guid: activeCourse.guid });
+      if (activeCourse.estado === 'BORRADOR') {
+        e.preventDefault();
+        e.returnValue = 'El curso está en Borrador. ¿Seguro que deseas salir sin publicar?';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      send('course:unlock', { curso_guid: activeCourse.guid });
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [activeCourse?.guid, activeCourse?.estado, send]);
+
+  // Intercept client-side navigation (sidebar links) when course is in BORRADOR
+  useEffect(() => {
+    if (!activeCourse || activeCourse.estado !== 'BORRADOR') return;
+
+    const handleClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement).closest('a');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+      // Only intercept internal navigation away from this page
+      if (href.includes('/constructor-cursos') || href.includes('/cursos/download/')) return;
+      
+      e.preventDefault();
+      e.stopPropagation();
+      setExitReminder(true);
+    };
+
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
+  }, [activeCourse?.guid, activeCourse?.estado]);
+
+  // Guard: check if course is published before allowing edits
+  const guardPublished = (callback: () => void) => {
+    if (activeCourse?.estado === 'PUBLICADO') {
+      setPublishedWarning({
+        open: true,
+        onSwitchDraft: async () => {
+          try {
+            await api.patch(`/cursos/${activeCourse.guid}`, { estado: 'BORRADOR' });
+            setActiveCourse({ ...activeCourse, estado: 'BORRADOR' });
+            fetchData();
+            setPublishedWarning({ open: false, onSwitchDraft: () => {} });
+            callback();
+          } catch (err: any) {
+            setPublishedWarning({ open: false, onSwitchDraft: () => {} });
+            const msg = err?.response?.data?.message || 'No se pudo cambiar a Borrador.';
+            showAlert.warning('No se puede editar este curso', msg);
+          }
+        }
+      });
+      return;
+    }
+    callback();
+  };
+
+  // Helper: handle back button with exit reminder
+  const handleBackButton = () => {
+    if (activeCourse?.estado === 'BORRADOR') {
+      setExitReminder(true);
+      return;
+    }
+    exitCourse();
+  };
+
+  const exitCourse = () => {
+    if (role === 'teacher') {
+      router.push('/dashboard');
+    } else {
+      setActiveCourse(null);
+      setSelectedItem({ type: null, data: null });
+      setExpandedModules({});
+      setMenuOpenForModule(null);
+      router.replace(window.location.pathname);
+    }
+  };
+
   // Auto-open course from URL query param (when teacher navigates from their dashboard)
   // Also refreshes course data when returning from block editor
   useEffect(() => {
@@ -147,7 +274,10 @@ export default function ConstructorCursosRoot() {
 
   const fetchData = async () => {
     try {
-        const res = await api.get('/cursos?role=admin');
+        // Use correct role param based on actual user role to avoid 403 for examiners
+        const roleParam = role === 'admin' ? 'admin' : 'teacher';
+        const queryExtra = role === 'teacher' ? `&profesor_guid=${user?.guid}` : '';
+        const res = await api.get(`/cursos?role=${roleParam}${queryExtra}`);
         const data = res.data;
         setCursos(data);
     } catch (e) {
@@ -157,7 +287,47 @@ export default function ConstructorCursosRoot() {
     }
   };
 
+  const handleUploadCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeCourse) return;
+    
+    guardPublished(async () => {
+      setUploadingCover(true);
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = event.target?.result?.toString();
+        if (!base64) {
+          setUploadingCover(false);
+          return;
+        }
+        
+        try {
+          const uploadRes = await api.post('/cursos/upload', {
+            base64: base64.split(',')[1],
+            nombre: file.name
+          });
+          const filename = uploadRes.data.filename;
+          
+          await api.patch(`/cursos/${activeCourse.guid}`, {
+            imagen_portada: filename
+          });
+          
+          setActiveCourse((prev: any) => ({ ...prev, imagen_portada: filename }));
+          fetchData();
+        } catch (err) {
+          console.error(err);
+          showAlert.error("Error", "Error al subir portada.");
+        } finally {
+          setUploadingCover(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const fetchProfesores = async () => {
+    // Only admins can fetch the professors list
+    if (role !== 'admin') return;
     try {
         const res = await api.get('/cursos/profesores');
         const data = res.data;
@@ -169,11 +339,21 @@ export default function ConstructorCursosRoot() {
 
   const handleCrearCurso = async () => {
       try {
+          setLoading(true);
           const res = await api.post('/cursos', { titulo: 'Curso Nuevo', profesor_guid: user?.guid });
           const newCourse = res.data;
-          window.location.reload();
+          
+          // Fetch full details and navigate without reloading the page
+          const resDetails = await api.get(`/cursos/${newCourse.guid}`);
+          setActiveCourse(resDetails.data);
+          setSelectedItem({type: null, data: null});
+          setExpandedModules({});
+          setMenuOpenForModule(null);
+          router.push(`?curso=${newCourse.guid}`);
       } catch (err) {
           console.error(err);
+      } finally {
+          setLoading(false);
       }
   };
 
@@ -200,13 +380,16 @@ export default function ConstructorCursosRoot() {
 
   const handleUpdateCourseTitle = async (newTitle: string) => {
       if (!activeCourse) return;
-      try {
-          await api.patch(`/cursos/${activeCourse.guid}`, { titulo: newTitle });
-          setActiveCourse({...activeCourse, titulo: newTitle});
-          fetchData(); // Refresh list to reflect state changes
-      } catch (err) {
-          console.error(err);
-      }
+      if (newTitle === activeCourse.titulo) return; // No change
+      guardPublished(async () => {
+          try {
+              await api.patch(`/cursos/${activeCourse.guid}`, { titulo: newTitle });
+              setActiveCourse((prev: any) => ({...prev, titulo: newTitle}));
+              fetchData();
+          } catch (err) {
+              console.error(err);
+          }
+      });
   };
 
   const handleUpdateModuleTitle = async (moduleId: string, newTitle: string) => {
@@ -244,6 +427,13 @@ export default function ConstructorCursosRoot() {
   };
 
   const openAppEdit = (recurso: any, moduloId: string) => {
+      // Toggle logic: If already selected, deselect it
+      if (selectedItem.type === 'RESOURCE' && selectedItem.data.guid === recurso.guid) {
+          setSelectedItem({ type: null, data: null });
+          setEditingBlockId(null);
+          return;
+      }
+
       setEditingBlockId(recurso.guid);
       
       let modalType: 'PARRAFO'|'TAREA'|'CUESTIONARIO'|'ENLACE' = 'PARRAFO';
@@ -264,6 +454,13 @@ export default function ConstructorCursosRoot() {
       setSelectedItem({ type: 'RESOURCE', data: recurso, moduloId });
   };
 
+  // Helper to ensure URLs are absolute
+  const ensureAbsoluteUrl = (url: string) => {
+    if (!url) return url;
+    if (/^https?:\/\//i.test(url) || url.startsWith('//')) return url;
+    return `https://${url}`;
+  };
+
   // Helper to render optional extras in preview
   const renderExtrasPreview = (recurso: any) => {
       const extras = [];
@@ -271,7 +468,7 @@ export default function ConstructorCursosRoot() {
           extras.push(
               <div key="url" className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl">
                   <ExternalLink className="h-4 w-4 text-primary flex-shrink-0" />
-                  <a href={recurso.url_referencia} target="_blank" rel="noopener noreferrer" className="text-sm text-primary font-medium truncate hover:underline">{recurso.url_referencia}</a>
+                  <a href={ensureAbsoluteUrl(recurso.url_referencia)} target="_blank" rel="noopener noreferrer" className="text-sm text-primary font-medium truncate hover:underline">{recurso.url_referencia}</a>
               </div>
           );
       }
@@ -312,29 +509,31 @@ export default function ConstructorCursosRoot() {
   };
 
   const handleDeleteBlock = async (id: string) => {
-      const ok = await showConfirm('Eliminar recurso', '¿Estás seguro de que deseas eliminar este recurso? Esta acción no se puede deshacer.');
-      if (!ok) return;
-      try {
-          const res = await api.delete(`/cursos/bloques/${id}`);
-          
-          setActiveCourse((prev: any) => {
-             const newCourse = {...prev};
-             newCourse.modulos = newCourse.modulos.map((m: any) => {
-                 const newM = {...m};
-                 if (newM.lecciones && newM.lecciones.length > 0) {
-                     newM.lecciones = [...newM.lecciones];
-                     newM.lecciones[0] = {...newM.lecciones[0]};
-                     newM.lecciones[0].recursos = newM.lecciones[0].recursos.filter((r: any) => r.guid !== id);
-                 }
-                 return newM;
-             });
-             return newCourse;
-          });
-          
-          setSelectedItem({type: null, data: null});
-      } catch (err) {
-          console.error(err);
-      }
+      guardPublished(async () => {
+          const ok = await showConfirm('Eliminar recurso', '¿Estás seguro de que deseas eliminar este recurso? Esta acción no se puede deshacer.');
+          if (!ok) return;
+          try {
+              await api.delete(`/cursos/bloques/${id}`);
+              
+              setActiveCourse((prev: any) => {
+                 const newCourse = {...prev};
+                 newCourse.modulos = newCourse.modulos.map((m: any) => {
+                     const newM = {...m};
+                     if (newM.lecciones && newM.lecciones.length > 0) {
+                         newM.lecciones = [...newM.lecciones];
+                         newM.lecciones[0] = {...newM.lecciones[0]};
+                         newM.lecciones[0].recursos = newM.lecciones[0].recursos.filter((r: any) => r.guid !== id);
+                     }
+                     return newM;
+                 });
+                 return newCourse;
+              });
+              
+              setSelectedItem({type: null, data: null});
+          } catch (err) {
+              console.error(err);
+          }
+      });
   };
 
   const toggleModule = (moduleId: string) => {
@@ -342,21 +541,23 @@ export default function ConstructorCursosRoot() {
   };
 
   const startNewBlock = async (moduleId: string, tipo: 'PARRAFO'|'IMAGEN'|'TAREA'|'CUESTIONARIO'|'ENLACE') => {
-      let finalTipo = tipo === 'IMAGEN' ? 'ENLACE' : tipo === 'PARRAFO' ? 'TEXTO' : tipo;
-      let finalTitulo = (tipo === 'PARRAFO' ? 'Bloque de Texto' : tipo === 'IMAGEN' ? 'Imagen' : tipo === 'ENLACE' ? 'Video' : tipo);
-      
-      if (tipo === 'CUESTIONARIO') {
-          finalTipo = 'TAREA'; 
-          finalTitulo = `[QUIZ] Cuestionario`;
-      }
-      
-      try {
-          const res = await api.post(`/cursos/modulos/${moduleId}/bloques`, { tipo: finalTipo, titulo: finalTitulo, contenido_html: '' });
-          const newBlock = res.data;
-          router.push(`/dashboard/admin/constructor-cursos/${activeCourse.guid}/modulos/${moduleId}/bloques/${newBlock.guid}`);
-      } catch (e) {
-          console.error(e);
-      }
+      guardPublished(async () => {
+          let finalTipo = tipo === 'IMAGEN' ? 'ENLACE' : tipo === 'PARRAFO' ? 'TEXTO' : tipo;
+          let finalTitulo = (tipo === 'PARRAFO' ? 'Bloque de Texto' : tipo === 'IMAGEN' ? 'Imagen' : tipo === 'ENLACE' ? 'Video' : tipo);
+          
+          if (tipo === 'CUESTIONARIO') {
+              finalTipo = 'TAREA'; 
+              finalTitulo = `[QUIZ] Cuestionario`;
+          }
+          
+          try {
+              const res = await api.post(`/cursos/modulos/${moduleId}/bloques`, { tipo: finalTipo, titulo: finalTitulo, contenido_html: '' });
+              const newBlock = res.data;
+              router.push(`/dashboard/admin/constructor-cursos/${activeCourse.guid}/modulos/${moduleId}/bloques/${newBlock.guid}`);
+          } catch (e) {
+              console.error(e);
+          }
+      });
   };
 
 
@@ -399,34 +600,46 @@ export default function ConstructorCursosRoot() {
                 {/* Header for Active Course */}
                 <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
                     <div className="flex items-center gap-4 flex-1">
-                        <button type="button" onClick={() => { if (role === 'teacher') { router.push('/dashboard'); } else { setActiveCourse(null); setSelectedItem({type: null, data: null}); setExpandedModules({}); setMenuOpenForModule(null); window.history.replaceState({}, '', window.location.pathname); } }} className="p-2 bg-muted rounded-full hover:bg-border transition-colors">
+                        <button type="button" onClick={handleBackButton} className="p-2 bg-muted rounded-full hover:bg-border transition-colors">
                             <ArrowLeft className="h-5 w-5 text-muted-foreground" />
                         </button>
-                        <div className="flex flex-col flex-1 max-w-xl group">
-                            <input 
-                                type="text" 
-                                defaultValue={activeCourse.titulo} 
-                                onBlur={(e) => handleUpdateCourseTitle(e.target.value)}
-                                className="font-bold text-2xl leading-none bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none py-1 w-full transition-colors text-foreground"
-                                placeholder="Nombre del curso"
-                            />
-                            <span className="text-xs text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Haz clic para editar el nombre del curso</span>
-                        </div>
+                            <h1 className="font-bold text-2xl leading-none text-foreground truncate pr-4">
+                                {activeCourse.titulo}
+                            </h1>
                     </div>
                     <div className="flex items-center gap-4">
-                        <select 
-                            value={activeCourse.estado} 
-                            onChange={async (e) => {
-                                const newEstado = e.target.value;
-                                await api.patch(`/cursos/${activeCourse.guid}`, { estado: newEstado });
-                                setActiveCourse({...activeCourse, estado: newEstado});
-                                fetchData();
-                            }}
-                            className="bg-muted border border-border rounded-lg px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/50"
-                        >
-                            <option value="BORRADOR">Borrador</option>
-                            <option value="PUBLICADO">Publicado</option>
-                        </select>
+                        <div className="relative group/status">
+                            <select 
+                                value={activeCourse.estado} 
+                                onChange={async (e) => {
+                                    const newEstado = e.target.value;
+                                    try {
+                                        await api.patch(`/cursos/${activeCourse.guid}`, { estado: newEstado });
+                                        setActiveCourse({...activeCourse, estado: newEstado});
+                                        fetchData();
+                                    } catch (err: any) {
+                                        const msg = err?.response?.data?.message || 'No se pudo cambiar el estado.';
+                                        showAlert.warning('No se puede cambiar el estado', msg);
+                                        // Reset select back to current state
+                                        e.target.value = activeCourse.estado;
+                                    }
+                                }}
+                                className={`appearance-none pl-10 pr-10 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest transition-all cursor-pointer border shadow-sm focus:outline-none focus:ring-4 ${
+                                    activeCourse.estado === 'PUBLICADO'
+                                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 focus:ring-emerald-500/20'
+                                        : 'bg-amber-500/10 border-amber-500/30 text-amber-600 focus:ring-amber-500/20'
+                                }`}
+                            >
+                                <option value="BORRADOR">Borrador</option>
+                                <option value="PUBLICADO">Publicado</option>
+                            </select>
+                            <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${activeCourse.estado === 'PUBLICADO' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                {activeCourse.estado === 'PUBLICADO' ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                            </div>
+                            <div className={`absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${activeCourse.estado === 'PUBLICADO' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                <ChevronDown className="h-4 w-4" />
+                            </div>
+                        </div>
                         
                         <button 
                             type="button"
@@ -461,10 +674,83 @@ export default function ConstructorCursosRoot() {
                     {/* Main Content Panel (Left/Center) */}
                     <div className="flex-1 bg-muted/10 overflow-y-auto p-8 relative">
                         {!selectedItem.type ? (
-                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-60">
-                                <BookOpen className="h-24 w-24 mb-6" />
-                                <h2 className="text-xl font-bold mb-2">Selecciona un elemento del temario</h2>
-                                <p className="text-center max-w-sm">Haz clic en un módulo o recurso en el panel lateral derecho para ver y editar su contenido aquí.</p>
+                            <div className="max-w-3xl mx-auto w-full flex flex-col items-center justify-center pt-10">
+                                <h2 className="text-2xl font-bold mb-8 text-foreground">Configuración General del Curso</h2>
+                                
+                                <div className="w-full bg-card rounded-2xl shadow-sm border border-border p-8 mb-8 flex flex-col items-start gap-4">
+                                    <div className="w-full">
+                                        <h3 className="text-lg font-bold mb-2 flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary" /> Nombre del Curso</h3>
+                                        <input 
+                                            type="text" 
+                                            defaultValue={activeCourse.titulo} 
+                                            onBlur={(e) => handleUpdateCourseTitle(e.target.value)}
+                                            className="w-full bg-muted border border-border rounded-xl px-4 py-3 font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 text-lg transition-colors text-foreground"
+                                            placeholder="Ingresa el nombre del curso"
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-2">Este nombre será visible para todos los usuarios matriculados.</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="w-full bg-card rounded-2xl shadow-sm border border-border p-8 mb-8 flex flex-col items-center">
+                                    <h3 className="text-lg font-bold mb-4 w-full text-left">Portada del Curso</h3>
+                                    <div className="w-full max-w-md h-56 bg-muted rounded-xl border-2 border-dashed border-border flex items-center justify-center relative overflow-hidden group">
+                                        {activeCourse.imagen_portada ? (
+                                            <>
+                                                <img src={`${API_BASE_URL}/cursos/download/${activeCourse.imagen_portada}`} className="w-full h-full object-cover" />
+                                                <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                                    <a 
+                                                        href={`${API_BASE_URL}/cursos/download/${activeCourse.imagen_portada}?originalName=portada_${encodeURIComponent(activeCourse.titulo)}.png`}
+                                                        download
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="p-2 bg-primary hover:bg-primary/90 text-white rounded-lg shadow-md transition-colors"
+                                                        title="Descargar Portada"
+                                                    >
+                                                        <Download className="h-4 w-4" />
+                                                    </a>
+                                                    <button 
+                                                        onClick={async (e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            guardPublished(async () => {
+                                                                try {
+                                                                    await api.patch(`/cursos/${activeCourse.guid}`, { imagen_portada: null });
+                                                                    setActiveCourse((prev: any) => ({ ...prev, imagen_portada: null }));
+                                                                    fetchData();
+                                                                } catch (err) {
+                                                                    console.error(err);
+                                                                }
+                                                            });
+                                                        }}
+                                                        className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-colors"
+                                                        title="Eliminar Portada"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center text-muted-foreground opacity-60">
+                                                <ImageIcon className="h-12 w-12 mb-2 opacity-50" />
+                                                <span className="text-sm font-medium">Sin portada</span>
+                                            </div>
+                                        )}
+                                        <label className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center cursor-pointer backdrop-blur-[2px]">
+                                            {uploadingCover ? (
+                                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                            ) : (
+                                                <>
+                                                    <UploadCloud className="h-8 w-8 text-primary mb-2" />
+                                                    <span className="font-bold text-foreground">Subir nueva portada</span>
+                                                    <span className="text-xs text-muted-foreground mt-1">PNG, JPG recomendado</span>
+                                                </>
+                                            )}
+                                            <input type="file" className="hidden" accept="image/*" onChange={handleUploadCover} disabled={uploadingCover} />
+                                        </label>
+                                    </div>
+                                    <p className="text-center w-full mt-6 text-sm text-muted-foreground">
+                                        Esta imagen se mostrará en los tableros de los estudiantes, examinadores y administradores.
+                                    </p>
+                                </div>
                             </div>
                         ) : selectedItem.type === 'MODULE' ? (
                             <div className="max-w-3xl mx-auto bg-card rounded-2xl shadow-sm border border-border p-8">
@@ -608,38 +894,56 @@ export default function ConstructorCursosRoot() {
                                         <div key={mod.guid} className="border border-border/50 rounded-xl bg-muted/5">
                                             {/* Module Header */}
                                             <div 
-                                                className={`flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 transition-colors ${selectedItem.type === 'MODULE' && selectedItem.data.guid === mod.guid ? 'bg-primary/10 border-l-4 border-l-primary' : ''}`}
+                                                className={`flex items-center justify-between p-3 hover:bg-muted/30 transition-colors ${selectedItem.type === 'MODULE' && selectedItem.data.guid === mod.guid ? 'bg-primary/10 border-l-4 border-l-primary' : ''}`}
                                             >
-                                                <div className="flex items-center gap-2 flex-1" onClick={() => {
-                                                    toggleModule(mod.guid);
-                                                    setSelectedItem({ type: 'MODULE', data: mod });
-                                                }}>
-                                                    {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                                                    <span className="font-bold text-sm truncate flex-1">{mod.titulo}</span>
+                                                <div className="flex items-center gap-2 flex-1">
+                                                    <button 
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            toggleModule(mod.guid);
+                                                        }}
+                                                        className="p-1 bg-background border border-border shadow-sm hover:border-primary/50 hover:bg-muted rounded-md transition-colors"
+                                                    >
+                                                        {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                                                    </button>
+                                                    <div className="font-bold text-sm truncate flex-1 cursor-pointer" onClick={() => {
+                                                        if (selectedItem.type === 'MODULE' && selectedItem.data.guid === mod.guid) {
+                                                            setSelectedItem({ type: null, data: null });
+                                                            setMenuOpenForModule(null);
+                                                        } else {
+                                                            setSelectedItem({ type: 'MODULE', data: mod });
+                                                        }
+                                                    }}>
+                                                        {mod.titulo}
+                                                    </div>
                                                 </div>
                                                 <div className="relative flex items-center gap-1">
                                                     <button 
                                                         type="button"
-                                                        onClick={async (e) => {
+                                                        onClick={(e) => {
                                                             e.preventDefault();
                                                             e.stopPropagation();
-                                                            const ok = await showConfirm('Eliminar módulo', `¿Eliminar el módulo "${mod.titulo}"? Todo su contenido será borrado permanentemente.`);
-                                                            if (ok) {
-                                                                try {
-                                                                    const res = await api.delete(`/cursos/modulos/${mod.guid}`);
-                                                                    
-                                                                    setActiveCourse((prev: any) => ({
-                                                                        ...prev,
-                                                                        modulos: prev.modulos.filter((m: any) => m.guid !== mod.guid)
-                                                                    }));
-                                                                    
-                                                                    if (selectedItem.type === 'MODULE' && selectedItem.data.guid === mod.guid) {
-                                                                        setSelectedItem({type: null, data: null});
+                                                            guardPublished(async () => {
+                                                                const ok = await showConfirm('Eliminar módulo', `¿Eliminar el módulo "${mod.titulo}"? Todo su contenido será borrado permanentemente.`);
+                                                                if (ok) {
+                                                                    try {
+                                                                        await api.delete(`/cursos/modulos/${mod.guid}`);
+                                                                        
+                                                                        setActiveCourse((prev: any) => ({
+                                                                            ...prev,
+                                                                            modulos: prev.modulos.filter((m: any) => m.guid !== mod.guid)
+                                                                        }));
+                                                                        
+                                                                        if (selectedItem.type === 'MODULE' && selectedItem.data.guid === mod.guid) {
+                                                                            setSelectedItem({type: null, data: null});
+                                                                        }
+                                                                    } catch (err) {
+                                                                        console.error(err);
                                                                     }
-                                                                } catch (err) {
-                                                                    console.error(err);
                                                                 }
-                                                            }
+                                                            });
                                                         }} 
                                                         className="p-1.5 bg-red-500/10 rounded border border-red-500/20 shadow-sm text-red-500 hover:bg-red-500 hover:text-white transition-colors"
                                                         title="Eliminar módulo"
@@ -741,7 +1045,7 @@ export default function ConstructorCursosRoot() {
                             )}
 
                             <button 
-                                onClick={handleCrearModulo}
+                                onClick={() => guardPublished(handleCrearModulo)}
                                 className="w-full flex items-center justify-center gap-2 p-3 border border-dashed border-border rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors font-bold text-sm"
                             >
                                 <Plus className="h-4 w-4" /> Agregar Módulo
@@ -751,7 +1055,32 @@ export default function ConstructorCursosRoot() {
                 </div>
             </div>
         ) : (
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+             <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative w-full sm:max-w-md">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Buscar curso por título..."
+                            className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-medium shadow-sm"
+                        />
+                    </div>
+                    <div className="relative w-full sm:w-[200px]">
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="w-full bg-card border border-border rounded-xl pl-4 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-medium shadow-sm appearance-none"
+                        >
+                            <option value="todos">Todos los estados</option>
+                            <option value="PUBLICADO">Publicados</option>
+                            <option value="BORRADOR">Borradores</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Botón rápido Crear Curso — solo admins */}
                 {role === 'admin' && (
                     <button onClick={handleCrearCurso} className="min-h-[200px] border-2 border-dashed border-primary/50 bg-primary/5 rounded-2xl flex flex-col items-center justify-center hover:bg-primary/10 transition-colors group">
@@ -760,10 +1089,15 @@ export default function ConstructorCursosRoot() {
                     </button>
                 )}
 
-                {cursos.map(curso => (
+                {cursos.filter(c => c.titulo.toLowerCase().includes(search.toLowerCase()) && (statusFilter === 'todos' || c.estado === statusFilter)).map(curso => {
+                    const editorInfo = editingCourses[curso.guid];
+                    const isLockedByOther = editorInfo && editorInfo.guid !== user?.guid;
+
+                    return (
                     <div 
                         key={curso.guid} 
                         onClick={async () => {
+                            if (isLockedByOther) return;
                             setLoading(true);
                             try {
                                 const resDetails = await api.get(`/cursos/${curso.guid}`);
@@ -772,17 +1106,35 @@ export default function ConstructorCursosRoot() {
                                 setSelectedItem({type: null, data: null});
                                 setExpandedModules({});
                                 setMenuOpenForModule(null);
-                                // Update URL without reloading so F5 works
-                                window.history.pushState({}, '', `?curso=${curso.guid}`);
+                                router.push(`?curso=${curso.guid}`);
                             } catch(e) { console.error(e) }
                             setLoading(false);
                         }}
-                        className="bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all hover:border-primary/50 group block cursor-pointer"
+                        className={`bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm transition-all block relative ${
+                            isLockedByOther 
+                                ? 'opacity-50 grayscale cursor-not-allowed' 
+                                : 'hover:shadow-md hover:border-primary/50 group cursor-pointer'
+                        }`}
                     >
+                        {/* Lock overlay */}
+                        {isLockedByOther && (
+                            <div className="absolute inset-0 z-10 bg-background/40 backdrop-blur-[1px] flex flex-col items-center justify-center gap-2 rounded-2xl">
+                                <div className="bg-card/90 backdrop-blur-sm border border-border shadow-lg rounded-xl px-4 py-3 flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                                        <Lock className="h-4 w-4 text-amber-500" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-foreground">En edición</p>
+                                        <p className="text-[11px] text-muted-foreground">{editorInfo.role}: {editorInfo.nombre}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="h-32 bg-primary/10 relative flex items-center justify-center overflow-hidden">
                             {curso.imagen_portada ? (
                                // eslint-disable-next-line @next/next/no-img-element
-                               <img src={curso.imagen_portada} alt={curso.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                               <img src={`${API_BASE_URL}/cursos/download/${curso.imagen_portada}`} alt={curso.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                             ) : (
                                <BookOpen className="h-12 w-12 text-primary/30 group-hover:scale-110 transition-transform" />
                             )}
@@ -791,14 +1143,119 @@ export default function ConstructorCursosRoot() {
                         <div className="p-5">
                             <h2 className="font-bold text-lg leading-tight mb-2 group-hover:text-primary transition-colors line-clamp-2">{curso.titulo}</h2>
                             <div className="flex justify-between items-center mt-6">
-                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{curso.estado}</span>
-                                <span className="text-sm font-semibold text-primary group-hover:translate-x-1 transition-transform flex items-center gap-1">Editar <ArrowRight className="h-3 w-3" /></span>
+                                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm ${
+                                    curso.estado === 'PUBLICADO' 
+                                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
+                                        : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                                }`}>
+                                    {curso.estado === 'PUBLICADO' ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                                    {curso.estado}
+                                </div>
+                                {isLockedByOther ? (
+                                    <span className="text-xs font-bold text-amber-500 flex items-center gap-1"><Lock className="h-3 w-3" /> Bloqueado</span>
+                                ) : (
+                                    <span className="text-sm font-semibold text-primary group-hover:translate-x-1 transition-transform flex items-center gap-1">Editar <ArrowRight className="h-3 w-3" /></span>
+                                )}
                             </div>
                         </div>
                     </div>
-                ))}
+                    );
+                })}
+             </div>
              </div>
         )}
+
+    {/* ===== PUBLISHED COURSE WARNING MODAL ===== */}
+    {publishedWarning.open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-6 flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-amber-500/15 rounded-full flex items-center justify-center mb-4">
+                        <AlertTriangle className="h-8 w-8 text-amber-500" />
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">Curso Publicado</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">Este curso está publicado y es visible para los estudiantes. Para editarlo, debes cambiarlo a estado Borrador primero.<br/><br/><strong className="text-foreground">Los estudiantes matriculados y su progreso no se verán afectados.</strong></p>
+                </div>
+                <div className="px-6 pb-6 flex items-center gap-3">
+                    <button 
+                        type="button"
+                        onClick={() => setPublishedWarning({open: false, onSwitchDraft: () => {}})}
+                        className="flex-1 bg-muted hover:bg-border text-foreground font-bold py-3 rounded-xl transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button 
+                        type="button"
+                        onClick={publishedWarning.onSwitchDraft}
+                        className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl transition-colors shadow-md"
+                    >
+                        Cambiar a Borrador
+                    </button>
+                </div>
+            </div>
+        </div>
+    )}
+
+    {/* ===== EXIT REMINDER MODAL ===== */}
+    {exitReminder && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-6 flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-blue-500/15 rounded-full flex items-center justify-center mb-4">
+                        <Eye className="h-8 w-8 text-blue-500" />
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">Curso en Borrador</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">Este curso está en estado <strong className="text-foreground">Borrador</strong> y no será visible para los estudiantes.<br/><br/>¿Deseas publicarlo ahora para que sea accesible?</p>
+                </div>
+                <div className="px-6 pb-6 flex flex-col gap-2">
+                    <button 
+                        type="button"
+                        onClick={async () => {
+                            const courseGuid = activeCourse.guid;
+                            setExitReminder(false);
+                            // Set activeCourse to null BEFORE the API call completes
+                            // to prevent WS events from re-opening the course
+                            setActiveCourse(null);
+                            setSelectedItem({ type: null, data: null });
+                            setExpandedModules({});
+                            setMenuOpenForModule(null);
+                            try {
+                                await api.patch(`/cursos/${courseGuid}`, { estado: 'PUBLICADO' });
+                            } catch (err) {
+                                console.error(err);
+                            }
+                            fetchData();
+                            if (role === 'teacher') {
+                                router.push('/dashboard');
+                            } else {
+                                router.replace(window.location.pathname);
+                            }
+                        }}
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 rounded-xl transition-colors shadow-md"
+                    >
+                        Publicar y Salir
+                    </button>
+                    <button 
+                        type="button"
+                        onClick={() => {
+                            setExitReminder(false);
+                            exitCourse();
+                        }}
+                        className="w-full bg-muted hover:bg-border text-foreground font-bold py-3 rounded-xl transition-colors"
+                    >
+                        Salir sin publicar
+                    </button>
+                    <button 
+                        type="button"
+                        onClick={() => setExitReminder(false)}
+                        className="w-full text-muted-foreground hover:text-foreground font-medium py-2 text-sm transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    )}
     {/* Custom Confirmation Modal */}
     {confirmModal.open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">

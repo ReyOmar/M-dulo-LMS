@@ -6,10 +6,26 @@ import { ConfigProvider } from "@/contexts/ConfigContext";
 import { AlertProvider } from "@/contexts/AlertContext";
 import { WebSocketProvider } from "@/contexts/WebSocketContext";
 
-export const metadata: Metadata = {
-  title: "Enterprise LMS Campus Virtual",
-  description: "Plataforma Educativa Empresarial Moderna",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  let platformName = "Campus Virtual";
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
+    const res = await fetch(`${apiUrl}/configuracion`, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.nombre_plataforma) {
+        platformName = data.nombre_plataforma;
+      }
+    }
+  } catch (error) {
+    // Fallback if API is unreachable during SSR
+  }
+
+  return {
+    title: platformName,
+    description: "Plataforma Educativa Empresarial Moderna",
+  };
+}
 
 export default function RootLayout({
   children,
@@ -44,8 +60,14 @@ export default function RootLayout({
                     if(mx2!==mn2){var dd2=mx2-mn2;s2=l2>0.5?dd2/(2-mx2-mn2):dd2/(mx2+mn2);switch(mx2){case r2:h2=(g2-b2)/dd2+(g2<b2?6:0);break;case g2:h2=(b2-r2)/dd2+2;break;case b2:h2=(r2-g2)/dd2+4;break;}h2/=6;}
                     d.setProperty('--secondary',Math.round(h2*360)+' '+Math.round(s2*100)+'% '+Math.round(l2*100)+'%');
                   }
-                  if (c.border_radius !== undefined) d.setProperty('--radius', c.border_radius+'px');
-                  if (c.fuente) { d.setProperty('--font-sans', '"'+c.fuente+'", ui-sans-serif, system-ui, sans-serif'); }
+                  var r_px = (c.border_radius !== undefined && c.border_radius !== null) ? c.border_radius : 12;
+                  var font = c.fuente ? '"'+c.fuente+'", ui-sans-serif, system-ui, sans-serif' : null;
+                  var fontRule = font ? '*, *::before, *::after { font-family: '+font+' !important; }' : '';
+                  var st = document.createElement('style');
+                  st.id = 'lms-theme-override';
+                  st.textContent = ':root { --radius:'+r_px+'px !important; --radius-sm:'+Math.max(0,r_px-4)+'px !important; --radius-md:'+Math.max(0,r_px-2)+'px !important; --radius-lg:'+r_px+'px !important; --radius-xl:'+(r_px>0?r_px+4:0)+'px !important; --radius-2xl:'+(r_px>0?r_px+8:0)+'px !important; --radius-3xl:'+(r_px>0?r_px+12:0)+'px !important; --radius-4xl:'+(r_px>0?r_px+16:0)+'px !important; } ' + fontRule;
+                  document.head.appendChild(st);
+                  if (font) d.setProperty('--font-sans', font);
                 }
               } catch(e) {}
             `,

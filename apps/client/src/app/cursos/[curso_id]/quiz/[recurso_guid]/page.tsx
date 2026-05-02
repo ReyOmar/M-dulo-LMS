@@ -137,6 +137,7 @@ export default function StudentQuizPage({ params }: { params: Promise<{ curso_id
         } catch (err) {
             console.error(err);
             showAlert.error("Error", "Error al enviar las respuestas. Inténtalo de nuevo.");
+        } finally {
             setSubmitting(false);
         }
     };
