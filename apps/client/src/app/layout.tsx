@@ -74,7 +74,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen bg-background font-sans antialiased text-foreground transition-colors duration-300">
+      <body suppressHydrationWarning className="min-h-screen bg-background font-sans antialiased text-foreground transition-colors duration-300">
         <ThemeProvider
             attribute="class"
             defaultTheme="light"

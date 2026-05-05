@@ -8,12 +8,16 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { WsAdapter } from '@nestjs/platform-ws';
+import compress from '@fastify/compress';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({ bodyLimit: 10485760 }) // 10MB for base64 file uploads
   );
+
+  // Enable gzip/brotli compression for all responses
+  await app.register(compress, { global: true });
   
   const configService = app.get(ConfigService);
   

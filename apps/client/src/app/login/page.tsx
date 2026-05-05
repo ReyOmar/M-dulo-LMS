@@ -358,7 +358,10 @@ export default function LoginPage() {
 
         {/* Footer Toggle */}
         {(view === "LOGIN") && (
-            <div className="mt-8 pt-6 border-t border-border flex justify-center items-center">
+            <div className="mt-8 pt-6 border-t border-border flex flex-col items-center gap-3">
+            <a href="/recuperar-contrasena" className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5" /> ¿Olvidaste tu contraseña?
+            </a>
             <button onClick={handleGoToRequest} className="text-xs font-bold text-primary hover:underline flex items-center gap-2">
                 <User className="h-4 w-4" /> Registrar Petición de Monitoreo
             </button>

@@ -2,7 +2,7 @@
 
 import { useRole, Role } from "@/contexts/RoleContext";
 import { useConfig } from "@/contexts/ConfigContext";
-import { GraduationCap, BookOpen, Clock, Award, Shield, Settings, Users, ArrowRight, Compass, ShieldAlert, BarChart3, Presentation, BookCheck, ClipboardList, LogOut, CheckCircle, Palette, ChevronUp } from "lucide-react";
+import { GraduationCap, BookOpen, Clock, Award, Shield, Settings, Users, ArrowRight, Compass, ShieldAlert, BarChart3, Presentation, BookCheck, ClipboardList, LogOut, CheckCircle, Palette, ChevronUp, ClipboardCheck, MessageSquare } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -100,8 +100,14 @@ export function Sidebar() {
                   <Link href="/dashboard/examiner/monitoreo" className={linkClass('/dashboard/examiner/monitoreo')}>
                       <Users className="h-4 w-4" /> Monitoreo de Estudiantes
                   </Link>
+                  <Link href="/dashboard/examiner/pruebas" className={linkClass('/dashboard/examiner/pruebas')}>
+                      <ClipboardCheck className="h-4 w-4" /> Monitoreo de Pruebas
+                  </Link>
                   <Link href="/dashboard/examiner/calificaciones" className={linkClass('/dashboard/examiner/calificaciones')}>
                       <BookCheck className="h-4 w-4" /> Calificación Manual
+                  </Link>
+                  <Link href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')}>
+                      <MessageSquare className="h-4 w-4" /> Mensajes
                   </Link>
               </div>
           )}
@@ -118,6 +124,9 @@ export function Sidebar() {
                   </Link>
                   <Link href="/dashboard/student/certificados" className={linkClass('/dashboard/student/certificados')}>
                       <Award className="h-4 w-4" /> Mis Certificados PDF
+                  </Link>
+                  <Link href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')}>
+                      <MessageSquare className="h-4 w-4" /> Mensajes
                   </Link>
               </div>
           )}

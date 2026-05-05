@@ -32,6 +32,18 @@ export class AuthController {
     return this.authService.setupPassword(body.email, body.contrasenaTemporal, body.nuevaContrasena);
   }
 
+  @Public()
+  @Post('recuperar-contrasena')
+  async requestPasswordReset(@Body() body: { email: string }) {
+    return this.authService.requestPasswordReset(body.email);
+  }
+
+  @Public()
+  @Post('restablecer-contrasena')
+  async resetPassword(@Body() body: { token: string; nuevaContrasena: string }) {
+    return this.authService.resetPassword(body.token, body.nuevaContrasena);
+  }
+
   // --- PERFIL DE USUARIO (autenticado) ---
 
   @Get('me')

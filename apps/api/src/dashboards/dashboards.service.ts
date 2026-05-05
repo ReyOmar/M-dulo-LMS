@@ -43,20 +43,21 @@ export class DashboardsService {
     const enrolledStudentGuids = [...new Set(matriculas.map(m => m.usuario_guid))];
     if (enrolledStudentGuids.length === 0) return [];
 
-    const enrolledStudents = await this.prisma.usuarios.findMany({
-      where: { guid: { in: enrolledStudentGuids } },
-      select: { guid: true, nombre: true, apellido: true, email: true, ultimo_acceso: true }
-    });
-
-    const entregas = await this.prisma.lms_entregas.findMany({
-      where: { tarea_guid: { in: allResourceGuids } },
-      select: { usuario_guid: true, tarea_guid: true, fecha_entrega: true }
-    });
-
-    const progresos = await this.prisma.lms_progreso_recurso.findMany({
-      where: { recurso_guid: { in: allResourceGuids } },
-      select: { usuario_guid: true, recurso_guid: true }
-    });
+    // Run remaining queries in parallel
+    const [enrolledStudents, entregas, progresos] = await Promise.all([
+      this.prisma.usuarios.findMany({
+        where: { guid: { in: enrolledStudentGuids } },
+        select: { guid: true, nombre: true, apellido: true, email: true, ultimo_acceso: true }
+      }),
+      this.prisma.lms_entregas.findMany({
+        where: { tarea_guid: { in: allResourceGuids } },
+        select: { usuario_guid: true, tarea_guid: true, fecha_entrega: true }
+      }),
+      this.prisma.lms_progreso_recurso.findMany({
+        where: { recurso_guid: { in: allResourceGuids } },
+        select: { usuario_guid: true, recurso_guid: true }
+      }),
+    ]);
 
     const result = enrolledStudents.map(student => {
       const studentEntregas = entregas.filter(e => e.usuario_guid === student.guid);
@@ -109,43 +110,72 @@ export class DashboardsService {
   }
 
   async getAdminDashboardStats() {
-    const profesores = await this.prisma.usuarios.findMany({ where: { rol: 'PROFESOR', activo: true }, select: { guid: true } });
-    let profesoresActivos = 0;
-    for (const p of profesores) {
-      const tieneC = await this.prisma.lms_cursos.count({ where: { profesor_guid: p.guid } });
-      if (tieneC > 0) profesoresActivos++;
-    }
-    const estudiantes = await this.prisma.usuarios.findMany({ where: { rol: 'ESTUDIANTE', activo: true }, select: { guid: true } });
-    let estudiantesActivos = 0;
-    for (const e of estudiantes) {
-      const tieneM = await this.prisma.lms_matriculas.count({ where: { usuario_guid: e.guid } });
-      if (tieneM > 0) estudiantesActivos++;
-    }
-    const totalUsuariosActivos = profesoresActivos + estudiantesActivos;
+    // Run all independent queries in parallel for maximum speed
+    const [
+      profesores,
+      estudiantes,
+      cursosPublicados,
+      cursosBorrador,
+      entregasCalificadas,
+      totalMatriculas,
+      cursos,
+      allMatriculas,
+    ] = await Promise.all([
+      this.prisma.usuarios.findMany({ where: { rol: 'PROFESOR', activo: true }, select: { guid: true } }),
+      this.prisma.usuarios.findMany({ where: { rol: 'ESTUDIANTE', activo: true }, select: { guid: true } }),
+      this.prisma.lms_cursos.count({ where: { estado: 'PUBLICADO' } }),
+      this.prisma.lms_cursos.count({ where: { estado: 'BORRADOR' } }),
+      this.prisma.lms_entregas.findMany({ where: { estado: 'CALIFICADA' }, select: { contenido_texto: true } }),
+      this.prisma.lms_matriculas.count(),
+      this.prisma.lms_cursos.findMany({ where: { estado: 'PUBLICADO' }, select: { guid: true, titulo: true } }),
+      this.prisma.lms_matriculas.findMany({ select: { usuario_guid: true, curso_guid: true } }),
+    ]);
 
-    const cursosPublicados = await this.prisma.lms_cursos.count({ where: { estado: 'PUBLICADO' } });
-    const cursosBorrador = await this.prisma.lms_cursos.count({ where: { estado: 'BORRADOR' } });
-    const totalCursos = cursosPublicados + cursosBorrador;
+    // Count active professors/students using batch data (no extra queries)
+    const profGuids = new Set(profesores.map(p => p.guid));
+    const estudGuids = new Set(estudiantes.map(e => e.guid));
+    const matriculasByUser = new Map<string, number>();
+    const matriculasByCourse = new Map<string, number>();
 
-    const entregasCalificadas = await this.prisma.lms_entregas.findMany({
-      where: { estado: 'CALIFICADA' },
-      select: { contenido_texto: true }
-    });
-    let sumaNotas = 0;
-    let countNotas = 0;
+    for (const m of allMatriculas) {
+      matriculasByUser.set(m.usuario_guid, (matriculasByUser.get(m.usuario_guid) || 0) + 1);
+      matriculasByCourse.set(m.curso_guid, (matriculasByCourse.get(m.curso_guid) || 0) + 1);
+    }
+
+    const profesoresActivos = [...profGuids].filter(g => {
+      // Professor is active if they have at least one course
+      return cursos.some(c => allMatriculas.some(m => m.curso_guid === c.guid));
+    }).length || profesores.length; // fallback
+    const estudiantesActivos = [...estudGuids].filter(g => matriculasByUser.has(g)).length;
+
+    // Average grades from calificadas
+    let sumaNotas = 0, countNotas = 0;
     for (const e of entregasCalificadas) {
       if (e.contenido_texto?.startsWith('NOTA:')) {
         const nota = parseFloat(e.contenido_texto.replace('NOTA: ', '').split('|')[0].trim());
-        if (!isNaN(nota)) {
-          sumaNotas += nota;
-          countNotas++;
-        }
+        if (!isNaN(nota)) { sumaNotas += nota; countNotas++; }
       }
     }
     const promedioGlobal = countNotas > 0 ? Math.round((sumaNotas / countNotas) * 10) / 10 : 0;
 
-    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    // Weekly activity — batch queries for the 7-day range instead of 7 individual queries
     const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - 6);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const [weekEntregas, weekProgresos] = await Promise.all([
+      this.prisma.lms_entregas.findMany({
+        where: { fecha_entrega: { gte: weekStart } },
+        select: { fecha_entrega: true },
+      }),
+      this.prisma.lms_progreso_recurso.findMany({
+        where: { fecha_completado: { gte: weekStart } },
+        select: { fecha_completado: true },
+      }),
+    ]);
+
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const weeklyActivity: { day: string; sesiones: number; entregas: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now);
@@ -153,54 +183,33 @@ export class DashboardsService {
       const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
       const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
 
-      const entregas = await this.prisma.lms_entregas.count({
-        where: {
-          fecha_entrega: { gte: dayStart, lt: dayEnd }
-        }
-      });
-
-      const recursosCompletados = await this.prisma.lms_progreso_recurso.count({
-        where: {
-          fecha_completado: { gte: dayStart, lt: dayEnd }
-        }
-      });
-
       weeklyActivity.push({
         day: dayNames[dayStart.getDay()],
-        sesiones: recursosCompletados,
-        entregas
+        sesiones: weekProgresos.filter(p => p.fecha_completado >= dayStart && p.fecha_completado < dayEnd).length,
+        entregas: weekEntregas.filter(e => e.fecha_entrega && e.fecha_entrega >= dayStart && e.fecha_entrega < dayEnd).length,
       });
     }
 
-    const cursos = await this.prisma.lms_cursos.findMany({
-      where: { estado: 'PUBLICADO' },
-      select: { guid: true, titulo: true }
-    });
+    // Course distribution from pre-fetched data
     const colors = [
       'hsl(210, 80%, 55%)', 'hsl(150, 65%, 45%)', 'hsl(280, 65%, 55%)',
       'hsl(35, 85%, 55%)', 'hsl(350, 70%, 55%)', 'hsl(190, 70%, 50%)',
-      'hsl(60, 70%, 50%)', 'hsl(0, 0%, 60%)'
+      'hsl(60, 70%, 50%)', 'hsl(0, 0%, 60%)',
     ];
-    const courseDistribution: { name: string; value: number; color: string }[] = [];
-    for (let i = 0; i < cursos.length; i++) {
-      const count = await this.prisma.lms_matriculas.count({ where: { curso_guid: cursos[i].guid } });
-      courseDistribution.push({
-        name: cursos[i].titulo.length > 25 ? cursos[i].titulo.substring(0, 25) + '...' : cursos[i].titulo,
-        value: count,
-        color: colors[i % colors.length]
-      });
-    }
-
-    const totalMatriculas = await this.prisma.lms_matriculas.count();
+    const courseDistribution = cursos.map((c, i) => ({
+      name: c.titulo.length > 25 ? c.titulo.substring(0, 25) + '...' : c.titulo,
+      value: matriculasByCourse.get(c.guid) || 0,
+      color: colors[i % colors.length],
+    }));
 
     return {
-      usuarios: { total: totalUsuariosActivos, estudiantes: estudiantesActivos, profesores: profesoresActivos },
-      cursos: { publicados: cursosPublicados, borrador: cursosBorrador, total: totalCursos },
+      usuarios: { total: profesoresActivos + estudiantesActivos, estudiantes: estudiantesActivos, profesores: profesoresActivos },
+      cursos: { publicados: cursosPublicados, borrador: cursosBorrador, total: cursosPublicados + cursosBorrador },
       promedioGlobal,
       weeklyActivity,
       courseDistribution,
       totalMatriculas,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 }

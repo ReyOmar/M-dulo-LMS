@@ -16,6 +16,9 @@ import { EstudiantesModule } from './estudiantes/estudiantes.module';
 import { MatriculasModule } from './matriculas/matriculas.module';
 import { DashboardsModule } from './dashboards/dashboards.module';
 import { WsModule } from './ws/ws.module';
+import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { MailModule } from './mail/mail.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
 
 @Module({
   imports: [
@@ -50,6 +53,9 @@ import { WsModule } from './ws/ws.module';
     MatriculasModule,
     DashboardsModule,
     WsModule,
+    NotificacionesModule,
+    MailModule,
+    SchedulerModule,
   ],
   controllers: [],
   providers: [

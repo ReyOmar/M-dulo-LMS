@@ -21,7 +21,10 @@ type WebSocketEvent =
   | 'submission:graded'
   | 'config:updated'
   | 'presence:update'
-  | 'dashboard:refresh';
+  | 'dashboard:refresh'
+  | 'notification:new'
+  | 'notification:read'
+  | 'message:new';
 
 interface CourseEditor {
   guid: string;

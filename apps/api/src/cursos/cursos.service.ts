@@ -2,10 +2,17 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { lms_tipo_recurso, lms_estado_curso } from '@prisma/client';
 import { LmsGateway } from '../ws/lms.gateway';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class CursosService {
-  constructor(private prisma: PrismaService, private lmsGateway: LmsGateway) {}
+  constructor(
+    private prisma: PrismaService,
+    private lmsGateway: LmsGateway,
+    private notificacionesService: NotificacionesService,
+    private mailService: MailService,
+  ) {}
 
   async getCursosActivosParaEstudiante() {
     return this.prisma.lms_cursos.findMany({
@@ -439,6 +446,99 @@ export class CursosService {
             await this.prisma.lms_progreso_recurso.create({
                 data: { usuario_guid, recurso_guid }
             });
+        }
+
+        // Notify student of success
+        await this.notificacionesService.crearNotificacion({
+          usuario_guid,
+          tipo: 'TAREA_CALIFICADA',
+          titulo: '¡Cuestionario aprobado!',
+          mensaje: `Obtuviste ${nota.toFixed(1)}/5.0 en "${bloque.titulo.replace('[QUIZ] ', '')}". ¡Buen trabajo!`,
+          ref_tipo: 'quiz',
+          ref_guid: recurso_guid,
+        });
+    } else {
+        // FAILED: Reset module progress — student must redo the entire module
+        // but keep file/document submissions (non-quiz TAREA) as completed
+        const recursoConModulo = await this.prisma.lms_recursos.findUnique({
+          where: { guid: recurso_guid },
+          select: {
+            leccion: {
+              select: {
+                modulo: {
+                  select: {
+                    guid: true,
+                    titulo: true,
+                    curso: { select: { guid: true, titulo: true, profesor_guid: true } },
+                    lecciones: {
+                      select: {
+                        recursos: {
+                          select: { guid: true, titulo: true, tipo: true }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        if (recursoConModulo) {
+          const modulo = recursoConModulo.leccion.modulo;
+          // Collect all resource GUIDs in this module
+          const allResources = modulo.lecciones.flatMap(l => l.recursos);
+          // Only reset progress for non-file resources (text, video, pdf, link, quizzes)
+          // Keep file submissions (TAREA without [QUIZ] prefix) as completed
+          const resetGuids = allResources
+            .filter(r => {
+              // Keep non-quiz TAREA progress (file submissions)
+              if (r.tipo === 'TAREA' && !r.titulo.startsWith('[QUIZ]')) return false;
+              return true;
+            })
+            .map(r => r.guid);
+
+          // Delete progress records + fetch student info in parallel
+          const [, estudiante] = await Promise.all([
+            resetGuids.length > 0
+              ? this.prisma.lms_progreso_recurso.deleteMany({
+                  where: { usuario_guid, recurso_guid: { in: resetGuids } },
+                })
+              : Promise.resolve(),
+            this.prisma.usuarios.findUnique({
+              where: { guid: usuario_guid },
+              select: { nombre: true, apellido: true, email: true },
+            }),
+          ]);
+          const nombreEstudiante = estudiante ? `${estudiante.nombre} ${estudiante.apellido}` : 'Estudiante';
+          const quizName = bloque.titulo.replace('[QUIZ] ', '');
+
+          // Broadcast to trigger UI refresh immediately (fast path)
+          this.lmsGateway.broadcast('submission:graded', {
+            recurso_guid, usuario_guid, nota,
+            module_reset: true, modulo_guid: modulo.guid,
+          }, [usuario_guid]);
+
+          // Fire-and-forget: notifications + email (don't block the response)
+          Promise.all([
+            this.notificacionesService.crearNotificacion({
+              usuario_guid,
+              tipo: 'ENTREGA_RECHAZADA',
+              titulo: 'Cuestionario no superado',
+              mensaje: `Obtuviste ${nota.toFixed(1)}/5.0 en "${quizName}". Debes repasar el módulo "${modulo.titulo}" desde el inicio para poder intentarlo de nuevo.`,
+              ref_tipo: 'quiz', ref_guid: recurso_guid,
+            }),
+            this.notificacionesService.crearNotificacion({
+              usuario_guid: modulo.curso.profesor_guid,
+              tipo: 'REVISION_ENTREGA',
+              titulo: 'Estudiante suspendió cuestionario',
+              mensaje: `${nombreEstudiante} obtuvo ${nota.toFixed(1)}/5.0 en "${quizName}" del curso "${modulo.curso.titulo}". Ha sido devuelto al inicio del módulo "${modulo.titulo}".`,
+              ref_tipo: 'quiz', ref_guid: recurso_guid,
+            }),
+            estudiante
+              ? this.mailService.sendQuizFailedModuleReset(estudiante.email, estudiante.nombre, quizName, modulo.titulo, nota)
+              : Promise.resolve(),
+          ]).catch(err => console.error('Quiz notification error:', err));
         }
     }
 

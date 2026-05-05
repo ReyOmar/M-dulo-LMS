@@ -32,6 +32,8 @@ model usuarios {
   progreso_recurso  lms_progreso_recurso[]
   notificaciones    lms_notificaciones[]
   metricas          lms_metricas_capacitacion?
+  mensajes_enviados   lms_mensajes[] @relation("mensajes_enviados")
+  mensajes_recibidos  lms_mensajes[] @relation("mensajes_recibidos")
 
   ultimo_acceso     DateTime?
 }
@@ -64,6 +66,7 @@ enum lms_estado_entrega {
   ENTREGADA
   ENTREGADA_TARDE
   CALIFICADA
+  EN_REVISION
 }
 
 enum lms_tipo_notificacion {
@@ -76,6 +79,12 @@ enum lms_tipo_notificacion {
   BIENVENIDA_CURSO
   BADGE_DESBLOQUEADO
   MODULO_COMPLETADO
+  MODULO_REINICIADO
+  REVISION_ENTREGA
+  ENTREGA_RECHAZADA
+  CURSO_REACTIVADO
+  RECORDATORIO_INACTIVIDAD
+  MENSAJE_NUEVO
 }
 
 enum lms_escala_calificacion {
@@ -266,6 +275,38 @@ model lms_notificaciones {
   created_at   DateTime              @default(now())
 
   @@index([usuario_guid])
+}
+
+// ── MENSAJERÍA ──
+
+model lms_mensajes {
+  id              Int      @id @default(autoincrement())
+  remitente_guid  String
+  remitente       usuarios @relation("mensajes_enviados", fields: [remitente_guid], references: [guid], onDelete: Cascade)
+  destinatario_guid String
+  destinatario    usuarios @relation("mensajes_recibidos", fields: [destinatario_guid], references: [guid], onDelete: Cascade)
+  asunto          String
+  contenido       String
+  leido           Boolean  @default(false)
+  ref_tipo        String?  // 'quiz_retry', 'entrega_revision', 'general'
+  ref_guid        String?  // GUID del recurso/entrega relacionado
+  created_at      DateTime @default(now())
+
+  @@index([remitente_guid])
+  @@index([destinatario_guid])
+}
+
+// ── RECUPERACIÓN DE CONTRASEÑA ──
+
+model lms_password_resets {
+  id         Int      @id @default(autoincrement())
+  email      String
+  token      String   @unique
+  usado      Boolean  @default(false)
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  @@index([email])
 }
 
 // ── MÉTRICAS PESV ──

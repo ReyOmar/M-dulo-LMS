@@ -35,13 +35,10 @@ export class EstudiantesService {
   }
 
   async marcarRecursoCompletado(usuario_guid: string, recurso_guid: string) {
-    const existing = await this.prisma.lms_progreso_recurso.findUnique({
-      where: { usuario_guid_recurso_guid: { usuario_guid, recurso_guid } }
-    });
-    if (existing) return existing;
-
-    return this.prisma.lms_progreso_recurso.create({
-      data: { usuario_guid, recurso_guid, completado: true }
+    return this.prisma.lms_progreso_recurso.upsert({
+      where: { usuario_guid_recurso_guid: { usuario_guid, recurso_guid } },
+      create: { usuario_guid, recurso_guid, completado: true },
+      update: {},
     });
   }
 
@@ -87,50 +84,62 @@ export class EstudiantesService {
   }
 
   async getMetricasEstudiante(usuario_guid: string) {
-    let metricas = await this.prisma.lms_metricas_capacitacion.findUnique({
-      where: { usuario_guid }
-    });
-    if (!metricas) {
-      metricas = await this.prisma.lms_metricas_capacitacion.create({
-        data: { usuario_guid }
-      });
-    }
-
-    const matriculas = await this.prisma.lms_matriculas.findMany({
-      where: { usuario_guid },
-      include: {
-        curso: {
-          include: {
-            modulos: {
-              include: {
-                lecciones: {
-                  include: {
-                    recursos: { select: { guid: true } }
+    // Run metricas + matriculas fetch in parallel
+    const [metricas, matriculas] = await Promise.all([
+      this.prisma.lms_metricas_capacitacion.upsert({
+        where: { usuario_guid },
+        create: { usuario_guid },
+        update: {},
+      }),
+      this.prisma.lms_matriculas.findMany({
+        where: { usuario_guid },
+        include: {
+          curso: {
+            include: {
+              modulos: {
+                include: {
+                  lecciones: {
+                    include: {
+                      recursos: { select: { guid: true } }
+                    }
                   }
                 }
               }
             }
           }
         }
-      }
-    });
+      }),
+    ]);
+
+    // Collect ALL resource GUIDs across all enrolled courses
+    const allResourceGuids: string[] = [];
+    const courseTotals: { courseIndex: number; guids: string[] }[] = [];
+
+    for (let i = 0; i < matriculas.length; i++) {
+      const recursoGuids = matriculas[i].curso.modulos.flatMap((m: any) =>
+        m.lecciones.flatMap((l: any) => l.recursos.map((r: any) => r.guid))
+      );
+      allResourceGuids.push(...recursoGuids);
+      courseTotals.push({ courseIndex: i, guids: recursoGuids });
+    }
+
+    // Single batch query for ALL progress across all courses
+    const completedSet = new Set<string>();
+    if (allResourceGuids.length > 0) {
+      const completed = await this.prisma.lms_progreso_recurso.findMany({
+        where: { usuario_guid, recurso_guid: { in: allResourceGuids } },
+        select: { recurso_guid: true },
+      });
+      for (const c of completed) completedSet.add(c.recurso_guid);
+    }
 
     let cursos_completados = 0;
-    let total_recursos_completados = 0;
+    let total_recursos_completados = completedSet.size;
 
-    for (const mat of matriculas) {
-      const recursoGuids = mat.curso.modulos.flatMap((m: any) => m.lecciones.flatMap((l: any) => l.recursos.map((r: any) => r.guid)));
-      if (recursoGuids.length === 0) continue;
-
-      const completados = await this.prisma.lms_progreso_recurso.count({
-        where: { usuario_guid, recurso_guid: { in: recursoGuids } }
-      });
-
-      total_recursos_completados += completados;
-
-      if (completados === recursoGuids.length) {
-        cursos_completados++;
-      }
+    for (const ct of courseTotals) {
+      if (ct.guids.length === 0) continue;
+      const courseCompleted = ct.guids.filter(g => completedSet.has(g)).length;
+      if (courseCompleted === ct.guids.length) cursos_completados++;
     }
 
     const horas_estimadas = total_recursos_completados * 0.5;

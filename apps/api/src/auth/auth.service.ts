@@ -3,7 +3,9 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { LmsGateway } from '../ws/lms.gateway';
+import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +14,7 @@ export class AuthService {
     private jwtService: JwtService,
     private tokenBlacklistService: TokenBlacklistService,
     private lmsGateway: LmsGateway,
+    private mailService: MailService,
   ) {}
 
   // Helper: obtener la contraseña por defecto desde la configuración
@@ -55,6 +58,18 @@ export class AuthService {
       apellido: dto.apellido,
       rol_pedido: dto.rol_pedido,
     }, 'ADMINISTRADOR');
+
+    // Fire-and-forget: email all active admins (don't block response)
+    this.prisma.usuarios.findMany({
+      where: { rol: 'ADMINISTRADOR', activo: true },
+      select: { email: true, nombre: true },
+    }).then(admins => {
+      Promise.all(admins.map(admin =>
+        this.mailService.sendNewAccessRequest(admin.email, admin.nombre, {
+          nombre: dto.nombre, apellido: dto.apellido, email: dto.email, rol_pedido: dto.rol_pedido,
+        })
+      )).catch(err => console.error('Admin email error:', err));
+    });
 
     return { message: 'Solicitud enviada al administrador exitosamente.', request_id: sol.id };
   }
@@ -334,5 +349,56 @@ export class AuthService {
     const user = await this.prisma.usuarios.findUnique({ where: { guid }, select: { guid: true, email: true, nombre: true, apellido: true, rol: true, created_at: true } });
     if (!user) throw new NotFoundException('Usuario no encontrado.');
     return user;
+  }
+
+  // --- RECUPERACIÓN DE CONTRASEÑA ---
+
+  async requestPasswordReset(email: string) {
+    const user = await this.prisma.usuarios.findUnique({ where: { email } });
+    if (!user) {
+      // Don't reveal if user exists — always return success
+      return { message: 'Si el correo está registrado, recibirás un enlace de recuperación.' };
+    }
+
+    // Invalidate previous tokens for this email
+    await this.prisma.lms_password_resets.updateMany({
+      where: { email, usado: false },
+      data: { usado: true },
+    });
+
+    // Generate secure token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+
+    await this.prisma.lms_password_resets.create({
+      data: { email, token, expires_at: expiresAt },
+    });
+
+    // Send email
+    await this.mailService.sendPasswordResetEmail(email, token, user.nombre);
+
+    return { message: 'Si el correo está registrado, recibirás un enlace de recuperación.' };
+  }
+
+  async resetPassword(token: string, nuevaContrasena: string) {
+    const resetRecord = await this.prisma.lms_password_resets.findUnique({ where: { token } });
+    if (!resetRecord) throw new BadRequestException('Token inválido o expirado.');
+    if (resetRecord.usado) throw new BadRequestException('Este enlace ya fue utilizado.');
+    if (new Date() > resetRecord.expires_at) throw new BadRequestException('El enlace ha expirado. Solicita uno nuevo.');
+
+    // Hash new password
+    const hashed = await bcrypt.hash(nuevaContrasena, 10);
+    await this.prisma.usuarios.update({
+      where: { email: resetRecord.email },
+      data: { contrasena: hashed },
+    });
+
+    // Mark token as used
+    await this.prisma.lms_password_resets.update({
+      where: { id: resetRecord.id },
+      data: { usado: true },
+    });
+
+    return { message: 'Contraseña restablecida exitosamente. Ya puedes iniciar sesión.' };
   }
 }

@@ -6,6 +6,7 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import { useWS } from "@/contexts/WebSocketContext";
 import api from "@/lib/api";
+import { useDebounce } from "@/hooks/usePerformance";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from "recharts";
 
 export default function MonitoreoEstudiantesPage() {
@@ -14,8 +15,10 @@ export default function MonitoreoEstudiantesPage() {
   const [estudiantes, setEstudiantes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 250);
   const [cursoFiltro, setCursoFiltro] = useState<string>("todos");
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (user?.guid) {
@@ -69,18 +72,19 @@ export default function MonitoreoEstudiantesPage() {
 
   // 2. Filtrar estudiantes por búsqueda y por curso seleccionado
   const filtered = useMemo(() => {
+    const q = debouncedSearch.toLowerCase();
     return estudiantes.filter(e => {
-      const matchSearch = search.toLowerCase() === "" || (
-        e.nombre?.toLowerCase().includes(search.toLowerCase()) ||
-        e.apellido?.toLowerCase().includes(search.toLowerCase()) ||
-        e.email?.toLowerCase().includes(search.toLowerCase())
+      const matchSearch = q === "" || (
+        e.nombre?.toLowerCase().includes(q) ||
+        e.apellido?.toLowerCase().includes(q) ||
+        e.email?.toLowerCase().includes(q)
       );
       
       const matchCurso = cursoFiltro === "todos" || e.cursos.some((c: any) => c.curso_guid === cursoFiltro);
 
       return matchSearch && matchCurso;
     });
-  }, [estudiantes, search, cursoFiltro]);
+  }, [estudiantes, debouncedSearch, cursoFiltro]);
 
   // 3. Calcular datos para el gráfico de barras basado en los estudiantes filtrados
   const chartData = useMemo(() => {
@@ -436,42 +440,133 @@ export default function MonitoreoEstudiantesPage() {
                       </td>
                     </tr>
                     {/* Expanded Detail */}
-                    {isExpanded && est.cursos.filter((c: any) => cursoFiltro === "todos" || c.curso_guid === cursoFiltro).map((curso: any) => (
-                      <tr key={`${est.guid}-${curso.curso_guid}`} className="bg-muted/5 animate-in fade-in duration-200">
-                        <td colSpan={6} className="px-12 py-4">
-                          <div className="border border-border/50 rounded-xl p-4 bg-background shadow-sm">
-                            <div className="flex items-center gap-2 mb-3">
-                              <BookOpen className="h-4 w-4 text-primary" />
-                              <span className="font-bold text-sm">{curso.curso_titulo}</span>
-                              <span className={`ml-auto px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                                curso.porcentaje >= 76 ? 'bg-emerald-500/10 text-emerald-600' :
-                                curso.porcentaje >= 51 ? 'bg-blue-500/10 text-blue-600' :
-                                curso.porcentaje >= 26 ? 'bg-amber-500/10 text-amber-600' :
-                                'bg-red-500/10 text-red-500'
-                              }`}>
-                                {curso.porcentaje}% completado
-                              </span>
-                            </div>
-                            <div className="space-y-2">
-                              {curso.modulos.map((mod: any, i: number) => (
-                                <div key={i} className="flex items-center gap-3">
-                                  <span className="text-xs text-muted-foreground font-medium w-40 truncate">{mod.titulo}</span>
-                                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                                    <div
-                                      className={`h-full rounded-full ${mod.porcentaje >= 76 ? 'bg-emerald-500' : mod.porcentaje >= 51 ? 'bg-blue-500' : mod.porcentaje >= 26 ? 'bg-amber-500' : 'bg-red-400'}`}
-                                      style={{ width: `${mod.porcentaje}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-xs font-bold text-muted-foreground w-16 text-right">
-                                    {mod.completados}/{mod.total}
-                                  </span>
+                    {/* Expanded Detail — Each course is expandable */}
+                    {isExpanded && (
+                      <tr className="bg-muted/5 animate-in fade-in duration-200">
+                        <td colSpan={6} className="px-10 py-4">
+                          <div className="space-y-2">
+                            {est.cursos.filter((c: any) => cursoFiltro === "todos" || c.curso_guid === cursoFiltro).map((curso: any) => {
+                              const courseKey = `${est.guid}-${curso.curso_guid}`;
+                              const isCourseExpanded = expandedCourses.has(courseKey);
+                              const toggleCourse = (e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                setExpandedCourses(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(courseKey)) next.delete(courseKey);
+                                  else next.add(courseKey);
+                                  return next;
+                                });
+                              };
+                              const totalModulos = curso.modulos?.length || 0;
+                              const modulosCompletos = curso.modulos?.filter((m: any) => m.porcentaje >= 100).length || 0;
+                              const totalRecursos = curso.modulos?.reduce((s: number, m: any) => s + (m.total || 0), 0) || 0;
+                              const recursosCompletados = curso.modulos?.reduce((s: number, m: any) => s + (m.completados || 0), 0) || 0;
+
+                              return (
+                                <div key={curso.curso_guid} className="border border-border/50 rounded-xl overflow-hidden bg-background shadow-sm">
+                                  {/* Course Header — clickable */}
+                                  <button
+                                    onClick={toggleCourse}
+                                    className="w-full flex items-center gap-3 px-5 py-4 hover:bg-muted/30 transition-colors text-left"
+                                  >
+                                    {isCourseExpanded
+                                      ? <ChevronDown className="h-4 w-4 text-primary shrink-0" />
+                                      : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                                    }
+                                    <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                                    <span className="font-bold text-sm flex-1">{curso.curso_titulo}</span>
+
+                                    {/* Progress summary chips */}
+                                    <div className="flex items-center gap-3 shrink-0">
+                                      <span className="text-[11px] text-muted-foreground font-medium">
+                                        {modulosCompletos}/{totalModulos} módulos
+                                      </span>
+                                      <span className="text-[11px] text-muted-foreground font-medium">
+                                        {recursosCompletados}/{totalRecursos} recursos
+                                      </span>
+                                      <div className="flex items-center gap-2 w-28">
+                                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className={`h-full rounded-full transition-all ${
+                                              curso.porcentaje >= 76 ? 'bg-emerald-500' :
+                                              curso.porcentaje >= 51 ? 'bg-blue-500' :
+                                              curso.porcentaje >= 26 ? 'bg-amber-500' : 'bg-red-400'
+                                            }`}
+                                            style={{ width: `${curso.porcentaje}%` }}
+                                          />
+                                        </div>
+                                        <span className={`text-xs font-bold w-10 text-right ${
+                                          curso.porcentaje >= 76 ? 'text-emerald-600' :
+                                          curso.porcentaje >= 51 ? 'text-blue-600' :
+                                          curso.porcentaje >= 26 ? 'text-amber-600' : 'text-red-500'
+                                        }`}>
+                                          {curso.porcentaje}%
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </button>
+
+                                  {/* Course Detail — modules breakdown */}
+                                  {isCourseExpanded && (
+                                    <div className="border-t border-border/30 px-5 py-4 bg-muted/5 animate-in slide-in-from-top-1 duration-200">
+                                      {/* Course summary stats */}
+                                      <div className="grid grid-cols-3 gap-3 mb-4">
+                                        <div className="bg-card border border-border/40 rounded-lg p-3 text-center">
+                                          <p className="text-lg font-bold text-primary">{totalModulos}</p>
+                                          <p className="text-[10px] text-muted-foreground font-medium uppercase">Módulos</p>
+                                        </div>
+                                        <div className="bg-card border border-border/40 rounded-lg p-3 text-center">
+                                          <p className="text-lg font-bold text-emerald-600">{recursosCompletados}</p>
+                                          <p className="text-[10px] text-muted-foreground font-medium uppercase">Completados</p>
+                                        </div>
+                                        <div className="bg-card border border-border/40 rounded-lg p-3 text-center">
+                                          <p className="text-lg font-bold text-amber-600">{totalRecursos - recursosCompletados}</p>
+                                          <p className="text-[10px] text-muted-foreground font-medium uppercase">Pendientes</p>
+                                        </div>
+                                      </div>
+
+                                      {/* Module rows */}
+                                      <div className="space-y-2">
+                                        {curso.modulos.map((mod: any, i: number) => (
+                                          <div key={i} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted/20 transition-colors">
+                                            <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                                              mod.porcentaje >= 100 ? 'bg-emerald-500/10 text-emerald-600' :
+                                              mod.porcentaje > 0 ? 'bg-amber-500/10 text-amber-600' :
+                                              'bg-muted text-muted-foreground'
+                                            }`}>
+                                              {i + 1}
+                                            </div>
+                                            <span className="text-xs font-medium flex-1 truncate">{mod.titulo}</span>
+                                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[180px]">
+                                              <div
+                                                className={`h-full rounded-full transition-all ${
+                                                  mod.porcentaje >= 76 ? 'bg-emerald-500' :
+                                                  mod.porcentaje >= 51 ? 'bg-blue-500' :
+                                                  mod.porcentaje >= 26 ? 'bg-amber-500' : 'bg-red-400'
+                                                }`}
+                                                style={{ width: `${mod.porcentaje}%` }}
+                                              />
+                                            </div>
+                                            <span className="text-xs font-bold text-muted-foreground w-16 text-right">
+                                              {mod.completados}/{mod.total}
+                                            </span>
+                                            <span className={`text-xs font-bold w-10 text-right ${
+                                              mod.porcentaje >= 100 ? 'text-emerald-600' : 'text-muted-foreground'
+                                            }`}>
+                                              {mod.porcentaje}%
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
-                              ))}
-                            </div>
+                              );
+                            })}
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </Fragment>
                 );
               })}
