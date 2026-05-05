@@ -75,7 +75,14 @@ export default function CursoVisorPage() {
         setInMaintenance(true);
       }
     });
-    return unsub;
+    // Clear maintenance when course is republished
+    const unsub2 = subscribe('course:updated', (data: any) => {
+      if (data.guid === curso_id && data.estado === 'PUBLICADO') {
+        setInMaintenance(false);
+        fetchCurso();
+      }
+    });
+    return () => { unsub(); unsub2(); };
   }, [subscribe, curso_id]);
 
   const fetchCurso = async () => {
@@ -83,6 +90,10 @@ export default function CursoVisorPage() {
       const res = await api.get(`/cursos/${curso_id}`);
       const data = res.data;
       setCurso(data);
+      // If the course is in BORRADOR when loaded, show maintenance immediately
+      if (data.estado === 'BORRADOR') {
+        setInMaintenance(true);
+      }
     } catch (err) {
       console.error(err);
     } finally {

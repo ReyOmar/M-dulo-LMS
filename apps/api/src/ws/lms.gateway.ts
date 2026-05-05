@@ -222,4 +222,16 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     this.clients = this.clients.filter(c => c.guid !== guid);
   }
+
+  /**
+   * Release the editing lock for a course.
+   * Clears the internal courseEditors Map and broadcasts the release event.
+   * Called by services when a course is published to ensure no stale locks.
+   */
+  releaseCourseEditor(cursoGuid: string): void {
+    if (this.courseEditors.has(cursoGuid)) {
+      this.courseEditors.delete(cursoGuid);
+    }
+    this.broadcast('course:editing-released', { curso_guid: cursoGuid });
+  }
 }

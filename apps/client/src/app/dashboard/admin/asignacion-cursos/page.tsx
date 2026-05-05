@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { BookOpen, Users, GraduationCap, Presentation, Plus, X, Loader2, CheckCircle, Search, UserPlus, UserMinus } from "lucide-react";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useWS } from "@/contexts/WebSocketContext";
+import { useRole } from "@/contexts/RoleContext";
 import api from "@/lib/api";
 
 interface Curso {
@@ -48,6 +49,7 @@ export default function AsignacionCursosPage() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   
   const { subscribe } = useWS();
+  const { role } = useRole();
 
   useEffect(() => {
     fetchData();
@@ -189,6 +191,15 @@ export default function AsignacionCursosPage() {
 
   const cursoSeleccionadoProf = cursos.find(c => c.guid === selectedCursoProfesor);
   const profesorActual = cursoSeleccionadoProf ? profesores.find(p => p.guid === cursoSeleccionadoProf.profesor_guid) : null;
+
+  if (role !== 'admin') {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh] animate-in fade-in">
+        <h1 className="text-2xl font-bold text-red-500 mb-2">Acceso Restringido</h1>
+        <p className="text-muted-foreground">No tienes permisos para asignar cursos. Solo los administradores pueden realizar esta acción.</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return <PageLoader message="Cargando datos de asignación..." />;

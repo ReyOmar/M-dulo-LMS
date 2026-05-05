@@ -3,9 +3,11 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { ArrowLeft, Save, Type, PlayCircle, FileText, CheckCircle, LinkIcon, Paperclip, Plus, Trash2, Clock, RefreshCcw, GripVertical, Download, Settings } from "lucide-react";
+import { ArrowLeft, Save, Type, PlayCircle, FileText, CheckCircle, LinkIcon, Paperclip, Plus, Trash2, Clock, RefreshCcw, GripVertical, Download, Settings, Lock } from "lucide-react";
 import api, { API_BASE_URL } from "@/lib/api";
 import { useAlert } from "@/contexts/AlertContext";
+import { useWS } from "@/contexts/WebSocketContext";
+import { useRole } from "@/contexts/RoleContext";
 
 // Types
 interface QuizOption { id: string; texto: string; es_correcta: boolean; }
@@ -31,16 +33,26 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
     const [archivoMaxSizeMb, setArchivoMaxSizeMb] = useState<number>(5); // default 5MB
     const [uploading, setUploading] = useState(false);
     const { showAlert } = useAlert();
+    const { send, editingCourses } = useWS();
+    const { user } = useRole();
     
     // Quiz config
     const [quizConfig, setQuizConfig] = useState<QuizConfig>({ intentos_permitidos: 1, tiempo_minutos: 0, preguntas: [] });
 
+    const [cursoEstado, setCursoEstado] = useState<string>('');
+    const [cursoTitulo, setCursoTitulo] = useState<string>('');
+
     useEffect(() => {
         const fetchBlock = async () => {
             try {
-                const res = await api.get(`/cursos/bloques/${resolvedParams.bloque_id}`);
-                const data = res.data;
+                const [bloqueRes, cursoRes] = await Promise.all([
+                    api.get(`/cursos/bloques/${resolvedParams.bloque_id}`),
+                    api.get(`/cursos/${resolvedParams.curso_id}`)
+                ]);
+                const data = bloqueRes.data;
                 setBloque(data);
+                setCursoEstado(cursoRes.data?.estado || '');
+                setCursoTitulo(cursoRes.data?.titulo || '');
                 
                 let cleanTitle = data.titulo;
                 if (data.tipo === 'TAREA' && data.titulo.startsWith('[QUIZ]')) {
@@ -64,9 +76,34 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
             }
         };
         fetchBlock();
-    }, [resolvedParams.bloque_id]);
+    }, [resolvedParams.bloque_id, resolvedParams.curso_id]);
+
+    const editorInfo = resolvedParams?.curso_id ? editingCourses[resolvedParams.curso_id] : null;
+    const isLockedByOther = editorInfo && editorInfo.guid !== user?.guid;
+
+    useEffect(() => {
+        if (!resolvedParams?.curso_id) return;
+        
+        send('course:lock', { curso_guid: resolvedParams.curso_id });
+        
+        const handleBeforeUnload = () => {
+            send('course:unlock', { curso_guid: resolvedParams.curso_id });
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            send('course:unlock', { curso_guid: resolvedParams.curso_id });
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [resolvedParams?.curso_id, send]);
+
+    const isReadOnly = cursoEstado === 'PUBLICADO';
 
     const handleSave = async () => {
+        if (isReadOnly) {
+            showAlert.warning('Curso publicado', 'El curso debe estar en estado Borrador para realizar cambios.');
+            return;
+        }
         setSaving(true);
         try {
             let finalTitulo = titulo || 'Recurso sin título';
@@ -90,8 +127,9 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                 });
             
             router.push(`/dashboard/admin/constructor-cursos?curso=${resolvedParams.curso_id}&resource=${resolvedParams.bloque_id}&module=${resolvedParams.modulo_id}`);
-        } catch (err) {
-            console.error(err);
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'No se pudo guardar.';
+            showAlert.warning('Error al guardar', msg);
         } finally {
             setSaving(false);
         }
@@ -208,16 +246,26 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                 <div className="ml-auto">
                     <button 
                         onClick={handleSave} 
-                        disabled={saving}
-                        className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-transform hover:-translate-y-0.5 shadow-md"
+                        disabled={saving || isReadOnly}
+                        className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-transform shadow-md ${
+                            isReadOnly 
+                                ? 'bg-muted text-muted-foreground cursor-not-allowed' 
+                                : 'bg-primary hover:bg-primary/90 text-white hover:-translate-y-0.5'
+                        }`}
                     >
                         <Save className="h-5 w-5" />
-                        {saving ? 'Guardando...' : 'Guardar y Volver'}
+                        {saving ? 'Guardando...' : isReadOnly ? 'Solo lectura' : 'Guardar y Volver'}
                     </button>
                 </div>
             </header>
 
             <div className="flex-1 bg-card border border-border shadow-sm rounded-2xl overflow-hidden flex flex-col">
+                {isReadOnly && (
+                    <div className="bg-amber-500/10 border-b border-amber-500/30 px-6 py-3 flex items-center gap-3">
+                        <Lock className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                        <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Este curso está publicado. Cambia a estado Borrador desde el constructor para editar.</p>
+                    </div>
+                )}
                 <div className="p-8 overflow-y-auto flex-1 space-y-8">
                     
                     {/* Título */}
@@ -478,6 +526,34 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
 
                 </div>
             </div>
+
+            {/* ===== KICK OUT MODAL ===== */}
+            {isLockedByOther && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 flex flex-col items-center text-center">
+                            <div className="w-16 h-16 bg-red-500/15 rounded-full flex items-center justify-center mb-4">
+                                <Lock className="h-8 w-8 text-red-500" />
+                            </div>
+                            <h3 className="text-xl font-bold text-foreground mb-2">Curso en Edición</h3>
+                            <p className="text-muted-foreground text-sm leading-relaxed">
+                                El <strong className="text-foreground">{editorInfo?.role} {editorInfo?.nombre}</strong> está editando el curso <strong className="text-foreground">{cursoTitulo}</strong>.
+                                <br/><br/>
+                                Debes salir para no sobrescribir sus cambios.
+                            </p>
+                        </div>
+                        <div className="px-6 pb-6">
+                            <button 
+                                type="button"
+                                onClick={() => router.push(`/dashboard/admin/constructor-cursos?curso=${resolvedParams.curso_id}`)}
+                                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 rounded-xl transition-colors shadow-md"
+                            >
+                                Volver al apartado
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -47,6 +47,8 @@ export class CursosController {
     return this.cursosService.getProfesores();
   }
 
+
+
   @Get('/:guid')
   async getCurso(@Param('guid') guid: string) {
     return this.cursosService.getCursoDetalleCompleto(guid);
@@ -74,8 +76,8 @@ export class CursosController {
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Patch('/:guid')
-  async updateCurso(@Param('guid') guid: string, @Body() body: UpdateCursoDto) {
-    return this.cursosService.updateCurso(guid, body);
+  async updateCurso(@Param('guid') guid: string, @Body() body: UpdateCursoDto, @CurrentUser() user: any) {
+    return this.cursosService.updateCurso(guid, body, user);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
