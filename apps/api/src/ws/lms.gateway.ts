@@ -71,19 +71,21 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       const connectedClient: ConnectedClient = {
         socket: client,
-        guid: payload?.sub || `guest-${Math.random().toString(36).substring(7)}`,
+        guid: payload?.sub || '',
         role: payload?.role || 'GUEST',
       };
 
-      this.clients.push(connectedClient);
-
-      // Only notify presence for authenticated users
-      if (payload?.sub) {
+      // Only track and notify presence for authenticated users
+      if (payload?.sub && connectedClient.guid) {
+        this.clients.push(connectedClient);
         this.broadcast('presence:update', {
           guid: payload.sub,
           status: 'online',
           onlineUsers: this.getOnlineUserGuids(),
         });
+      } else {
+        // Still track unauthenticated clients for broadcast purposes
+        this.clients.push(connectedClient);
       }
 
       // Send current course editing state to the newly connected client
@@ -133,35 +135,45 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const disconnectedGuid = this.clients[index].guid;
       this.clients.splice(index, 1);
 
-      // Check if user has other active connections
-      const stillConnected = this.clients.some(c => c.guid === disconnectedGuid);
-      if (!stillConnected) {
-        this.broadcast('presence:update', {
-          guid: disconnectedGuid,
-          status: 'offline',
-          onlineUsers: this.getOnlineUserGuids(),
-        });
+      // Only process presence for authenticated users (non-empty guid)
+      if (disconnectedGuid) {
+        // Check if user has other active connections
+        const stillConnected = this.clients.some(c => c.guid === disconnectedGuid);
+        if (!stillConnected) {
+          this.broadcast('presence:update', {
+            guid: disconnectedGuid,
+            status: 'offline',
+            onlineUsers: this.getOnlineUserGuids(),
+          });
 
-        // Release any courses this user was editing
-        const toRelease: string[] = [];
-        this.courseEditors.forEach((editor, cursoGuid) => {
-          if (editor.guid === disconnectedGuid) {
-            toRelease.push(cursoGuid);
+          // Release any courses this user was editing
+          const toRelease: string[] = [];
+          this.courseEditors.forEach((editor, cursoGuid) => {
+            if (editor.guid === disconnectedGuid) {
+              toRelease.push(cursoGuid);
+            }
+          });
+          for (const cursoGuid of toRelease) {
+            this.courseEditors.delete(cursoGuid);
+            this.broadcast('course:editing-released', { curso_guid: cursoGuid });
           }
-        });
-        for (const cursoGuid of toRelease) {
-          this.courseEditors.delete(cursoGuid);
-          this.broadcast('course:editing-released', { curso_guid: cursoGuid });
         }
       }
     }
+
+    // Periodic cleanup: remove stale/closed sockets
+    this.clients = this.clients.filter(c => c.socket.readyState === WebSocket.OPEN);
   }
 
   /**
-   * Get list of unique online user GUIDs
+   * Get list of unique online user GUIDs (authenticated users only)
    */
   getOnlineUserGuids(): string[] {
-    return [...new Set(this.clients.map(c => c.guid))];
+    return [...new Set(
+      this.clients
+        .filter(c => c.guid && c.socket.readyState === WebSocket.OPEN)
+        .map(c => c.guid)
+    )];
   }
 
   /**

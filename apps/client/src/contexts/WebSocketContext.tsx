@@ -158,6 +158,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     ws.onclose = (event) => {
       setIsConnected(false);
+      setOnlineUsers([]); // Clear stale presence data
       wsRef.current = null;
       
       // If code is 4004 (session revoked), do not reconnect automatically as guest immediately,
