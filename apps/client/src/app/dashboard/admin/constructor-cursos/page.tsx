@@ -312,35 +312,26 @@ export default function ConstructorCursosRoot() {
     
     guardPublished(async () => {
       setUploadingCover(true);
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const base64 = event.target?.result?.toString();
-        if (!base64) {
-          setUploadingCover(false);
-          return;
-        }
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const uploadRes = await api.post('/cursos/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        const filename = uploadRes.data.filename;
         
-        try {
-          const uploadRes = await api.post('/cursos/upload', {
-            base64: base64.split(',')[1],
-            nombre: file.name
-          });
-          const filename = uploadRes.data.filename;
-          
-          await api.patch(`/cursos/${activeCourse.guid}`, {
-            imagen_portada: filename
-          });
-          
-          setActiveCourse((prev: any) => ({ ...prev, imagen_portada: filename }));
-          fetchData();
-        } catch (err) {
-          console.error(err);
-          showAlert.error("Error", "Error al subir portada.");
-        } finally {
-          setUploadingCover(false);
-        }
-      };
-      reader.readAsDataURL(file);
+        await api.patch(`/cursos/${activeCourse.guid}`, {
+          imagen_portada: filename
+        });
+        
+        setActiveCourse((prev: any) => ({ ...prev, imagen_portada: filename }));
+        fetchData();
+      } catch (err) {
+        console.error(err);
+        showAlert.error("Error", "Error al subir portada.");
+      } finally {
+        setUploadingCover(false);
+      }
     });
   };
 
@@ -420,27 +411,37 @@ export default function ConstructorCursosRoot() {
   };
 
   // --- Handlers from old modal system ---
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              setBloqueBase64(reader.result as string);
-          };
-          reader.readAsDataURL(file);
+          try {
+              const formData = new FormData();
+              formData.append('file', file);
+              const res = await api.post('/cursos/upload', formData, {
+                  headers: { 'Content-Type': 'multipart/form-data' },
+              });
+              setBloqueBase64(`${API_BASE_URL}/cursos/download/${res.data.filename}`);
+          } catch (err) {
+              console.error('Error uploading image:', err);
+          }
       }
   };
 
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
       e.preventDefault();
       const file = e.dataTransfer.files?.[0];
       if (file && file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              setBloqueBase64(reader.result as string);
-          };
-          reader.readAsDataURL(file);
+          try {
+              const formData = new FormData();
+              formData.append('file', file);
+              const res = await api.post('/cursos/upload', formData, {
+                  headers: { 'Content-Type': 'multipart/form-data' },
+              });
+              setBloqueBase64(`${API_BASE_URL}/cursos/download/${res.data.filename}`);
+          } catch (err) {
+              console.error('Error uploading dropped image:', err);
+          }
       }
   };
 

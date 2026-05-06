@@ -17,7 +17,7 @@ export class MatriculasService {
       data: { usuario_guid, curso_guid, tipo: 'MANUAL' as lms_tipo_matricula }
     });
 
-    this.lmsGateway.broadcast('enrollment:changed', { action: 'enrolled', curso_guid, usuario_guid });
+    this.lmsGateway.broadcast('enrollment:changed', { action: 'enrolled', curso_guid, usuario_guid }, [usuario_guid]);
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'enrollment_changed' }, [usuario_guid]);
     this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'enrollment_changed' }, 'ADMINISTRADOR');
 
@@ -29,7 +29,7 @@ export class MatriculasService {
       where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } }
     });
 
-    this.lmsGateway.broadcast('enrollment:changed', { action: 'unenrolled', curso_guid, usuario_guid });
+    this.lmsGateway.broadcast('enrollment:changed', { action: 'unenrolled', curso_guid, usuario_guid }, [usuario_guid]);
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'enrollment_changed' }, [usuario_guid]);
     this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'enrollment_changed' }, 'ADMINISTRADOR');
 

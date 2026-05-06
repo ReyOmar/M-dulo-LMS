@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { ArrowLeft, Plus, Image as ImageIcon, Type, FileText, CheckCircle, UploadCloud, Save, X, Eye, Trash2, Edit3, Link as LinkIcon, AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import api from "@/lib/api";
+import api, { API_BASE_URL } from "@/lib/api";
 import { useAlert } from "@/contexts/AlertContext";
 
 export default function ModuleEditorPage() {
@@ -53,14 +53,19 @@ export default function ModuleEditorPage() {
     }
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              setBloqueBase64(reader.result as string);
-          };
-          reader.readAsDataURL(file);
+          try {
+              const formData = new FormData();
+              formData.append('file', file);
+              const res = await api.post('/cursos/upload', formData, {
+                  headers: { 'Content-Type': 'multipart/form-data' },
+              });
+              setBloqueBase64(`${API_BASE_URL}/cursos/download/${res.data.filename}`);
+          } catch (err) {
+              console.error('Error uploading image:', err);
+          }
       }
   };
 
@@ -68,15 +73,20 @@ export default function ModuleEditorPage() {
       e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
       e.preventDefault();
       const file = e.dataTransfer.files?.[0];
       if (file && file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              setBloqueBase64(reader.result as string);
-          };
-          reader.readAsDataURL(file);
+          try {
+              const formData = new FormData();
+              formData.append('file', file);
+              const res = await api.post('/cursos/upload', formData, {
+                  headers: { 'Content-Type': 'multipart/form-data' },
+              });
+              setBloqueBase64(`${API_BASE_URL}/cursos/download/${res.data.filename}`);
+          } catch (err) {
+              console.error('Error uploading dropped image:', err);
+          }
       }
   };
 

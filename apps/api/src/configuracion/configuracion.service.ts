@@ -58,6 +58,7 @@ export class ConfiguracionService implements OnModuleInit {
         cert_mostrar_recursos: true,
         cert_mostrar_nota: true,
         cert_mostrar_firma: true,
+        cert_mostrar_fecha_ingreso: true,
         nombre_plataforma: true,
         color_primario: true,
         color_secundario: true,
@@ -71,7 +72,7 @@ export class ConfiguracionService implements OnModuleInit {
     const allowedFields = [
       'cert_titulo_personalizado', 'cert_subtitulo', 'cert_texto_legal',
       'cert_mostrar_modulos', 'cert_mostrar_recursos', 'cert_mostrar_nota',
-      'cert_mostrar_firma',
+      'cert_mostrar_firma', 'cert_mostrar_fecha_ingreso',
     ];
     const data: any = {};
     for (const key of allowedFields) {

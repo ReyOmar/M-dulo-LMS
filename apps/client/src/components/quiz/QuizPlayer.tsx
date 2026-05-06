@@ -15,6 +15,7 @@ interface QuizStatus {
     completado: boolean;
     in_progress?: boolean;
     fecha_inicio?: string;
+    puede_reintentar?: boolean;
 }
 
 interface QuizPlayerProps {
@@ -193,7 +194,6 @@ export default function QuizPlayer({
                 correctas: res.data.correctas,
                 total: res.data.total
             });
-            if (onQuizStateChange) onQuizStateChange(false);
         } catch (err) {
             console.error(err);
             showAlert.error("Error", "Error al enviar las respuestas. Inténtalo de nuevo.");
@@ -254,24 +254,6 @@ export default function QuizPlayer({
                 </p>
                 <div className="bg-emerald-500/10 border border-emerald-500/20 px-6 py-2 rounded-full text-emerald-600 font-bold text-sm">
                     Módulo Completado
-                </div>
-            </div>
-        );
-    }
-
-    // CHECK STATUS: FAILED AND NO ATTEMPTS LEFT
-    if (quizStatus.intentos_realizados >= quizConfig.intentos_permitidos && !showResultModal && !started) {
-        return (
-            <div className="bg-gradient-to-br from-red-500/5 to-red-950/20 flex flex-col items-center justify-center p-12 text-center border border-red-500/30 rounded-[2rem] shadow-sm animate-in fade-in duration-500">
-                <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                    <XCircle className="h-12 w-12 text-red-500" />
-                </div>
-                <h1 className="text-3xl font-black mb-3 text-foreground tracking-tight">Reprobado</h1>
-                <p className="text-muted-foreground mb-6 text-lg max-w-sm">
-                    Has agotado tus <strong>{quizConfig.intentos_permitidos}</strong> intentos y no lograste la nota mínima.
-                </p>
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
-                    <p className="text-red-500 font-bold text-sm tracking-wide uppercase">Mejor nota: {quizStatus.mejor_nota.toFixed(1)}</p>
                 </div>
             </div>
         );
@@ -368,8 +350,8 @@ export default function QuizPlayer({
                                 </div>
                                 <div className="bg-muted/30 p-5 rounded-[1.5rem] border border-border flex flex-col items-center transition-transform hover:scale-105">
                                     <Trophy className="h-6 w-6 text-emerald-500 mb-2" />
-                                    <span className="text-xl font-black">{quizStatus.intentos_realizados} / {quizConfig.intentos_permitidos}</span>
-                                    <span className="text-[10px] text-muted-foreground uppercase font-black">Intento(s)</span>
+                                    <span className="text-xl font-black">{quizStatus.intentos_realizados}</span>
+                                    <span className="text-[10px] text-muted-foreground uppercase font-black">Intento(s) previos</span>
                                 </div>
                             </div>
 

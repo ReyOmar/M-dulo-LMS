@@ -260,7 +260,7 @@ export function StudentDashboard() {
             <GraduationCap className="h-6 w-6 text-emerald-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold">{metricas?.cursos_completados || 0}</p>
+            <p className="text-2xl font-bold">{metricas?.cursos_completados || 0}/{metricas?.total_cursos || cursos.length}</p>
             <p className="text-xs text-muted-foreground font-medium">Cursos Completados</p>
           </div>
         </div>
@@ -270,7 +270,7 @@ export function StudentDashboard() {
             <BookOpen className="h-6 w-6 text-purple-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold">{cursos.length}</p>
+            <p className="text-2xl font-bold">{activeCursos.length}/{cursos.length}</p>
             <p className="text-xs text-muted-foreground font-medium">Cursos Activos</p>
           </div>
         </div>

@@ -76,13 +76,6 @@ export default function TareaVisorPage() {
     finally { setLoadingEntregas(false); }
   };
 
-  const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-  });
-
   const processFile = async (file: File) => {
     const maxMb = tarea?.archivo_max_size_mb || 5;
     if (file.size > maxMb * 1024 * 1024) {
@@ -92,8 +85,13 @@ export default function TareaVisorPage() {
     try {
       setUploadState('uploading');
       setSelectedFileName(file.name);
-      const base64 = await toBase64(file);
-      const { data } = await api.post(`/cursos/tareas/${tarea_id}/entregas`, { base64, nombre_archivo: file.name });
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await api.post(`/cursos/tareas/${tarea_id}/entregas`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        maxBodyLength: 50 * 1024 * 1024,
+        maxContentLength: 50 * 1024 * 1024,
+      });
       setSelectedFileName(file.name);
       setServerFileName(data.url_archivo_adjunto || null);
       setEntregaData(data);

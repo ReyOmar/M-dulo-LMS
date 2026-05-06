@@ -29,6 +29,8 @@ export default function CursoVisorPage() {
   const [viewOnlyMode, setViewOnlyMode] = useState(false);
   const [showCompletedOverlay, setShowCompletedOverlay] = useState(false);
   const [certGuid, setCertGuid] = useState<string | null>(null);
+  const [isQuizActive, setIsQuizActive] = useState(false);
+  const [pendingCelebration, setPendingCelebration] = useState<any>(null);
   const celebrationShownRef = useRef(false);
   const { subscribe, maintenanceCourses } = useWS();
 
@@ -62,9 +64,7 @@ export default function CursoVisorPage() {
     const unsub2 = subscribe('dashboard:refresh', fetchProgreso);
     const unsub3 = subscribe('certificate:new', (data: any) => {
       if (data?.curso_guid === curso_id && !celebrationShownRef.current) {
-        celebrationShownRef.current = true;
-        setCelebrationData({ curso_titulo: data.curso_titulo || curso?.titulo || 'el curso' });
-        setShowCelebration(true);
+        setPendingCelebration(data);
       }
     });
     const unsub4 = subscribe('submission:new', fetchProgreso);
@@ -80,6 +80,20 @@ export default function CursoVisorPage() {
   useEffect(() => {
     import('@justinribeiro/lite-youtube').catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (pendingCelebration && !isQuizActive) {
+      const timer = setTimeout(() => {
+        if (!celebrationShownRef.current) {
+          celebrationShownRef.current = true;
+          setCelebrationData({ curso_titulo: pendingCelebration.curso_titulo || curso?.titulo || 'el curso' });
+          setShowCelebration(true);
+        }
+        setPendingCelebration(null);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingCelebration, isQuizActive, curso]);
 
   // Listen for maintenance events on this specific course
   useEffect(() => {
@@ -217,11 +231,6 @@ export default function CursoVisorPage() {
     if (!isRecursoUnlocked(moduleIndex, resourceIndex)) return;
     setSelectedRecurso(recurso);
     setSelectedModuloGuid(moduloGuid);
-
-    // Auto-mark TEXT and ENLACE as completed on view
-    if ((recurso.tipo === 'TEXTO' || recurso.tipo === 'ENLACE') && !isRecursoCompleted(recurso.guid)) {
-      marcarCompletado(recurso.guid);
-    }
   };
 
   // Auto-select first uncompleted resource (Retomar Curso)
@@ -300,8 +309,6 @@ export default function CursoVisorPage() {
     if (recurso.tipo === 'TAREA') return <FileText className={`h-4 w-4 ${completed ? 'text-emerald-500' : 'text-blue-500'}`} />;
     return <BookOpen className="h-4 w-4" />;
   };
-
-  const [isQuizActive, setIsQuizActive] = useState(false);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -549,6 +556,17 @@ export default function CursoVisorPage() {
                       <span className="text-sm font-bold">{selectedRecurso.archivo_adjunto_nombre || 'Archivo adjunto'}</span>
                     </a>
                   )}
+
+                  {!viewOnlyMode && !isRecursoCompleted(selectedRecurso.guid) && (
+                    <div className="mt-8 pt-6 border-t border-border flex justify-center animate-in fade-in duration-500">
+                      <button 
+                        onClick={() => marcarCompletado(selectedRecurso.guid)}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-3 text-lg"
+                      >
+                        <CheckCircle className="h-6 w-6" /> Marcar como Completado
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -570,6 +588,17 @@ export default function CursoVisorPage() {
                   {!selectedRecurso.contenido_html && (
                     <div className="w-full h-64 bg-muted/20 border border-dashed border-border rounded-2xl flex items-center justify-center text-muted-foreground">
                       <PlayCircle className="h-12 w-12 opacity-30" />
+                    </div>
+                  )}
+
+                  {!viewOnlyMode && !isRecursoCompleted(selectedRecurso.guid) && (
+                    <div className="mt-8 pt-6 border-t border-border flex justify-center animate-in fade-in duration-500">
+                      <button 
+                        onClick={() => marcarCompletado(selectedRecurso.guid)}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-3 text-lg"
+                      >
+                        <CheckCircle className="h-6 w-6" /> Marcar como Completado
+                      </button>
                     </div>
                   )}
                 </div>

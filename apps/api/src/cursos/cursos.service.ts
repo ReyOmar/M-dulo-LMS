@@ -4,6 +4,7 @@ import { lms_tipo_recurso, lms_estado_curso } from '@prisma/client';
 import { LmsGateway } from '../ws/lms.gateway';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { MailService } from '../mail/mail.service';
+import { CertificadosService } from '../certificados/certificados.service';
 
 @Injectable()
 export class CursosService {
@@ -12,6 +13,7 @@ export class CursosService {
     private lmsGateway: LmsGateway,
     private notificacionesService: NotificacionesService,
     private mailService: MailService,
+    private certificadosService: CertificadosService,
   ) {}
 
   async getCursosActivosParaEstudiante() {
@@ -457,6 +459,11 @@ export class CursosService {
           ref_tipo: 'quiz',
           ref_guid: recurso_guid,
         });
+
+        // ── Check if this quiz completes the course for certificate generation ──
+        this.checkCertificateAfterGrading(usuario_guid, recurso_guid).catch((err) => {
+          console.error('Post-quiz certificate check error:', err?.message || err);
+        });
     } else {
         // FAILED: Reset module progress — student must redo the entire module
         // but keep file/document submissions (non-quiz TAREA) as completed
@@ -498,7 +505,8 @@ export class CursosService {
             })
             .map(r => r.guid);
 
-          // Delete progress records + fetch student info in parallel
+          // Delete progress records and fetch student info in parallel
+          // NOTE: We do NOT delete lms_entregas — they are kept as historical records
           const [, estudiante] = await Promise.all([
             resetGuids.length > 0
               ? this.prisma.lms_progreso_recurso.deleteMany({
@@ -578,7 +586,41 @@ export class CursosService {
       mejor_nota,
       completado: !!progreso,
       in_progress: !!inProgressAttempt,
-      fecha_inicio: inProgressAttempt?.fecha_inicio
+      fecha_inicio: inProgressAttempt?.fecha_inicio,
+      puede_reintentar: !progreso && !inProgressAttempt,
     };
+  }
+
+  /**
+   * After grading a quiz, check if the student has now completed all requirements
+   * for a certificate (all resources done + all tasks graded).
+   */
+  private async checkCertificateAfterGrading(usuario_guid: string, recurso_guid: string) {
+    const recurso = await this.prisma.lms_recursos.findUnique({
+      where: { guid: recurso_guid },
+      select: {
+        leccion: {
+          select: {
+            modulo: {
+              select: { curso_guid: true }
+            }
+          }
+        }
+      }
+    });
+    if (!recurso) return;
+
+    const curso_guid = recurso.leccion.modulo.curso_guid;
+
+    const existing = await this.prisma.lms_certificados.findUnique({
+      where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
+    });
+    if (existing) return;
+
+    const result = await this.certificadosService.verificarCursoCompleto(usuario_guid, curso_guid);
+    if (!result.completo || !result.puede_generar_certificado) return;
+
+    await this.certificadosService.generarCertificado(usuario_guid, curso_guid);
+    console.log(`🎓 Certificate auto-generated after quiz for user ${usuario_guid} in course ${curso_guid}`);
   }
 }

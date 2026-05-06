@@ -18,8 +18,8 @@ export class EvaluacionesService {
     private certificadosService: CertificadosService,
   ) {}
 
-  async submitEntrega(tarea_guid: string, data: { base64: string, nombre_archivo: string, usuario_guid: string }) {
-    const serverFilename = await this.storageService.uploadFile(data.base64, data.nombre_archivo);
+  async submitEntrega(tarea_guid: string, data: { buffer: Buffer, nombre_archivo: string, usuario_guid: string }) {
+    const serverFilename = await this.storageService.uploadFromBuffer(data.buffer, data.nombre_archivo);
 
     let entrega = await this.prisma.lms_entregas.findFirst({
         where: { tarea_guid, usuario_guid: data.usuario_guid }
@@ -77,13 +77,19 @@ export class EvaluacionesService {
         });
     }
 
-    // Notify teachers/admins about the new submission
-    this.lmsGateway.broadcast('submission:new', { 
+    // Notify teachers/admins about the new submission (not students)
+    this.lmsGateway.broadcastToRole('submission:new', { 
       tarea_guid, 
       usuario_guid: data.usuario_guid,
       estado: 'ENTREGADA'
-    });
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'submission_new' });
+    }, 'PROFESOR');
+    this.lmsGateway.broadcastToRole('submission:new', { 
+      tarea_guid, 
+      usuario_guid: data.usuario_guid,
+      estado: 'ENTREGADA'
+    }, 'ADMINISTRADOR');
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'submission_new' }, 'PROFESOR');
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'submission_new' }, 'ADMINISTRADOR');
 
     return entrega;
   }
@@ -216,11 +222,11 @@ export class EvaluacionesService {
       }
     }
 
-    // Broadcast immediately for real-time UI (fast path)
+    // Broadcast immediately for real-time UI — only to the affected student
     this.lmsGateway.broadcast('submission:graded', {
       guid, tarea_guid: entrega.tarea_guid,
       calificacion: data.calificacion, usuario_guid: entrega.usuario_guid
-    });
+    }, [entrega.usuario_guid]);
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'submission_graded' });
 
     // Fire-and-forget: notifications + email (don't block the response)

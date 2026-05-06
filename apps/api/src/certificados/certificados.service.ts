@@ -264,6 +264,7 @@ export class CertificadosService {
       mostrarRecursos: config?.cert_mostrar_recursos ?? true,
       mostrarNota: config?.cert_mostrar_nota ?? true,
       mostrarFirma: config?.cert_mostrar_firma ?? true,
+      mostrarFechaIngreso: config?.cert_mostrar_fecha_ingreso ?? false,
       firmaImagePath,
       firmaNombre: curso.profesor.firma_nombre || null,
       firmaCargo: curso.profesor.firma_cargo || null,
@@ -374,6 +375,7 @@ export class CertificadosService {
       mostrarRecursos: boolean;
       mostrarNota: boolean;
       mostrarFirma: boolean;
+      mostrarFechaIngreso: boolean;
       firmaImagePath: string | null;
       firmaNombre: string | null;
       firmaCargo: string | null;
@@ -504,16 +506,24 @@ export class CertificadosService {
 
       // ── Metrics Row ──
       const metricsY = legalY + 36;
-      const metricsData: { label: string; value: string }[] = [
-        {
-          label: 'Fecha de finalización',
-          value: data.fechaCompletado.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }),
-        },
-        {
-          label: 'Tiempo activo',
-          value: `${data.tiempoHoras} horas`,
-        },
-      ];
+      const metricsData: { label: string; value: string }[] = [];
+
+      if (data.mostrarFechaIngreso) {
+        metricsData.push({
+          label: 'Fecha de inscripción',
+          value: data.fechaInicio.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }),
+        });
+      }
+
+      metricsData.push({
+        label: 'Fecha de finalización',
+        value: data.fechaCompletado.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }),
+      });
+
+      metricsData.push({
+        label: 'Duración',
+        value: `${data.tiempoHoras} horas`,
+      });
       if (data.mostrarModulos) {
         metricsData.push({ label: 'Módulos', value: `${data.totalModulos}` });
       }

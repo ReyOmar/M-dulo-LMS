@@ -13,6 +13,7 @@ interface CertConfig {
   cert_mostrar_recursos: boolean;
   cert_mostrar_nota: boolean;
   cert_mostrar_firma: boolean;
+  cert_mostrar_fecha_ingreso: boolean;
   nombre_plataforma: string;
   color_primario: string;
   color_secundario: string;
@@ -92,6 +93,7 @@ export default function CertificadosConfigPage() {
         cert_mostrar_recursos: config.cert_mostrar_recursos,
         cert_mostrar_nota: config.cert_mostrar_nota,
         cert_mostrar_firma: config.cert_mostrar_firma,
+        cert_mostrar_fecha_ingreso: config.cert_mostrar_fecha_ingreso,
       });
       showAlert.success("Guardado", "Configuración de certificados actualizada.");
     } catch (err: any) {
@@ -201,6 +203,7 @@ export default function CertificadosConfigPage() {
         </div>
         <div className="p-6 space-y-3">
           {[
+            { key: "cert_mostrar_fecha_ingreso" as const, label: "Mostrar fecha de inscripción", desc: "Incluye la fecha en la que el estudiante fue matriculado o inició el curso." },
             { key: "cert_mostrar_modulos" as const, label: "Mostrar cantidad de módulos", desc: "Muestra la cantidad de módulos del curso en la fila de métricas." },
             { key: "cert_mostrar_recursos" as const, label: "Mostrar cantidad de recursos", desc: "Muestra el total de recursos formativos en la fila de métricas." },
             { key: "cert_mostrar_nota" as const, label: "Mostrar calificación promedio", desc: "Incluye la calificación promedio obtenida por el estudiante." },
@@ -308,12 +311,13 @@ export default function CertificadosConfigPage() {
               <p className="text-[6px] text-slate-500">Por haber completado exitosamente el curso:</p>
               <p className="text-[8px] font-bold text-slate-800 mt-0.5">"{examinerPreview?.titulo || 'Ejemplo de Curso'}"</p>
               <p className="text-[5px] text-slate-400 mt-1 max-w-[80%] leading-tight">
-                {config.cert_texto_legal ? config.cert_texto_legal.substring(0, 120) + "..." : "El presente certificado acredita que el participante cumplió satisfactoriamente..."}
+                {config.cert_texto_legal ? config.cert_texto_legal.substring(0, 120) + "..." : "El presente certificado acredita que el participante cumplió satisfactoriamente con la totalidad del programa de capacitación, el cual constó de X módulo(s)..."}
               </p>
 
               <div className="flex items-center gap-3 mt-1.5">
-                <div className="text-center"><p className="text-[4px] text-slate-400">FECHA</p><p className="text-[5px] font-bold text-slate-600">5 de mayo de 2026</p></div>
-                <div className="text-center"><p className="text-[4px] text-slate-400">TIEMPO ACTIVO</p><p className="text-[5px] font-bold text-slate-600">12.5 horas</p></div>
+                {config.cert_mostrar_fecha_ingreso && <div className="text-center"><p className="text-[4px] text-slate-400">INSCRIPCIÓN</p><p className="text-[5px] font-bold text-slate-600">1 de mayo de 2026</p></div>}
+                <div className="text-center"><p className="text-[4px] text-slate-400">FINALIZACIÓN</p><p className="text-[5px] font-bold text-slate-600">5 de mayo de 2026</p></div>
+                <div className="text-center"><p className="text-[4px] text-slate-400">DURACIÓN</p><p className="text-[5px] font-bold text-slate-600">12.5 horas</p></div>
                 {config.cert_mostrar_modulos && <div className="text-center"><p className="text-[4px] text-slate-400">MÓDULOS</p><p className="text-[5px] font-bold text-slate-600">3</p></div>}
                 {config.cert_mostrar_recursos && <div className="text-center"><p className="text-[4px] text-slate-400">RECURSOS</p><p className="text-[5px] font-bold text-slate-600">15</p></div>}
                 {config.cert_mostrar_nota && <div className="text-center"><p className="text-[4px] text-slate-400">CALIFICACIÓN</p><p className="text-[5px] font-bold text-slate-600">4.2 / 5.0</p></div>}

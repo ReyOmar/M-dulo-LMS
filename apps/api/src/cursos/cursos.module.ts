@@ -3,9 +3,10 @@ import { CursosService } from './cursos.service';
 import { CursosController } from './cursos.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { NotificacionesModule } from '../notificaciones/notificaciones.module';
+import { CertificadosModule } from '../certificados/certificados.module';
 
 @Module({
-  imports: [PrismaModule, NotificacionesModule],
+  imports: [PrismaModule, NotificacionesModule, CertificadosModule],
   controllers: [CursosController],
   providers: [CursosService],
 })

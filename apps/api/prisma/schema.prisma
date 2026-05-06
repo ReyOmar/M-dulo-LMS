@@ -361,6 +361,7 @@ model lms_configuracion {
   cert_mostrar_recursos     Boolean  @default(true)
   cert_mostrar_nota         Boolean  @default(true)
   cert_mostrar_firma        Boolean  @default(true)
+  cert_mostrar_fecha_ingreso Boolean @default(false)
 
   updated_at         DateTime @updatedAt
 }
@@ -401,4 +402,27 @@ model lms_sesion_activa {
   duracion_seg  Int       @default(0)
 
   @@index([usuario_guid, curso_guid])
+}
+
+
+// ── CONTACTOS DE CHAT (Aprobación mutua) ──
+
+enum lms_estado_contacto {
+  PENDIENTE
+  ACEPTADO
+  RECHAZADO
+}
+
+model lms_contacto_chat {
+  id                Int                  @id @default(autoincrement())
+  solicitante_guid  String
+  receptor_guid     String
+  curso_guid        String
+  estado            lms_estado_contacto  @default(PENDIENTE)
+  created_at        DateTime             @default(now())
+  updated_at        DateTime             @updatedAt
+
+  @@unique([solicitante_guid, receptor_guid, curso_guid])
+  @@index([receptor_guid])
+  @@index([solicitante_guid])
 }

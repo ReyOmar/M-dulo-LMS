@@ -1,23 +1,46 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UnauthorizedException, BadRequestException, Req } from '@nestjs/common';
 import { EvaluacionesService } from './evaluaciones.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { SubmitEntregaDto } from './dto/submit-entrega.dto';
 import { CalificarEntregaDto } from './dto/calificar-entrega.dto';
 
 @Controller('cursos')
 export class EvaluacionesController {
   constructor(private readonly evaluacionesService: EvaluacionesService) {}
 
+  /**
+   * Submit a file for a task via multipart/form-data.
+   * Expects a 'file' field with the uploaded file.
+   */
   @Post('/tareas/:tarea_guid/entregas')
   async submitEntrega(
     @CurrentUser() user: any,
     @Param('tarea_guid') tarea_guid: string,
-    @Body() body: SubmitEntregaDto
+    @Req() req: any,
   ) {
     const userGuid = user?.sub || user?.guid;
     if (!userGuid) throw new UnauthorizedException('Debes iniciar sesión para subir tu tarea.');
-    return this.evaluacionesService.submitEntrega(tarea_guid, { ...body, usuario_guid: userGuid });
+
+    const data = await req.file();
+    if (!data) {
+      throw new BadRequestException('No se envió ningún archivo.');
+    }
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of data.file) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+
+    if (buffer.length === 0) {
+      throw new BadRequestException('El archivo está vacío.');
+    }
+
+    return this.evaluacionesService.submitEntrega(tarea_guid, {
+      buffer,
+      nombre_archivo: data.filename || 'archivo.bin',
+      usuario_guid: userGuid,
+    });
   }
 
   @Get('/tareas/:tarea_guid/entregas/mine')

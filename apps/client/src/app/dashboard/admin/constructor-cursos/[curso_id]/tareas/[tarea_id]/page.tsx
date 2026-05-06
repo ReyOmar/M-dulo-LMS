@@ -61,18 +61,14 @@ export default function ConfigurarTareaPage() {
     }
   };
 
-  const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-  });
-
   const handleFileSelect = async (file: File) => {
     try {
       setUploadingFile(true);
-      const base64 = await toBase64(file);
-      const res = await api.post('/cursos/upload', { base64, nombre: file.name });
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/cursos/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       setArchivoAdjunto(res.data.filename);
       setArchivoAdjuntoNombre(file.name);
     } catch (err) {

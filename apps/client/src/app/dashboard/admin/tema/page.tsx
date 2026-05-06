@@ -29,14 +29,21 @@ export default function TemaPage() {
     );
   }
 
-  const handleFileUpload = (field: 'logo_url' | 'favicon_url' | 'login_fondo_url') => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (field: 'logo_url' | 'favicon_url' | 'login_fondo_url') => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      updateConfig({ [field]: reader.result as string });
-    };
-    reader.readAsDataURL(file);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { default: api, API_BASE_URL } = await import('@/lib/api');
+      const res = await api.post('/cursos/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const fileUrl = `${API_BASE_URL}/cursos/download/${res.data.filename}`;
+      updateConfig({ [field]: fileUrl });
+    } catch (err) {
+      console.error('Error uploading file:', err);
+    }
   };
 
   return (

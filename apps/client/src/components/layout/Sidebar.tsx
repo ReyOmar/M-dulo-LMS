@@ -19,6 +19,7 @@ export function Sidebar() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [solicitudesCount, setSolicitudesCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu when clicking outside
@@ -59,6 +60,40 @@ export function Sidebar() {
       unsub3();
     };
   }, [realRole, subscribe]);
+
+  // Real-time unread messages count
+  useEffect(() => {
+    const fetchUnreadMessages = async () => {
+      try {
+        const res = await api.get('/notificaciones/chat/contactos');
+        const contacts = res.data || [];
+        const total = contacts.reduce((sum: number, c: any) => sum + (c.no_leidos || 0), 0);
+        setUnreadMessagesCount(total);
+      } catch {}
+    };
+
+    fetchUnreadMessages();
+
+    const unsubMsg = subscribe('message:new', () => {
+      // Only increment if not currently on the messages page
+      if (!pathname.startsWith('/dashboard/mensajes')) {
+        setUnreadMessagesCount(prev => prev + 1);
+      }
+    });
+    const unsubRefresh = subscribe('dashboard:refresh', fetchUnreadMessages);
+
+    return () => {
+      unsubMsg();
+      unsubRefresh();
+    };
+  }, [subscribe, pathname]);
+
+  // Reset unread count when navigating to messages page
+  useEffect(() => {
+    if (pathname.startsWith('/dashboard/mensajes')) {
+      setUnreadMessagesCount(0);
+    }
+  }, [pathname]);
 
   const isActive = (path: string) => {
     if (path === '/dashboard') return pathname === '/dashboard';
@@ -110,7 +145,13 @@ export function Sidebar() {
                       <FileSignature className="h-4 w-4" /> Mi Firma
                   </Link>
                   <Link href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')}>
-                      <MessageSquare className="h-4 w-4" /> Mensajes
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Mensajes</span>
+                      {unreadMessagesCount > 0 && !pathname.startsWith('/dashboard/mensajes') && (
+                        <span className="ml-auto bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-[0_0_10px_hsl(var(--primary)/0.5)]">
+                          {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                        </span>
+                      )}
                   </Link>
               </div>
           )}
@@ -129,7 +170,13 @@ export function Sidebar() {
                       <Award className="h-4 w-4" /> Mis Certificados PDF
                   </Link>
                   <Link href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')}>
-                      <MessageSquare className="h-4 w-4" /> Mensajes
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Mensajes</span>
+                      {unreadMessagesCount > 0 && !pathname.startsWith('/dashboard/mensajes') && (
+                        <span className="ml-auto bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-[0_0_10px_hsl(var(--primary)/0.5)]">
+                          {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                        </span>
+                      )}
                   </Link>
               </div>
           )}

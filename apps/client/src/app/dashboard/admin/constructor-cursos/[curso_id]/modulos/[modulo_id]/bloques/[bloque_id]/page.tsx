@@ -147,18 +147,16 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
         }
         setUploading(true);
         try {
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                const base64 = reader.result as string;
-                // Upload to server
-                const res = await api.post('/cursos/upload', { base64, nombre: file.name });
-                const data = res.data;
-                setArchivoAdjunto(data.filename); // server filename
-                setArchivoAdjuntoNombre(file.name); // original name
-                setUploading(false);
-            };
-            reader.readAsDataURL(file);
-        } catch {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await api.post('/cursos/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            setArchivoAdjunto(res.data.filename);
+            setArchivoAdjuntoNombre(file.name);
+        } catch (err) {
+            console.error('Error uploading file:', err);
+        } finally {
             setUploading(false);
         }
     };

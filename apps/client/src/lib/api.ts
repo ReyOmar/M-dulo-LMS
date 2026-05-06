@@ -6,7 +6,7 @@ import axios from 'axios';
  * - Automatically attaches JWT Bearer token from localStorage
  * - Handles 401 responses by clearing session and redirecting to login
  */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3200/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -40,5 +40,23 @@ api.interceptors.response.use(
   },
 );
 
-export { API_BASE_URL };
+/**
+ * Upload a file via multipart/form-data (much faster than base64).
+ * @param url - The endpoint to upload to (e.g., '/cursos/upload')
+ * @param file - The File object from an <input type="file">
+ * @param fieldName - The form field name (default: 'file')
+ * @returns The server response data
+ */
+async function uploadFile(url: string, file: File, fieldName = 'file') {
+  const formData = new FormData();
+  formData.append(fieldName, file);
+  const res = await api.post(url, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    maxBodyLength: 50 * 1024 * 1024,
+    maxContentLength: 50 * 1024 * 1024,
+  });
+  return res.data;
+}
+
+export { API_BASE_URL, uploadFile };
 export default api;

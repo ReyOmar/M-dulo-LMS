@@ -233,12 +233,18 @@ export class EstudiantesService {
       if (courseCompleted === ct.guids.length) cursos_completados++;
     }
 
-    const horas_estimadas = total_recursos_completados * 0.5;
+    // Use real session time from lms_sesion_activa
+    const sessionAggregate = await this.prisma.lms_sesion_activa.aggregate({
+      where: { usuario_guid },
+      _sum: { duracion_seg: true },
+    });
+    const horasReales = (sessionAggregate._sum.duracion_seg || 0) / 3600;
 
     return {
       ...metricas,
       cursos_completados,
-      total_horas_invertidas: Math.max(Number(metricas.total_horas_invertidas), horas_estimadas)
+      total_cursos: matriculas.length,
+      total_horas_invertidas: Math.round(horasReales * 10) / 10
     };
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Bell, X, CheckCheck, MessageSquare, Star, AlertTriangle, BookOpen, RefreshCw, Clock, Inbox, ChevronRight } from 'lucide-react';
+import { Bell, X, MessageSquare, Star, AlertTriangle, BookOpen, RefreshCw, Clock, Inbox, ChevronRight, Trash2 } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext';
 import { useWS } from '@/contexts/WebSocketContext';
 import api from '@/lib/api';
@@ -47,6 +47,7 @@ export function NotificationCenter() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchNotificaciones = useCallback(async () => {
     if (!user?.guid) return;
@@ -80,6 +81,24 @@ export function NotificationCenter() {
     return () => { unsub(); unsub2(); };
   }, [user?.guid, subscribe, fetchNotificaciones]);
 
+  // Auto-mark all notifications as read when the panel opens
+  useEffect(() => {
+    if (open && unreadCount > 0) {
+      // Mark all as read on the server
+      api.patch('/notificaciones/leer-todas').then(() => {
+        setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })));
+        setUnreadCount(0);
+      }).catch(() => {});
+    }
+    // Cleanup auto-close timer when panel state changes
+    return () => {
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current);
+        autoCloseTimerRef.current = null;
+      }
+    };
+  }, [open]);
+
   // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -91,24 +110,19 @@ export function NotificationCenter() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const markRead = async (id: number) => {
+  const clearAll = async () => {
     try {
-      await api.patch(`/notificaciones/${id}/leer`);
-      setNotificaciones(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch {}
-  };
-
-  const markAllRead = async () => {
-    try {
-      await api.patch('/notificaciones/leer-todas');
-      setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })));
+      await api.delete('/notificaciones/limpiar');
+      setNotificaciones([]);
       setUnreadCount(0);
+      // Auto-close the panel after 500ms
+      autoCloseTimerRef.current = setTimeout(() => {
+        setOpen(false);
+      }, 500);
     } catch {}
   };
 
   const handleNotifClick = (notif: Notification) => {
-    if (!notif.leida) markRead(notif.id);
     if (notif.url_accion) {
       window.location.href = notif.url_accion;
       setOpen(false);
@@ -165,13 +179,13 @@ export function NotificationCenter() {
               )}
             </div>
             <div className="flex items-center gap-1">
-              {unreadCount > 0 && (
+              {notificaciones.length > 0 && (
                 <button
-                  onClick={markAllRead}
-                  className="p-1.5 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground"
-                  title="Marcar todas como leídas"
+                  onClick={clearAll}
+                  className="p-1.5 hover:bg-red-500/10 rounded-lg transition-colors text-muted-foreground hover:text-red-500"
+                  title="Limpiar todas las notificaciones"
                 >
-                  <CheckCheck className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
               )}
               <button onClick={() => setOpen(false)} className="p-1.5 hover:bg-muted rounded-lg transition-colors">

@@ -9,15 +9,24 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { WsAdapter } from '@nestjs/platform-ws';
 import compress from '@fastify/compress';
+import multipart from '@fastify/multipart';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ bodyLimit: 10485760 }) // 10MB for base64 file uploads
+    new FastifyAdapter({ bodyLimit: 10485760 }) // 10MB for JSON bodies only
   );
 
   // Enable gzip/brotli compression for all responses
   await app.register(compress, { global: true });
+
+  // Enable multipart/form-data for file uploads (50MB limit)
+  await app.register(multipart, {
+    limits: {
+      fileSize: 50 * 1024 * 1024, // 50MB max file size
+      files: 1, // Max 1 file per request
+    },
+  });
   
   const configService = app.get(ConfigService);
   
@@ -30,7 +39,7 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: configService.get('CORS_ORIGIN') || 'http://localhost:3100',
+    origin: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });

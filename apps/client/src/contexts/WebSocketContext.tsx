@@ -66,7 +66,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     // Use environment variable for API URL or default
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3200/api';
     const token = localStorage.getItem('lms_token');
     
     let wsUrl = apiBaseUrl.replace(/^http/, 'ws').replace('/api', '') + '/ws';

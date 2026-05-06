@@ -82,13 +82,6 @@ export default function AssignmentPlayer({
         return unsub;
     }, [recurso_guid, subscribe]);
 
-    const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-    });
-
     const processFile = async (file: File) => {
         setUploadError(null);
         const maxBytes = archivo_max_size_mb * 1024 * 1024;
@@ -98,11 +91,16 @@ export default function AssignmentPlayer({
         }
         try {
             setUploadState('uploading');
-            const base64 = await toBase64(file);
-            const { data } = await api.post(`/cursos/tareas/${recurso_guid}/entregas`, { base64, nombre_archivo: file.name });
+            const formData = new FormData();
+            formData.append('file', file);
+            const { data } = await api.post(`/cursos/tareas/${recurso_guid}/entregas`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                maxBodyLength: 50 * 1024 * 1024,
+                maxContentLength: 50 * 1024 * 1024,
+            });
             setEntrega(data);
             setUploadState('done');
-            onFinish(); // To refresh unlocked status if we want
+            onFinish();
         } catch (err: any) { 
             console.error(err); 
             setUploadError(err.response?.data?.message || 'Ocurrió un problema de conexión. Intenta de nuevo.'); 
