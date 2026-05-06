@@ -5,6 +5,7 @@ import { lms_estado_entrega } from '@prisma/client';
 import { LmsGateway } from '../ws/lms.gateway';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { MailService } from '../mail/mail.service';
+import { CertificadosService } from '../certificados/certificados.service';
 
 @Injectable()
 export class EvaluacionesService {
@@ -14,6 +15,7 @@ export class EvaluacionesService {
     private lmsGateway: LmsGateway,
     private notificacionesService: NotificacionesService,
     private mailService: MailService,
+    private certificadosService: CertificadosService,
   ) {}
 
   async submitEntrega(tarea_guid: string, data: { base64: string, nombre_archivo: string, usuario_guid: string }) {
@@ -258,6 +260,50 @@ export class EvaluacionesService {
       }
     })();
 
+    // ── Check if this grading completes the course for certificate generation ──
+    if (data.calificacion >= 3.0 && entrega.tarea_guid) {
+      this.checkCertificateAfterGrading(entrega.usuario_guid, entrega.tarea_guid).catch((err) => {
+        console.error('Post-grading certificate check error:', err?.message || err);
+      });
+    }
+
     return entrega;
+  }
+
+  /**
+   * After grading, check if the student has now completed all requirements
+   * for a certificate (all resources done + all tasks graded).
+   */
+  private async checkCertificateAfterGrading(usuario_guid: string, tarea_guid: string) {
+    // Find which course this task belongs to
+    const recurso = await this.prisma.lms_recursos.findUnique({
+      where: { guid: tarea_guid },
+      select: {
+        leccion: {
+          select: {
+            modulo: {
+              select: { curso_guid: true }
+            }
+          }
+        }
+      }
+    });
+    if (!recurso) return;
+
+    const curso_guid = recurso.leccion.modulo.curso_guid;
+
+    // Check if certificate already exists
+    const existing = await this.prisma.lms_certificados.findUnique({
+      where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
+    });
+    if (existing) return;
+
+    // Verify full completion + all tasks graded
+    const result = await this.certificadosService.verificarCursoCompleto(usuario_guid, curso_guid);
+    if (!result.completo || !result.puede_generar_certificado) return;
+
+    // All conditions met — auto-generate certificate!
+    await this.certificadosService.generarCertificado(usuario_guid, curso_guid);
+    console.log(`🎓 Certificate auto-generated after grading for user ${usuario_guid} in course ${curso_guid}`);
   }
 }

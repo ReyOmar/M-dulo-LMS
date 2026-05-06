@@ -1,9 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CertificadosService } from '../certificados/certificados.service';
+
+const AUTO_UNLOCK_HOURS = 48;
 
 @Injectable()
 export class EstudiantesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private certificadosService: CertificadosService,
+  ) {}
 
   async getProgresoEstudiante(usuario_guid: string, curso_guid: string) {
     const curso = await this.prisma.lms_cursos.findUnique({
@@ -14,32 +20,120 @@ export class EstudiantesService {
           include: {
             lecciones: {
               include: {
-                recursos: { orderBy: { orden: 'asc' }, select: { guid: true } }
+                recursos: { orderBy: { orden: 'asc' }, select: { guid: true, tipo: true, titulo: true } }
               }
             }
           }
         }
       }
     });
-    if (!curso) return { completados: [] };
+    if (!curso) return { completados: [], desbloqueados_por_tiempo: [], tareas_pendientes_calificacion: [], total_recursos: 0 };
 
-    const recursoGuids = curso.modulos.flatMap((m: any) =>
-      m.lecciones.flatMap((l: any) => l.recursos.map((r: any) => r.guid))
+    const allRecursos = curso.modulos.flatMap((m: any) =>
+      m.lecciones.flatMap((l: any) => l.recursos)
     );
+    const recursoGuids = allRecursos.map((r: any) => r.guid);
+    const tareaGuids = allRecursos.filter((r: any) => r.tipo === 'TAREA').map((r: any) => r.guid);
 
+    // Fetch real completions
     const progreso = await this.prisma.lms_progreso_recurso.findMany({
       where: { usuario_guid, recurso_guid: { in: recursoGuids } }
     });
+    const completados = progreso.map((p: any) => p.recurso_guid);
 
-    return { completados: progreso.map((p: any) => p.recurso_guid), total_recursos: recursoGuids.length };
+    // Fetch pending submissions (ENTREGADA or EN_REVISION, not yet CALIFICADA)
+    const entregasPendientes = tareaGuids.length > 0
+      ? await this.prisma.lms_entregas.findMany({
+          where: {
+            usuario_guid,
+            tarea_guid: { in: tareaGuids },
+            estado: { in: ['ENTREGADA', 'EN_REVISION'] },
+          },
+          select: { tarea_guid: true, fecha_entrega: true, respuesta_texto: true },
+        })
+      : [];
+
+    const now = Date.now();
+    const unlockThreshold = AUTO_UNLOCK_HOURS * 60 * 60 * 1000;
+
+    // Resources auto-unlocked because submission is >48h old and still pending
+    const desbloqueados_por_tiempo: string[] = [];
+    const tareas_pendientes_calificacion: { recurso_guid: string; tarea_titulo: string; fecha_entrega: string }[] = [];
+
+    for (const entrega of entregasPendientes) {
+      if (!entrega.tarea_guid || !entrega.fecha_entrega) continue;
+      const recursoInfo = allRecursos.find((r: any) => r.guid === entrega.tarea_guid);
+      const elapsed = now - new Date(entrega.fecha_entrega).getTime();
+
+      // Track pending tasks for certificate blocking info
+      tareas_pendientes_calificacion.push({
+        recurso_guid: entrega.tarea_guid,
+        tarea_titulo: recursoInfo?.titulo || 'Tarea',
+        fecha_entrega: entrega.fecha_entrega.toISOString(),
+      });
+
+      // Auto-unlock if >48h and not already marked as completed
+      if (elapsed >= unlockThreshold && !completados.includes(entrega.tarea_guid)) {
+        desbloqueados_por_tiempo.push(entrega.tarea_guid);
+      }
+    }
+
+    return {
+      completados,
+      desbloqueados_por_tiempo,
+      tareas_pendientes_calificacion,
+      total_recursos: recursoGuids.length,
+    };
   }
 
   async marcarRecursoCompletado(usuario_guid: string, recurso_guid: string) {
-    return this.prisma.lms_progreso_recurso.upsert({
+    const result = await this.prisma.lms_progreso_recurso.upsert({
       where: { usuario_guid_recurso_guid: { usuario_guid, recurso_guid } },
       create: { usuario_guid, recurso_guid, completado: true },
       update: {},
     });
+
+    // ── Auto-detect course completion and generate certificate ──
+    // Fire-and-forget: don't block the student's response
+    this.checkAndGenerateCertificate(usuario_guid, recurso_guid).catch((err) => {
+      console.error('Auto-certificate check error:', err?.message || err);
+    });
+
+    return result;
+  }
+
+  /**
+   * Check if completing this resource means the entire course is done.
+   * If so, automatically generate the certificate (only if all tasks are graded).
+   */
+  private async checkAndGenerateCertificate(usuario_guid: string, recurso_guid: string) {
+    const recurso = await this.prisma.lms_recursos.findUnique({
+      where: { guid: recurso_guid },
+      select: {
+        leccion: {
+          select: {
+            modulo: {
+              select: { curso_guid: true }
+            }
+          }
+        }
+      }
+    });
+    if (!recurso) return;
+
+    const curso_guid = recurso.leccion.modulo.curso_guid;
+
+    const existingCert = await this.prisma.lms_certificados.findUnique({
+      where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
+    });
+    if (existingCert) return;
+
+    // Verify full course completion INCLUDING grading status
+    const result = await this.certificadosService.verificarCursoCompleto(usuario_guid, curso_guid);
+    if (!result.completo || !result.puede_generar_certificado) return;
+
+    await this.certificadosService.generarCertificado(usuario_guid, curso_guid);
+    console.log(`🎓 Auto-generated certificate for user ${usuario_guid} in course ${curso_guid}`);
   }
 
   async getDiasActivos(usuario_guid: string, year: number, month: number) {
@@ -84,7 +178,6 @@ export class EstudiantesService {
   }
 
   async getMetricasEstudiante(usuario_guid: string) {
-    // Run metricas + matriculas fetch in parallel
     const [metricas, matriculas] = await Promise.all([
       this.prisma.lms_metricas_capacitacion.upsert({
         where: { usuario_guid },
@@ -111,7 +204,6 @@ export class EstudiantesService {
       }),
     ]);
 
-    // Collect ALL resource GUIDs across all enrolled courses
     const allResourceGuids: string[] = [];
     const courseTotals: { courseIndex: number; guids: string[] }[] = [];
 
@@ -123,7 +215,6 @@ export class EstudiantesService {
       courseTotals.push({ courseIndex: i, guids: recursoGuids });
     }
 
-    // Single batch query for ALL progress across all courses
     const completedSet = new Set<string>();
     if (allResourceGuids.length > 0) {
       const completed = await this.prisma.lms_progreso_recurso.findMany({
@@ -134,7 +225,7 @@ export class EstudiantesService {
     }
 
     let cursos_completados = 0;
-    let total_recursos_completados = completedSet.size;
+    const total_recursos_completados = completedSet.size;
 
     for (const ct of courseTotals) {
       if (ct.guids.length === 0) continue;
@@ -149,5 +240,61 @@ export class EstudiantesService {
       cursos_completados,
       total_horas_invertidas: Math.max(Number(metricas.total_horas_invertidas), horas_estimadas)
     };
+  }
+
+  /**
+   * Register a heartbeat for active time tracking.
+   * Called every 60 seconds from the course viewer while the tab is visible.
+   * If last heartbeat was < 2 min ago, extend the session. Otherwise create a new one.
+   */
+  async registrarHeartbeat(usuario_guid: string, curso_guid: string) {
+    const HEARTBEAT_INTERVAL = 60; // seconds
+    const SESSION_TIMEOUT = 120; // seconds - if gap > 2min, start new session
+    const cutoff = new Date(Date.now() - SESSION_TIMEOUT * 1000);
+
+    // Find the most recent active session
+    const lastSession = await this.prisma.lms_sesion_activa.findFirst({
+      where: {
+        usuario_guid,
+        curso_guid,
+        fin_sesion: { gte: cutoff },
+      },
+      orderBy: { fin_sesion: 'desc' },
+    });
+
+    if (lastSession) {
+      // Extend existing session
+      await this.prisma.lms_sesion_activa.update({
+        where: { id: lastSession.id },
+        data: {
+          fin_sesion: new Date(),
+          duracion_seg: lastSession.duracion_seg + HEARTBEAT_INTERVAL,
+        },
+      });
+    } else {
+      // Start new session
+      await this.prisma.lms_sesion_activa.create({
+        data: {
+          usuario_guid,
+          curso_guid,
+          inicio_sesion: new Date(),
+          fin_sesion: new Date(),
+          duracion_seg: HEARTBEAT_INTERVAL,
+        },
+      });
+    }
+
+    return { ok: true };
+  }
+
+  /**
+   * Get total active time for a user in a course (in seconds).
+   */
+  async getTiempoActivoCurso(usuario_guid: string, curso_guid: string): Promise<number> {
+    const result = await this.prisma.lms_sesion_activa.aggregate({
+      where: { usuario_guid, curso_guid },
+      _sum: { duracion_seg: true },
+    });
+    return result._sum.duracion_seg || 0;
   }
 }

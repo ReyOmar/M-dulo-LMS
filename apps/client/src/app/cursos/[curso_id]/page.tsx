@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, FileText, Type, CheckCircle, Trophy, Lock, PlayCircle, Paperclip, UploadCloud, Loader2, ExternalLink, AlertTriangle } from "lucide-react";
+import { ArrowLeft, BookOpen, FileText, Type, CheckCircle, Trophy, Lock, PlayCircle, Paperclip, UploadCloud, Loader2, ExternalLink, AlertTriangle, Award, Sparkles, Download, Clock, Eye } from "lucide-react";
 import { PageLoader } from "@/components/ui/PageLoader";
 import Link from "next/link";
 import api, { API_BASE_URL } from "@/lib/api";
@@ -21,6 +21,15 @@ export default function CursoVisorPage() {
   const [userGuid, setUserGuid] = useState<string>('');
   const [progresoLoaded, setProgresoLoaded] = useState(false);
   const [inMaintenance, setInMaintenance] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationData, setCelebrationData] = useState<{ curso_titulo: string } | null>(null);
+  const [tareasPendientes, setTareasPendientes] = useState<{ recurso_guid: string; tarea_titulo: string; fecha_entrega: string }[]>([]);
+  const [showPendingModal, setShowPendingModal] = useState(false);
+  const [courseCompleted, setCourseCompleted] = useState(false);
+  const [viewOnlyMode, setViewOnlyMode] = useState(false);
+  const [showCompletedOverlay, setShowCompletedOverlay] = useState(false);
+  const [certGuid, setCertGuid] = useState<string | null>(null);
+  const celebrationShownRef = useRef(false);
   const { subscribe, maintenanceCourses } = useWS();
 
   useEffect(() => {
@@ -51,12 +60,22 @@ export default function CursoVisorPage() {
 
     const unsub1 = subscribe('submission:graded', fetchProgreso);
     const unsub2 = subscribe('dashboard:refresh', fetchProgreso);
+    const unsub3 = subscribe('certificate:new', (data: any) => {
+      if (data?.curso_guid === curso_id && !celebrationShownRef.current) {
+        celebrationShownRef.current = true;
+        setCelebrationData({ curso_titulo: data.curso_titulo || curso?.titulo || 'el curso' });
+        setShowCelebration(true);
+      }
+    });
+    const unsub4 = subscribe('submission:new', fetchProgreso);
     
     return () => {
       unsub1();
       unsub2();
+      unsub3();
+      unsub4();
     };
-  }, [curso_id, userGuid, subscribe]);
+  }, [curso_id, userGuid, subscribe, curso]);
 
   useEffect(() => {
     import('@justinribeiro/lite-youtube').catch(console.error);
@@ -85,6 +104,19 @@ export default function CursoVisorPage() {
     return () => { unsub(); unsub2(); };
   }, [subscribe, curso_id]);
 
+  // Heartbeat for active time tracking
+  useEffect(() => {
+    if (!userGuid || !curso_id || viewOnlyMode) return;
+    const sendHeartbeat = () => {
+      if (!document.hidden) {
+        api.post(`/cursos/student/heartbeat?usuario_guid=${userGuid}`, { curso_guid: curso_id }).catch(() => {});
+      }
+    };
+    sendHeartbeat(); // Send immediately
+    const interval = setInterval(sendHeartbeat, 60000);
+    return () => clearInterval(interval);
+  }, [userGuid, curso_id, viewOnlyMode]);
+
   const fetchCurso = async () => {
     try {
       const res = await api.get(`/cursos/${curso_id}`);
@@ -105,7 +137,29 @@ export default function CursoVisorPage() {
     try {
       const res = await api.get(`/cursos/student/progreso?usuario_guid=${userGuid}&curso_guid=${curso_id}`);
       const data = res.data;
-      setCompletados(data.completados || []);
+      // Merge completados + desbloqueados_por_tiempo for navigation purposes
+      const realCompleted = data.completados || [];
+      const autoUnlocked = data.desbloqueados_por_tiempo || [];
+      const allEffective = [...new Set([...realCompleted, ...autoUnlocked])];
+      setCompletados(allEffective);
+      setTareasPendientes(data.tareas_pendientes_calificacion || []);
+
+      // Check if course has a certificate (already completed)
+      try {
+        const verifRes = await api.get(`/cursos/student/certificados/verificar/${curso_id}?usuario_guid=${userGuid}`);
+        const verifData = verifRes.data;
+        if (verifData.completo && verifData.puede_generar_certificado) {
+          // Check if certificate actually exists
+          const certsRes = await api.get(`/cursos/student/certificados?usuario_guid=${userGuid}`);
+          const certs = Array.isArray(certsRes.data) ? certsRes.data : [];
+          const matchCert = certs.find((c: any) => c.curso_guid === curso_id);
+          if (matchCert) {
+            setCourseCompleted(true);
+            setCertGuid(matchCert.guid);
+            setShowCompletedOverlay(true);
+          }
+        }
+      } catch {}
     } catch (err) {
       console.error(err);
     } finally {
@@ -157,6 +211,7 @@ export default function CursoVisorPage() {
   };
 
   const isRecursoCompleted = (guid: string) => completados.includes(guid);
+  const isRecursoPendingGrading = (guid: string) => tareasPendientes.some(t => t.recurso_guid === guid);
 
   const handleSelectRecurso = (recurso: any, moduloGuid: string, moduleIndex: number, resourceIndex: number) => {
     if (!isRecursoUnlocked(moduleIndex, resourceIndex)) return;
@@ -213,6 +268,29 @@ export default function CursoVisorPage() {
       }
     }
   }, [curso, progresoLoaded, selectedRecurso, completados]);
+
+  // Auto-detect: all resources done/submitted but tasks pending grading → show pending modal
+  const pendingModalShownRef = useRef(false);
+  useEffect(() => {
+    if (!curso || !progresoLoaded || pendingModalShownRef.current || celebrationShownRef.current) return;
+    const allRecursos = (curso.modulos || []).flatMap((m: any) =>
+      (m.lecciones || []).flatMap((l: any) => l.recursos || [])
+    );
+    if (allRecursos.length === 0) return;
+
+    // A resource is "done from the student's side" if:
+    // - It's in completados (graded/completed), OR
+    // - It has a pending submission (student uploaded their work)
+    const pendingGuids = new Set(tareasPendientes.map(t => t.recurso_guid));
+    const allDoneOrSubmitted = allRecursos.every((r: any) =>
+      completados.includes(r.guid) || pendingGuids.has(r.guid)
+    );
+
+    if (allDoneOrSubmitted && tareasPendientes.length > 0) {
+      pendingModalShownRef.current = true;
+      setShowPendingModal(true);
+    }
+  }, [curso, progresoLoaded, completados, tareasPendientes]);
 
   const getRecursoIcon = (recurso: any, completed: boolean, locked: boolean) => {
     if (locked) return <Lock className="h-4 w-4 text-muted-foreground/50" />;
@@ -276,8 +354,87 @@ export default function CursoVisorPage() {
     );
   }
 
+  // COURSE COMPLETED OVERLAY — shown when course has a certificate
+  if (showCompletedOverlay && courseCompleted) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 animate-in fade-in duration-500">
+        <div className="max-w-lg w-full bg-card border border-emerald-500/30 rounded-3xl overflow-hidden shadow-xl">
+          {/* Gradient header */}
+          <div className="relative bg-gradient-to-br from-emerald-500/15 via-primary/10 to-emerald-500/5 p-10 text-center overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-400 via-primary to-emerald-500" />
+            <div className="absolute -top-12 -right-12 w-36 h-36 bg-emerald-500/5 rounded-full" />
+            <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-primary/5 rounded-full" />
+
+            <div className="relative z-10">
+              <div className="w-24 h-24 bg-gradient-to-br from-emerald-500/20 to-primary/20 rounded-full flex items-center justify-center mx-auto mb-5 ring-4 ring-background shadow-xl" style={{ animation: 'bounce 2s infinite' }}>
+                <Trophy className="h-12 w-12 text-emerald-500" />
+              </div>
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <Sparkles className="h-5 w-5 text-amber-500" />
+                <h1 className="text-2xl font-black text-foreground">¡Curso Finalizado!</h1>
+                <Sparkles className="h-5 w-5 text-amber-500" />
+              </div>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Ya completaste exitosamente el curso
+              </p>
+              <p className="text-emerald-600 dark:text-emerald-400 font-bold text-lg mt-1">
+                {curso.titulo}
+              </p>
+            </div>
+          </div>
+
+          <div className="p-8 text-center">
+            <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
+              Tu certificado de finalización ya fue generado. Puedes descargarlo o revisitar el contenido del curso en modo de solo lectura.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <button
+                onClick={() => router.push(`/dashboard/student/certificados${certGuid ? `?open=${certGuid}` : ''}`)}
+                className="w-full sm:flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-2xl transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 text-sm"
+              >
+                <Award className="h-5 w-5" /> Ver Mi Certificado
+              </button>
+              <button
+                onClick={() => {
+                  setShowCompletedOverlay(false);
+                  setViewOnlyMode(true);
+                }}
+                className="w-full sm:flex-1 bg-muted hover:bg-border text-foreground font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm"
+              >
+                <Eye className="h-5 w-5" /> Solo Visualizar
+              </button>
+            </div>
+
+            <Link
+              href="/dashboard/student/cursos"
+              className="inline-flex items-center gap-2 mt-5 text-muted-foreground hover:text-foreground text-sm transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" /> Volver a Mis Cursos
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* View-Only Banner */}
+      {viewOnlyMode && (
+        <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-4 py-2 flex items-center justify-center gap-3 text-sm shrink-0 z-50">
+          <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-medium">
+            <Eye className="h-4 w-4" />
+            <span>Modo de solo lectura — Este curso ya fue completado</span>
+          </div>
+          <button
+            onClick={() => router.push('/dashboard/student/certificados')}
+            className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-1 rounded-lg transition-colors"
+          >
+            Ver Certificado
+          </button>
+        </div>
+      )}
       {/* Top Navbar */}
       {!isQuizActive && (
           <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50 h-16 flex items-center px-6 shrink-0">
@@ -337,10 +494,14 @@ export default function CursoVisorPage() {
                             }`}
                           >
                             {getRecursoIcon(r, rCompleted, !rUnlocked)}
-                            <span className={`truncate flex-1 ${rCompleted ? 'italic line-through text-muted-foreground' : ''}`}>
+                            <span className={`truncate flex-1 ${rCompleted && !isRecursoPendingGrading(r.guid) ? 'italic line-through text-muted-foreground' : ''}`}>
                               {displayTitle}
                             </span>
-                            {rCompleted && <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />}
+                            {rCompleted && isRecursoPendingGrading(r.guid) ? (
+                              <span title="Pendiente de calificación"><Clock className="h-3 w-3 text-amber-500 shrink-0" /></span>
+                            ) : rCompleted ? (
+                              <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
+                            ) : null}
                           </div>
                         );
                       })}
@@ -416,38 +577,213 @@ export default function CursoVisorPage() {
 
               {/* TAREA */}
               {selectedRecurso.tipo === 'TAREA' && !selectedRecurso.titulo?.startsWith('[QUIZ]') && (
-                <AssignmentPlayer
-                  curso_id={curso_id as string}
-                  recurso_guid={selectedRecurso.guid}
-                  bloque_titulo={selectedRecurso.titulo}
-                  instrucciones_html={selectedRecurso.contenido_html || ''}
-                  archivo_adjunto={selectedRecurso.archivo_adjunto}
-                  archivo_adjunto_nombre={selectedRecurso.archivo_adjunto_nombre}
-                  url_referencia={selectedRecurso.url_referencia}
-                  archivo_max_size_mb={selectedRecurso.archivo_max_size_mb ?? 5}
-                  onFinish={() => fetchProgreso()}
-                />
+                viewOnlyMode ? (
+                  <AssignmentPlayer
+                    curso_id={curso_id as string}
+                    recurso_guid={selectedRecurso.guid}
+                    bloque_titulo={selectedRecurso.titulo}
+                    instrucciones_html={selectedRecurso.contenido_html || ''}
+                    archivo_adjunto={selectedRecurso.archivo_adjunto}
+                    archivo_adjunto_nombre={selectedRecurso.archivo_adjunto_nombre}
+                    url_referencia={selectedRecurso.url_referencia}
+                    archivo_max_size_mb={selectedRecurso.archivo_max_size_mb ?? 5}
+                    readOnly={true}
+                    onFinish={() => {}}
+                  />
+                ) : (
+                  <AssignmentPlayer
+                    curso_id={curso_id as string}
+                    recurso_guid={selectedRecurso.guid}
+                    bloque_titulo={selectedRecurso.titulo}
+                    instrucciones_html={selectedRecurso.contenido_html || ''}
+                    archivo_adjunto={selectedRecurso.archivo_adjunto}
+                    archivo_adjunto_nombre={selectedRecurso.archivo_adjunto_nombre}
+                    url_referencia={selectedRecurso.url_referencia}
+                    archivo_max_size_mb={selectedRecurso.archivo_max_size_mb ?? 5}
+                    onFinish={() => fetchProgreso()}
+                  />
+                )
               )}
 
               {/* QUIZ */}
               {selectedRecurso.tipo === 'TAREA' && selectedRecurso.titulo?.startsWith('[QUIZ]') && (
-                <QuizPlayer
-                  curso_id={curso_id as string}
-                  recurso_guid={selectedRecurso.guid}
-                  bloque_titulo={selectedRecurso.titulo.replace('[QUIZ] ', '')}
-                  quiz_config_raw={selectedRecurso.quiz_config || ''}
-                  instrucciones_html={selectedRecurso.contenido_html || ''}
-                  url_referencia={selectedRecurso.url_referencia}
-                  archivo_adjunto={selectedRecurso.archivo_adjunto}
-                  archivo_adjunto_nombre={selectedRecurso.archivo_adjunto_nombre}
-                  onFinish={() => fetchProgreso()}
-                  onQuizStateChange={(active) => setIsQuizActive(active)}
-                />
+                viewOnlyMode ? (
+                  <div className="space-y-4">
+                    {selectedRecurso.contenido_html && (
+                      <div className="prose prose-slate dark:prose-invert max-w-none bg-card rounded-2xl p-6 border border-border/50 shadow-sm" dangerouslySetInnerHTML={{ __html: selectedRecurso.contenido_html }} />
+                    )}
+                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 flex items-center gap-3">
+                      <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
+                      <p className="text-sm text-emerald-700 dark:text-emerald-400 font-medium">
+                        Este cuestionario ya fue completado.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <QuizPlayer
+                    curso_id={curso_id as string}
+                    recurso_guid={selectedRecurso.guid}
+                    bloque_titulo={selectedRecurso.titulo.replace('[QUIZ] ', '')}
+                    quiz_config_raw={selectedRecurso.quiz_config || ''}
+                    instrucciones_html={selectedRecurso.contenido_html || ''}
+                    url_referencia={selectedRecurso.url_referencia}
+                    archivo_adjunto={selectedRecurso.archivo_adjunto}
+                    archivo_adjunto_nombre={selectedRecurso.archivo_adjunto_nombre}
+                    onFinish={() => fetchProgreso()}
+                    onQuizStateChange={(active) => setIsQuizActive(active)}
+                  />
+                )
               )}
             </div>
           )}
         </div>
       </div>
+
+      {/* ── Course Completion Celebration Modal ── */}
+      {showCelebration && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 p-4">
+          {/* Confetti particles */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {Array.from({ length: 50 }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `-5%`,
+                  backgroundColor: [
+                    '#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316'
+                  ][i % 8],
+                  animation: `confettiFall ${2 + Math.random() * 3}s ease-in-out ${Math.random() * 2}s infinite`,
+                  opacity: 0.8,
+                  width: `${4 + Math.random() * 8}px`,
+                  height: `${4 + Math.random() * 8}px`,
+                  borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300 relative z-10">
+            {/* Gradient header */}
+            <div className="relative bg-gradient-to-br from-primary/20 via-primary/10 to-emerald-500/10 p-10 text-center overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-amber-500 to-emerald-500" />
+              <div className="absolute -top-12 -right-12 w-36 h-36 bg-primary/5 rounded-full" />
+              <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-emerald-500/5 rounded-full" />
+              
+              <div className="relative z-10">
+                <div className="w-24 h-24 bg-gradient-to-br from-primary/20 to-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-5 ring-4 ring-background shadow-xl" style={{ animation: 'bounce 2s infinite' }}>
+                  <Award className="h-12 w-12 text-primary" />
+                </div>
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <Sparkles className="h-5 w-5 text-amber-500" />
+                  <h2 className="text-2xl font-black text-foreground">¡Felicidades!</h2>
+                  <Sparkles className="h-5 w-5 text-amber-500" />
+                </div>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Has completado exitosamente el curso
+                </p>
+                <p className="text-primary font-bold text-lg mt-1">
+                  {celebrationData?.curso_titulo || curso?.titulo}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 text-center">
+              <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
+                Tu certificado de finalización ya ha sido generado y está disponible para descargar en formato PDF.
+              </p>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowCelebration(false)}
+                  className="flex-1 bg-muted hover:bg-border text-foreground font-bold py-3.5 rounded-xl transition-colors text-sm"
+                >
+                  Seguir en el curso
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCelebration(false);
+                    router.push('/dashboard/student/certificados');
+                  }}
+                  className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3.5 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2 text-sm"
+                >
+                  <Award className="h-4 w-4" /> Ver Certificado
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Confetti CSS */}
+          <style>{`
+            @keyframes confettiFall {
+              0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+              100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+            }
+          `}</style>
+        </div>
+      )}
+
+      {/* ── Pending Grading Modal ── */}
+      {showPendingModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 p-4">
+          <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+            {/* Header */}
+            <div className="relative bg-gradient-to-br from-amber-500/15 via-amber-500/5 to-orange-500/10 p-8 text-center overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500" />
+              <div className="absolute -top-12 -right-12 w-36 h-36 bg-amber-500/5 rounded-full" />
+              
+              <div className="relative z-10">
+                <div className="w-20 h-20 bg-amber-500/15 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-background shadow-xl">
+                  <Clock className="h-10 w-10 text-amber-500" />
+                </div>
+                <h2 className="text-xl font-black text-foreground mb-2">Curso Completado</h2>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Has terminado todos los recursos, pero hay tareas pendientes de calificación.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 mb-5">
+                <p className="text-sm font-bold text-amber-700 dark:text-amber-400 mb-2">
+                  ⏳ {tareasPendientes.length} tarea(s) esperando calificación:
+                </p>
+                <ul className="space-y-1.5">
+                  {tareasPendientes.map((t, i) => (
+                    <li key={i} className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Clock className="h-3 w-3 text-amber-500 shrink-0" />
+                      <span className="font-medium text-foreground">{t.tarea_titulo}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <p className="text-muted-foreground text-sm mb-6 leading-relaxed text-center">
+                Tu certificado se generará <strong className="text-foreground">automáticamente</strong> cuando el examinador califique todas las tareas pendientes. Puedes comunicarte con él a través de la sección de mensajes.
+              </p>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowPendingModal(false)}
+                  className="flex-1 bg-muted hover:bg-border text-foreground font-bold py-3.5 rounded-xl transition-colors text-sm"
+                >
+                  Entendido
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPendingModal(false);
+                    router.push('/dashboard/mensajes');
+                  }}
+                  className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2 text-sm"
+                >
+                  Ir a Mensajes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

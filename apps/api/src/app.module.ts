@@ -19,6 +19,7 @@ import { WsModule } from './ws/ws.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { MailModule } from './mail/mail.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { CertificadosModule } from './certificados/certificados.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     NotificacionesModule,
     MailModule,
     SchedulerModule,
+    CertificadosModule,
   ],
   controllers: [],
   providers: [

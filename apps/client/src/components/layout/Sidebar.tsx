@@ -2,7 +2,7 @@
 
 import { useRole, Role } from "@/contexts/RoleContext";
 import { useConfig } from "@/contexts/ConfigContext";
-import { GraduationCap, BookOpen, Clock, Award, Shield, Settings, Users, ArrowRight, Compass, ShieldAlert, BarChart3, Presentation, BookCheck, ClipboardList, LogOut, CheckCircle, Palette, ChevronUp, ClipboardCheck, MessageSquare } from "lucide-react";
+import { GraduationCap, BookOpen, Clock, Award, Shield, Settings, Users, ArrowRight, Compass, ShieldAlert, BarChart3, Presentation, BookCheck, ClipboardList, LogOut, CheckCircle, Palette, ChevronUp, ClipboardCheck, MessageSquare, FileSignature } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -106,6 +106,9 @@ export function Sidebar() {
                   <Link href="/dashboard/examiner/calificaciones" className={linkClass('/dashboard/examiner/calificaciones')}>
                       <BookCheck className="h-4 w-4" /> Calificación Manual
                   </Link>
+                  <Link href="/dashboard/examiner/firma" className={linkClass('/dashboard/examiner/firma')}>
+                      <FileSignature className="h-4 w-4" /> Mi Firma
+                  </Link>
                   <Link href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')}>
                       <MessageSquare className="h-4 w-4" /> Mensajes
                   </Link>
@@ -164,6 +167,9 @@ export function Sidebar() {
                               {solicitudesCount}
                             </span>
                           )}
+                      </Link>
+                      <Link href="/dashboard/admin/certificados-config" className={linkClass('/dashboard/admin/certificados-config')}>
+                          <FileSignature className="h-4 w-4" /> Certificados
                       </Link>
                       <Link href="/dashboard/admin/tema" className={linkClass('/dashboard/admin/tema')}>
                           <Palette className="h-4 w-4" /> Tema y Apariencia

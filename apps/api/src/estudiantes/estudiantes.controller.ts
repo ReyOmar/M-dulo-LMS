@@ -42,5 +42,15 @@ export class EstudiantesController {
     const guid = user?.guid || usuario_guid;
     return this.estudiantesService.getMetricasEstudiante(guid);
   }
+
+  @Post('/student/heartbeat')
+  async registrarHeartbeat(
+    @CurrentUser() user: any,
+    @Body() body: { curso_guid: string },
+    @Query('usuario_guid') usuario_guid?: string,
+  ) {
+    const guid = user?.guid || usuario_guid;
+    return this.estudiantesService.registrarHeartbeat(guid, body.curso_guid);
+  }
 }
 

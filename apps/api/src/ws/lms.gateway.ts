@@ -39,6 +39,7 @@ interface ConnectedClient {
  * - config:updated — Platform configuration changed
  * - presence:update — User connected/disconnected
  * - dashboard:refresh — Generic signal to refresh dashboard data
+ * - certificate:new — Student completed a course and certificate was generated
  */
 @WebSocketGateway({ path: '/ws' })
 @Injectable()

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { Play, BookOpen, Clock, GraduationCap, Bell, ChevronLeft, ChevronRight, Loader2, X, Flame, AlertTriangle } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { Play, BookOpen, Clock, GraduationCap, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
 import { useWS } from "@/contexts/WebSocketContext";
@@ -14,26 +14,15 @@ export function StudentDashboard() {
 
   const [cursos, setCursos] = useState<any[]>([]);
   const [metricas, setMetricas] = useState<any>(null);
-  const [notificaciones, setNotificaciones] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [progreso, setProgreso] = useState<{completados: number, total: number}>({completados: 0, total: 0});
-  const [showNotifs, setShowNotifs] = useState(false);
-  const notifRef = useRef<HTMLDivElement>(null);
+  const [completedCourseGuids, setCompletedCourseGuids] = useState<Set<string>>(new Set());
 
   // Calendar state
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [activeDays, setActiveDays] = useState<number[]>([]);
 
-  // Close notification panel on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setShowNotifs(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+
 
   useEffect(() => {
     if (user?.guid) {
@@ -60,25 +49,31 @@ export function StudentDashboard() {
 
   const fetchData = async () => {
     try {
-      const [cursosRes, metricasRes, notifsRes] = await Promise.all([
+      const [cursosRes, metricasRes] = await Promise.all([
         api.get(`/cursos?role=student&usuario_guid=${user.guid}`),
         api.get(`/cursos/student/metricas?usuario_guid=${user.guid}`),
-        api.get(`/cursos/student/notificaciones?usuario_guid=${user.guid}`)
       ]);
-      const [cursosData, metricasData, notifsData] = await Promise.all([
-        cursosRes.data,
-        metricasRes.data,
-        notifsRes.data
-      ]);
+      const cursosData = cursosRes.data;
+      const metricasData = metricasRes.data;
       const cursosArr = Array.isArray(cursosData) ? cursosData : [];
       setCursos(cursosArr);
       setMetricas(metricasData);
-      setNotificaciones(Array.isArray(notifsData) ? notifsData : []);
 
-      // Fetch progress for the first (last active) course
-      if (cursosArr.length > 0) {
+      // Fetch certificates to know which courses are completed
+      let certs: any[] = [];
+      try {
+        const certsRes = await api.get(`/cursos/student/certificados?usuario_guid=${user.guid}`);
+        certs = Array.isArray(certsRes.data) ? certsRes.data : [];
+        setCompletedCourseGuids(new Set(certs.map((c: any) => c.curso_guid)));
+      } catch {}
+
+      // Fetch progress for the first non-completed course
+      const certsGuids = certs.map((c: any) => c.curso_guid);
+      const firstActiveCurso = cursosArr.find(c => c.estado === 'PUBLICADO' && !certsGuids.includes(c.curso_guid));
+      const progCurso = firstActiveCurso || cursosArr[0];
+      if (progCurso) {
         try {
-          const progRes = await api.get(`/cursos/student/progreso?usuario_guid=${user.guid}&curso_guid=${cursosArr[0].guid}`);
+          const progRes = await api.get(`/cursos/student/progreso?usuario_guid=${user.guid}&curso_guid=${progCurso.guid}`);
           const progData = await progRes.data;
           setProgreso({
             completados: progData.completados?.length || 0,
@@ -93,16 +88,11 @@ export function StudentDashboard() {
     }
   };
 
-  const markNotifRead = async (id: number) => {
-    try {
-      await api.patch(`/cursos/student/notificaciones/${id}/leer`);
-      setNotificaciones(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n));
-    } catch (e) { console.error(e); }
-  };
-
-  const unreadCount = notificaciones.filter(n => !n.leida).length;
-  const lastCurso = cursos.length > 0 ? (cursos.find(c => c.estado === 'PUBLICADO' && !maintenanceCourses[c.guid]) || cursos[0]) : null;
-  const lastCursoInMaintenance = lastCurso ? (lastCurso.estado === 'BORRADOR' || !!maintenanceCourses[lastCurso.guid]) : false;
+  // Pick next active (non-completed, non-maintenance) course
+  const activeCursos = cursos.filter(c => c.estado === 'PUBLICADO' && !maintenanceCourses[c.guid] && !completedCourseGuids.has(c.guid));
+  const lastCurso = activeCursos.length > 0 ? activeCursos[0] : null;
+  const lastCursoInMaintenance = false; // Already filtered out
+  const allCoursesCompleted = cursos.length > 0 && activeCursos.length === 0;
 
   // --- Calendar helpers ---
   const calYear = calendarDate.getFullYear();
@@ -137,69 +127,13 @@ export function StudentDashboard() {
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-700">
       {/* Header */}
-      <header className="flex justify-between items-start mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Hola, {user?.nombre || 'Estudiante'} 👋
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Bienvenido de vuelta a tu espacio de capacitación.
-          </p>
-        </div>
-
-        {/* Notification Bell */}
-        <div className="relative" ref={notifRef}>
-          <button
-            onClick={() => setShowNotifs(!showNotifs)}
-            className="relative p-2.5 rounded-xl bg-card border border-border hover:bg-muted transition-colors shadow-sm"
-          >
-            <Bell className="h-5 w-5 text-muted-foreground" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-background">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-
-          {/* Notification Panel */}
-          {showNotifs && (
-            <div className="absolute right-0 top-12 w-96 max-h-[480px] bg-card border border-border rounded-2xl shadow-2xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
-              <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
-                <h3 className="font-bold text-sm">Notificaciones</h3>
-                <button onClick={() => setShowNotifs(false)} className="p-1 hover:bg-muted rounded-lg transition-colors">
-                  <X className="h-4 w-4 text-muted-foreground" />
-                </button>
-              </div>
-              <div className="overflow-y-auto max-h-[400px]">
-                {notificaciones.length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground text-sm">
-                    <Bell className="h-8 w-8 mx-auto mb-3 opacity-30" />
-                    <p>No tienes notificaciones aún.</p>
-                  </div>
-                ) : (
-                  notificaciones.map(n => (
-                    <div
-                      key={n.id}
-                      onClick={() => !n.leida && markNotifRead(n.id)}
-                      className={`p-4 border-b border-border/50 cursor-pointer hover:bg-muted/30 transition-colors ${!n.leida ? 'bg-primary/5' : ''}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        {!n.leida && <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />}
-                        <div className={!n.leida ? '' : 'ml-5'}>
-                          <p className="text-sm font-semibold">{n.titulo}</p>
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{n.mensaje}</p>
-                          <p className="text-[10px] text-muted-foreground mt-2">
-                            {new Date(n.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          Hola, {user?.nombre || 'Estudiante'} 👋
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          Bienvenido de vuelta a tu espacio de capacitación.
+        </p>
       </header>
 
       {/* Main Grid: Continue Learning + Calendar */}
@@ -230,6 +164,17 @@ export function StudentDashboard() {
                     <Play className="h-4 w-4 fill-primary" /> Retomar Curso
                   </button>
                 )}
+              </>
+            ) : allCoursesCompleted ? (
+              <>
+                <h2 className="text-2xl font-bold mb-2">🎉 ¡Todos tus cursos completados!</h2>
+                <p className="text-primary-foreground/70 mb-4">Has finalizado todos los cursos asignados. Pronto tendrás nuevos cursos disponibles.</p>
+                <button
+                  onClick={() => router.push('/dashboard/student/certificados')}
+                  className="flex items-center gap-2 bg-white text-primary px-6 py-3 rounded-xl font-bold hover:scale-105 transition-transform shadow-md"
+                >
+                  <GraduationCap className="h-4 w-4" /> Ver Mis Certificados
+                </button>
               </>
             ) : (
               <>

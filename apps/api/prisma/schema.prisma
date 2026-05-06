@@ -32,10 +32,17 @@ model usuarios {
   progreso_recurso  lms_progreso_recurso[]
   notificaciones    lms_notificaciones[]
   metricas          lms_metricas_capacitacion?
+  certificados      lms_certificados[]
+  sesiones_activas  lms_sesion_activa[]
   mensajes_enviados   lms_mensajes[] @relation("mensajes_enviados")
   mensajes_recibidos  lms_mensajes[] @relation("mensajes_recibidos")
 
   ultimo_acceso     DateTime?
+
+  // Firma del examinador/instructor (para certificados)
+  firma_url         String?
+  firma_nombre      String?
+  firma_cargo       String?
 }
 
 // ── ENUMS LMS ──
@@ -148,6 +155,8 @@ model lms_cursos {
   profesor          usuarios           @relation(fields: [profesor_guid], references: [guid])
   modulos           lms_modulos[]
   matriculas        lms_matriculas[]
+  certificados      lms_certificados[]
+  sesiones_activas  lms_sesion_activa[]
 
   @@index([profesor_guid])
 }
@@ -343,5 +352,53 @@ model lms_configuracion {
   email_remitente    String?
   email_nombre       String?
   bienvenida_html    String?
+
+  // Certificados config
+  cert_titulo_personalizado String?
+  cert_subtitulo            String?
+  cert_texto_legal          String?
+  cert_mostrar_modulos      Boolean  @default(true)
+  cert_mostrar_recursos     Boolean  @default(true)
+  cert_mostrar_nota         Boolean  @default(true)
+  cert_mostrar_firma        Boolean  @default(true)
+
   updated_at         DateTime @updatedAt
+}
+
+// ── CERTIFICADOS ──
+
+model lms_certificados {
+  id                  Int      @id @default(autoincrement())
+  guid                String   @unique @default(uuid())
+  usuario_guid        String
+  usuario             usuarios @relation(fields: [usuario_guid], references: [guid], onDelete: Cascade)
+  curso_guid          String
+  curso               lms_cursos @relation(fields: [curso_guid], references: [guid], onDelete: Cascade)
+  codigo_verificacion String   @unique
+  archivo_pdf         String
+  fecha_inicio        DateTime
+  fecha_completado    DateTime @default(now())
+  tiempo_total_horas  Decimal  @default(0)
+  tiempo_activo_seg   Int      @default(0)
+  nota_promedio       Decimal?
+  created_at          DateTime @default(now())
+
+  @@unique([usuario_guid, curso_guid])
+  @@index([usuario_guid])
+  @@index([curso_guid])
+}
+
+// ── SESIONES ACTIVAS (Heartbeat tracking) ──
+
+model lms_sesion_activa {
+  id            Int       @id @default(autoincrement())
+  usuario_guid  String
+  usuario       usuarios  @relation(fields: [usuario_guid], references: [guid], onDelete: Cascade)
+  curso_guid    String
+  curso         lms_cursos @relation(fields: [curso_guid], references: [guid], onDelete: Cascade)
+  inicio_sesion DateTime  @default(now())
+  fin_sesion    DateTime?
+  duracion_seg  Int       @default(0)
+
+  @@index([usuario_guid, curso_guid])
 }

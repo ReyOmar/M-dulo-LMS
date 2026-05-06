@@ -14,6 +14,7 @@ interface AssignmentPlayerProps {
     archivo_adjunto_nombre?: string;
     url_referencia?: string;
     archivo_max_size_mb?: number;
+    readOnly?: boolean;
     onFinish: () => void;
 }
 
@@ -26,6 +27,7 @@ export default function AssignmentPlayer({
     archivo_adjunto_nombre,
     url_referencia,
     archivo_max_size_mb = 5,
+    readOnly = false,
     onFinish
 }: AssignmentPlayerProps) {
     const [loading, setLoading] = useState(true);
@@ -245,7 +247,7 @@ export default function AssignmentPlayer({
                                     <p className="text-sm font-semibold text-foreground truncate">{entrega.respuesta_texto}</p>
                                     <p className="text-xs text-muted-foreground mt-0.5">Archivo entregado</p>
                                 </div>
-                                {entrega.url_archivo_adjunto && (
+                                {entrega.url_archivo_adjunto && !readOnly && (
                                     <button
                                         onClick={handleDownload}
                                         className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold flex items-center gap-2 transition-transform hover:scale-105"
@@ -256,12 +258,14 @@ export default function AssignmentPlayer({
                                 )}
                             </div>
 
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="mt-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1.5"
-                            >
-                                <UploadCloud className="h-4 w-4" /> Subir archivo diferente (reemplazar)
-                            </button>
+                            {!readOnly && (
+                              <button
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className="mt-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1.5"
+                              >
+                                  <UploadCloud className="h-4 w-4" /> Subir archivo diferente (reemplazar)
+                              </button>
+                            )}
                         </div>
                     ) : uploadState === 'uploading' ? (
                         /* ── Estado Subiendo ── */

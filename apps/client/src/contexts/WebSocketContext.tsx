@@ -24,7 +24,8 @@ type WebSocketEvent =
   | 'dashboard:refresh'
   | 'notification:new'
   | 'notification:read'
-  | 'message:new';
+  | 'message:new'
+  | 'certificate:new';
 
 interface CourseEditor {
   guid: string;

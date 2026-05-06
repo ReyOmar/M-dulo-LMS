@@ -148,4 +148,79 @@ export class SchedulerService implements OnModuleInit {
     // Update snapshot
     this.previousDraftCourses = currentDraftSet;
   }
+
+  /**
+   * Auto-unlock resources when assignments are pending grading for >48 hours.
+   * Runs every hour. Creates progress records so students can advance.
+   */
+  @Cron('0 * * * *') // Every hour at minute 0
+  async autoUnlockPendingSubmissions() {
+    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+    // Find all submissions that are ENTREGADA or EN_REVISION and older than 48 hours
+    const pendingSubmissions = await this.prisma.lms_entregas.findMany({
+      where: {
+        estado: { in: ['ENTREGADA', 'EN_REVISION'] },
+        fecha_entrega: { lt: twoDaysAgo },
+        tarea_guid: { not: null },
+      },
+      select: {
+        guid: true,
+        usuario_guid: true,
+        tarea_guid: true,
+        fecha_entrega: true,
+      },
+    });
+
+    if (pendingSubmissions.length === 0) return;
+
+    let unlocked = 0;
+
+    for (const submission of pendingSubmissions) {
+      if (!submission.tarea_guid) continue;
+
+      // Check if progress already exists (already unlocked)
+      const existing = await this.prisma.lms_progreso_recurso.findUnique({
+        where: {
+          usuario_guid_recurso_guid: {
+            usuario_guid: submission.usuario_guid,
+            recurso_guid: submission.tarea_guid,
+          },
+        },
+      });
+
+      if (existing) continue; // Already unlocked
+
+      // Create progress record to unlock the next resource
+      await this.prisma.lms_progreso_recurso.create({
+        data: {
+          usuario_guid: submission.usuario_guid,
+          recurso_guid: submission.tarea_guid,
+          completado: true,
+        },
+      });
+
+      unlocked++;
+
+      // Get task info for notification
+      const recursoInfo = await this.prisma.lms_recursos.findUnique({
+        where: { guid: submission.tarea_guid },
+        select: { titulo: true },
+      });
+
+      // Notify student
+      await this.notificacionesService.crearNotificacion({
+        usuario_guid: submission.usuario_guid,
+        tipo: 'MODULO_COMPLETADO',
+        titulo: '🔓 Recurso desbloqueado automáticamente',
+        mensaje: `Tu tarea "${recursoInfo?.titulo || 'Tarea'}" lleva más de 48 horas esperando calificación. Hemos desbloqueado el siguiente recurso para que puedas seguir avanzando. La tarea sigue pendiente de revisión por el examinador.`,
+        url_accion: '/dashboard/student/cursos',
+      }).catch((err) => console.error('Auto-unlock notification error:', err));
+    }
+
+    if (unlocked > 0) {
+      console.log(`🔓 Auto-unlocked ${unlocked} resources for pending submissions >48h`);
+      this.lmsGateway.broadcast('dashboard:refresh', { reason: 'auto_unlock' });
+    }
+  }
 }
