@@ -401,26 +401,16 @@ export class CertificadosService {
       const secondary = data.colorSecundario;
 
       // ── Background ──
-      doc.rect(0, 0, W, H).fill('#FFFFFF');
+      doc.rect(0, 0, W, H).fill('#FAFAFA'); // Slight off-white academic parchment feel
 
-      // ── Decorative top gradient bar ──
-      const gradTop = doc.linearGradient(0, 0, W, 0);
-      gradTop.stop(0, primary).stop(0.5, this.blendColors(primary, secondary, 0.5)).stop(1, secondary);
-      doc.rect(0, 0, W, 8).fill(gradTop);
-
-      // ── Decorative bottom gradient bar ──
-      const gradBottom = doc.linearGradient(0, H - 8, W, H - 8);
-      gradBottom.stop(0, secondary).stop(0.5, this.blendColors(primary, secondary, 0.5)).stop(1, primary);
-      doc.rect(0, H - 8, W, 8).fill(gradBottom);
-
-      // ── Side decorative lines ──
-      doc.rect(0, 8, 4, H - 16).fill(primary);
-      doc.rect(W - 4, 8, 4, H - 16).fill(secondary);
-
-      // ── Inner border frame ──
-      doc.roundedRect(24, 24, W - 48, H - 48, 4)
-        .lineWidth(1.5)
-        .stroke('#E2E8F0');
+      // ── Classic Academic Double Border ──
+      doc.rect(20, 20, W - 40, H - 40)
+        .lineWidth(3)
+        .stroke(primary);
+      
+      doc.rect(26, 26, W - 52, H - 52)
+        .lineWidth(1)
+        .stroke(secondary);
 
       // ── Decorative corner ornaments ──
       this.drawCornerOrnament(doc, 30, 30, primary, false, false);
@@ -429,9 +419,9 @@ export class CertificadosService {
       this.drawCornerOrnament(doc, W - 30, H - 30, primary, true, true);
 
       // ── Platform name header ──
-      const headerY = 45;
-      doc.fontSize(10)
-        .font('Helvetica')
+      const headerY = 55;
+      doc.fontSize(14)
+        .font('Times-Bold')
         .fillColor(primary)
         .text(data.nombrePlataforma.toUpperCase(), 0, headerY, {
           align: 'center',
@@ -440,84 +430,86 @@ export class CertificadosService {
         });
 
       // ── Horizontal separator after platform name ──
-      const sepY = headerY + 18;
-      const sepW = 120;
-      const sepGrad = doc.linearGradient(W / 2 - sepW / 2, sepY, W / 2 + sepW / 2, sepY);
-      sepGrad.stop(0, '#E2E8F0').stop(0.5, primary).stop(1, '#E2E8F0');
-      doc.moveTo(W / 2 - sepW / 2, sepY).lineTo(W / 2 + sepW / 2, sepY).lineWidth(1).stroke(sepGrad);
+      const sepY = headerY + 28;
+      const sepW = 180;
+      doc.moveTo(W / 2 - sepW / 2, sepY).lineTo(W / 2 + sepW / 2, sepY).lineWidth(1).stroke(secondary);
 
       // ── Title ──
       const certTitle = data.tituloPersonalizado || 'CERTIFICADO';
-      doc.fontSize(26)
-        .font('Helvetica-Bold')
-        .fillColor('#1E293B')
-        .text(certTitle, 0, sepY + 12, { align: 'center', width: W });
+      doc.fontSize(36)
+        .font('Times-Bold')
+        .fillColor('#111827')
+        .text(certTitle, 0, sepY + 20, { align: 'center', width: W });
 
-      const subTitle = data.subtitulo || 'DE FINALIZACIÓN';
-      doc.fontSize(10)
-        .font('Helvetica')
-        .fillColor('#64748B')
-        .text(subTitle, 0, sepY + 42, {
+      const subTitle = data.subtitulo || 'DE FINALIZACIÓN ACADÉMICA';
+      doc.fontSize(14)
+        .font('Times-Roman')
+        .fillColor('#374151')
+        .text(subTitle, 0, sepY + 65, {
           align: 'center',
           width: W,
           characterSpacing: 6,
         });
 
       // ── "Se otorga a:" ──
-      doc.fontSize(9)
-        .font('Helvetica')
-        .fillColor('#94A3B8')
-        .text('Se otorga a:', 0, sepY + 68, { align: 'center', width: W });
+      doc.fontSize(14)
+        .font('Times-Italic')
+        .fillColor('#4B5563')
+        .text('El presente documento se otorga a:', 0, sepY + 105, { align: 'center', width: W });
 
       // ── Student Name ──
-      doc.fontSize(26)
-        .font('Helvetica-Bold')
+      doc.fontSize(40)
+        .font('Times-Bold')
         .fillColor(primary)
-        .text(data.nombreEstudiante, 0, sepY + 84, { align: 'center', width: W });
+        .text(data.nombreEstudiante, 0, sepY + 130, { align: 'center', width: W });
 
       // ── Decorative line under name ──
-      const nameLineY = sepY + 118;
-      const nameLineW = Math.min(data.nombreEstudiante.length * 13 + 40, 460);
-      const nameGrad = doc.linearGradient(W / 2 - nameLineW / 2, nameLineY, W / 2 + nameLineW / 2, nameLineY);
-      nameGrad.stop(0, '#E2E8F0').stop(0.3, primary).stop(0.7, primary).stop(1, '#E2E8F0');
+      const nameLineY = sepY + 180;
+      const nameLineW = Math.min(data.nombreEstudiante.length * 15 + 60, 500);
       doc.moveTo(W / 2 - nameLineW / 2, nameLineY)
         .lineTo(W / 2 + nameLineW / 2, nameLineY)
         .lineWidth(1)
-        .stroke(nameGrad);
+        .stroke('#D1D5DB');
 
       // ── "Por haber completado exitosamente el curso:" ──
-      doc.fontSize(9)
-        .font('Helvetica')
-        .fillColor('#64748B')
-        .text('Por haber completado exitosamente el curso:', 0, nameLineY + 10, { align: 'center', width: W });
+      doc.fontSize(14)
+        .font('Times-Italic')
+        .fillColor('#4B5563')
+        .text('Por haber aprobado con éxito los requisitos técnicos y académicos del curso:', 0, nameLineY + 20, { align: 'center', width: W });
 
       // ── Course Title ──
-      doc.fontSize(16)
-        .font('Helvetica-Bold')
-        .fillColor('#1E293B')
-        .text(`"${data.tituloCurso}"`, 60, nameLineY + 26, { align: 'center', width: W - 120 });
+      doc.fontSize(24)
+        .font('Times-Bold')
+        .fillColor('#111827')
+        .text(`"${data.tituloCurso}"`, 40, nameLineY + 45, { align: 'center', width: W - 80 });
 
       // ── Legal / Descriptive text ──
-      const legalY = nameLineY + 52;
-      doc.fontSize(7.5)
-        .font('Helvetica')
-        .fillColor('#94A3B8')
-        .text(data.textoLegal, 80, legalY, { align: 'center', width: W - 160, lineGap: 2 });
+      const legalY = nameLineY + 85;
+      doc.fontSize(13)
+        .font('Times-Roman')
+        .fillColor('#374151')
+        .text(data.textoLegal, 80, legalY, { align: 'center', width: W - 160, lineGap: 6 });
 
       // ── Metrics Row ──
-      const metricsY = legalY + 36;
+      const metricsY = legalY + 50;
       const metricsData: { label: string; value: string }[] = [];
+
+      const formatDDMMYYYY = (d: Date) => {
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        return `${day}/${month}/${d.getFullYear()}`;
+      };
 
       if (data.mostrarFechaIngreso) {
         metricsData.push({
           label: 'Fecha de inscripción',
-          value: data.fechaInicio.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }),
+          value: formatDDMMYYYY(data.fechaInicio),
         });
       }
 
       metricsData.push({
         label: 'Fecha de finalización',
-        value: data.fechaCompletado.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }),
+        value: formatDDMMYYYY(data.fechaCompletado),
       });
 
       metricsData.push({
@@ -540,14 +532,14 @@ export class CertificadosService {
       const metricWidth = (W - 120) / metricsData.length;
       metricsData.forEach((metric, i) => {
         const x = 60 + i * metricWidth;
-        doc.fontSize(7)
-          .font('Helvetica')
-          .fillColor('#94A3B8')
-          .text(metric.label.toUpperCase(), x, metricsY, { width: metricWidth, align: 'center' });
         doc.fontSize(10)
-          .font('Helvetica-Bold')
-          .fillColor('#334155')
-          .text(metric.value, x, metricsY + 12, { width: metricWidth, align: 'center' });
+          .font('Times-Roman')
+          .fillColor('#6B7280')
+          .text(metric.label.toUpperCase(), x, metricsY, { width: metricWidth, align: 'center' });
+        doc.fontSize(12)
+          .font('Times-Bold')
+          .fillColor('#111827')
+          .text(metric.value, x, metricsY + 16, { width: metricWidth, align: 'center' });
       });
 
       // ── Instructor signature area ──
@@ -577,24 +569,24 @@ export class CertificadosService {
           .stroke('#CBD5E1');
 
         const sigName = data.firmaNombre || data.nombreProfesor;
-        doc.fontSize(9)
-          .font('Helvetica-Bold')
-          .fillColor('#334155')
+        doc.fontSize(12)
+          .font('Times-Bold')
+          .fillColor('#111827')
           .text(sigName, 0, sigY + 5, { align: 'center', width: W });
 
         const sigTitle = data.firmaCargo || 'Instructor / Examinador del Curso';
-        doc.fontSize(7)
-          .font('Helvetica')
-          .fillColor('#94A3B8')
-          .text(sigTitle, 0, sigY + 17, { align: 'center', width: W });
+        doc.fontSize(10)
+          .font('Times-Italic')
+          .fillColor('#6B7280')
+          .text(sigTitle, 0, sigY + 20, { align: 'center', width: W });
       }
 
       // ── Verification code at bottom ──
-      const codeY = H - 48;
-      doc.fontSize(6.5)
-        .font('Helvetica')
-        .fillColor('#CBD5E1')
-        .text(`Código de verificación: ${data.codigoVerificacion}`, 0, codeY, { align: 'center', width: W });
+      const codeY = H - 45;
+      doc.fontSize(9)
+        .font('Times-Roman')
+        .fillColor('#9CA3AF')
+        .text(`Código Único de Verificación: ${data.codigoVerificacion}`, 0, codeY, { align: 'center', width: W });
 
       // ── Finalize ──
       doc.end();

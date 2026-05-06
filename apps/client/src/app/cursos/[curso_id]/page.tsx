@@ -82,7 +82,7 @@ export default function CursoVisorPage() {
   }, []);
 
   useEffect(() => {
-    if (pendingCelebration && !isQuizActive) {
+    if (pendingCelebration && !isQuizActive && !selectedRecurso) {
       const timer = setTimeout(() => {
         if (!celebrationShownRef.current) {
           celebrationShownRef.current = true;
@@ -90,10 +90,10 @@ export default function CursoVisorPage() {
           setShowCelebration(true);
         }
         setPendingCelebration(null);
-      }, 1000);
+      }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [pendingCelebration, isQuizActive, curso]);
+  }, [pendingCelebration, isQuizActive, selectedRecurso, curso]);
 
   // Listen for maintenance events on this specific course
   useEffect(() => {
@@ -232,6 +232,29 @@ export default function CursoVisorPage() {
     setSelectedRecurso(recurso);
     setSelectedModuloGuid(moduloGuid);
   };
+
+  // Validate if current selectedRecurso is still unlocked. If not (e.g. failed quiz resets module), deselect it.
+  useEffect(() => {
+    if (curso && selectedRecurso && progresoLoaded) {
+      let modIdx = -1;
+      let recIdx = -1;
+      const modulosList = curso.modulos || [];
+      for (let m = 0; m < modulosList.length; m++) {
+        if (modulosList[m].guid === selectedModuloGuid) {
+          modIdx = m;
+          const recursos = modulosList[m].lecciones?.[0]?.recursos || [];
+          recIdx = recursos.findIndex((r: any) => r.guid === selectedRecurso.guid);
+          break;
+        }
+      }
+      
+      if (modIdx !== -1 && recIdx !== -1) {
+        if (!isRecursoUnlocked(modIdx, recIdx)) {
+          setSelectedRecurso(null);
+        }
+      }
+    }
+  }, [curso, selectedRecurso, selectedModuloGuid, progresoLoaded, completados]);
 
   // Auto-select first uncompleted resource (Retomar Curso)
   useEffect(() => {
