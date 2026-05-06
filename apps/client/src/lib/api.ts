@@ -6,7 +6,7 @@ import axios from 'axios';
  * - Automatically attaches JWT Bearer token from localStorage
  * - Handles 401 responses by clearing session and redirecting to login
  */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3200/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

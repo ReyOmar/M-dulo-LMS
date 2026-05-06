@@ -65,8 +65,8 @@ export default function BaseUsuarios() {
       }
     });
     const unsub3 = subscribe('presence:update', () => {
-      // Force re-render to update online status dots, even if list doesn't change
-      setUsuarios(prev => [...prev]); 
+      // Force re-render and get latest ultimo_acceso from database
+      fetchUsuarios(); 
     });
     const unsub4 = subscribe('dashboard:refresh', () => {
       fetchUsuarios();

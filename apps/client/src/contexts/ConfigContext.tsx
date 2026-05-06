@@ -17,6 +17,21 @@ export interface LMSConfig {
   mensaje_bienvenida: string;
   idioma: string;
   zona_horaria: string;
+  // Landing Page
+  landing_hero_titulo1?: string;
+  landing_hero_titulo2?: string;
+  landing_hero_subtitulo?: string;
+  landing_telefono?: string;
+  landing_telefono_sub?: string;
+  landing_email?: string;
+  landing_email_sub?: string;
+  landing_oficina?: string;
+  landing_oficina_sub?: string;
+  landing_footer_texto?: string;
+  // Legal
+  legal_terminos?: string;
+  legal_privacidad?: string;
+  legal_datos?: string;
 }
 
 interface ConfigContextType {

@@ -34,6 +34,7 @@ export default function MonitoreoEstudiantesPage() {
     const unsub3 = subscribe('course:updated', () => fetchMonitoreo(false));
     const unsub4 = subscribe('enrollment:changed', () => fetchMonitoreo(false));
     const unsub5 = subscribe('dashboard:refresh', () => fetchMonitoreo(false));
+    const unsub6 = subscribe('presence:update', () => fetchMonitoreo(false));
 
     return () => {
       unsub1();
@@ -41,6 +42,7 @@ export default function MonitoreoEstudiantesPage() {
       unsub3();
       unsub4();
       unsub5();
+      unsub6();
     };
   }, [user?.guid, subscribe]);
 
@@ -164,19 +166,6 @@ export default function MonitoreoEstudiantesPage() {
     const lastAccess = new Date(d);
     const now = new Date();
     const diffMinutes = Math.floor((now.getTime() - lastAccess.getTime()) / 60000);
-
-    // Fallback based on last access time if not explicitly in onlineUsers
-    if (diffMinutes <= 15) {
-      return (
-        <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold bg-emerald-500/10 px-2 py-1 rounded-full w-fit">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          En línea
-        </span>
-      );
-    }
 
     return (
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">

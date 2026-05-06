@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { WebSocketGateway, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -43,7 +43,7 @@ interface ConnectedClient {
  */
 @WebSocketGateway({ path: '/ws' })
 @Injectable()
-export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit {
   private clients: ConnectedClient[] = [];
   private courseEditors: Map<string, CourseEditor> = new Map();
 
@@ -53,8 +53,28 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private prisma: PrismaService,
   ) {}
 
+  onModuleInit() {
+    // Check for ghost connections every 30 seconds
+    setInterval(() => {
+      this.clients.forEach(c => {
+        if ((c.socket as any).isAlive === false) {
+          // Client hasn't responded to the last ping, terminate
+          return c.socket.terminate();
+        }
+        // Mark as false and send a new ping
+        (c.socket as any).isAlive = false;
+        c.socket.ping();
+      });
+    }, 30000);
+  }
+
   async handleConnection(client: WebSocket, req: IncomingMessage): Promise<void> {
     try {
+      // Setup heartbeat for this connection
+      (client as any).isAlive = true;
+      client.on('pong', () => {
+        (client as any).isAlive = true;
+      });
       const url = new URL(req.url || '', 'http://localhost');
       const token = url.searchParams.get('token');
 
@@ -130,7 +150,7 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  handleDisconnect(client: WebSocket): void {
+  async handleDisconnect(client: WebSocket): Promise<void> {
     const index = this.clients.findIndex(c => c.socket === client);
     if (index !== -1) {
       const disconnectedGuid = this.clients[index].guid;
@@ -141,6 +161,18 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         // Check if user has other active connections
         const stillConnected = this.clients.some(c => c.guid === disconnectedGuid);
         if (!stillConnected) {
+          // Update database ultimo_acceso BEFORE broadcasting so the frontend fetches the new date
+          if (this.prisma) {
+            try {
+              await this.prisma.usuarios.update({
+                where: { guid: disconnectedGuid },
+                data: { ultimo_acceso: new Date() }
+              });
+            } catch (e) {
+              console.error("Error updating ultimo_acceso on disconnect", e);
+            }
+          }
+
           this.broadcast('presence:update', {
             guid: disconnectedGuid,
             status: 'offline',

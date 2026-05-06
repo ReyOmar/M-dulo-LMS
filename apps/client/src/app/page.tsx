@@ -1,34 +1,46 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { ArrowRight, ShieldCheck, Map, Navigation, Truck, CarFront, FileCheck, Award, AlertTriangle, ChevronRight, Activity, Radar, Compass, Database, TerminalSquare, Settings2, BarChart4, Shield, CheckCircle2 } from "lucide-react";
+import { GraduationCap, ArrowRight, ShieldCheck, Truck, Route, Award, Users, BookOpen, CheckCircle, ChevronRight, Phone, Mail, MapPin, Clock, Star, Target, Shield, Zap, TrendingUp, Heart } from "lucide-react";
 import { useConfig } from "@/contexts/ConfigContext";
 
-/* ─── Scroll Fade-In Component ─── */
-function FadeIn({ children, className = "", delay = 0, direction = "up" }: { children: React.ReactNode; className?: string; delay?: number; direction?: "up" | "left" | "right" | "scale" }) {
+/* ─── Animated Counter ─── */
+function AnimCounter({ end, suffix = "", duration = 2000 }: { end: number; suffix?: string; duration?: number }) {
+  const [val, setVal] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !started.current) {
+        started.current = true;
+        const start = performance.now();
+        const tick = (now: number) => {
+          const p = Math.min((now - start) / duration, 1);
+          setVal(Math.floor(p * end));
+          if (p < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+    }, { threshold: 0.3 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, [end, duration]);
+
+  return <div ref={ref}>{val.toLocaleString()}{suffix}</div>;
+}
+
+/* ─── Scroll Fade-In ─── */
+function FadeIn({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [vis, setVis] = useState(false);
   useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVis(true); }, { threshold: 0.1 });
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVis(true); }, { threshold: 0.15 });
     if (ref.current) obs.observe(ref.current);
     return () => obs.disconnect();
   }, []);
-
-  const getTransform = () => {
-    if (vis) return "translate(0) scale(1)";
-    if (direction === "up") return "translateY(30px)";
-    if (direction === "left") return "translateX(-30px)";
-    if (direction === "right") return "translateX(30px)";
-    if (direction === "scale") return "scale(0.95)";
-    return "translate(0)";
-  };
-
   return (
-    <div ref={ref} className={className} style={{ 
-      opacity: vis ? 1 : 0, 
-      transform: getTransform(), 
-      transition: `all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) ${delay}s` 
-    }}>
+    <div ref={ref} className={className} style={{ opacity: vis ? 1 : 0, transform: vis ? 'translateY(0)' : 'translateY(40px)', transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s` }}>
       {children}
     </div>
   );
@@ -36,197 +48,199 @@ function FadeIn({ children, className = "", delay = 0, direction = "up" }: { chi
 
 export default function Home() {
   const { config } = useConfig();
-  const platformName = config?.nombre_plataforma || "PLATAFORMA PESV";
+  const platformName = config?.nombre_plataforma || "PESV Education";
   const [scrolled, setScrolled] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 20);
+    const h = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", h);
     return () => window.removeEventListener("scroll", h);
   }, []);
 
-  // Subtle Parallax for technical feel
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePos({
-        x: (e.clientX / window.innerWidth - 0.5) * 20,
-        y: (e.clientY / window.innerHeight - 0.5) * 20,
-      });
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
+  const services = [
+    { icon: Truck, title: "Gestión de Flotas", desc: "Control total de vehículos, conductores y rutas con rastreo en tiempo real y reportes automatizados.", color: "from-blue-500 to-cyan-500" },
+    { icon: ShieldCheck, title: "Seguridad Vial PESV", desc: "Implementación completa del Plan Estratégico de Seguridad Vial según normativa nacional vigente.", color: "from-emerald-500 to-green-500" },
+    { icon: BookOpen, title: "Capacitación Continua", desc: "Cursos certificados en seguridad vial, manejo defensivo y normatividad para todo tu equipo.", color: "from-purple-500 to-indigo-500" },
+    { icon: Award, title: "Certificaciones", desc: "Emisión automática de certificados digitales al completar cada módulo de formación.", color: "from-amber-500 to-orange-500" },
+    { icon: Target, title: "Auditorías y Cumplimiento", desc: "Verificación del cumplimiento normativo con auditorías programadas y trazabilidad completa.", color: "from-rose-500 to-pink-500" },
+    { icon: TrendingUp, title: "Análisis y Reportes", desc: "Dashboards inteligentes con métricas de desempeño, siniestralidad y progreso formativo.", color: "from-teal-500 to-cyan-500" },
+  ];
+
+
 
   const features = [
-    { icon: Navigation, title: "Rutas de Formación", desc: "Módulos de capacitación estructurados para operadores de carga y transporte especial.", delay: 0 },
-    { icon: AlertTriangle, title: "Gestión de Riesgos", desc: "Evaluaciones técnicas para medir la capacidad de respuesta ante incidentes viales.", delay: 0.1 },
-    { icon: Award, title: "Emisión Documental", desc: "Generación automatizada de certificados con trazabilidad legal y administrativa.", delay: 0.2 },
+    { icon: Truck, title: "Constructor de Cursos Dinámico", desc: "Crea módulos, lecciones y recursos (videos, PDFs, links) arrastrando y soltando de manera sencilla." },
+    { icon: BookOpen, title: "Cuestionarios Interactivos", desc: "Evalúa a tus estudiantes con cuestionarios integrados, temporizadores y corrección automática al instante." },
+    { icon: Award, title: "Generación de Certificados", desc: "Al aprobar los módulos, el sistema genera certificados en PDF con código QR verificable y firmas digitales." },
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#020202] text-[#e0e0e0] relative overflow-hidden font-sans selection:bg-primary/30 selection:text-white">
-      
-      {/* ══════════ CORPORATE / TECHNICAL BACKGROUND ══════════ */}
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden bg-[#020202]">
-        {/* Subtle dot matrix grid */}
-        <div className="absolute inset-0 bg-[radial-gradient(#ffffff15_1px,transparent_1px)] bg-[size:32px_32px]" style={{ transform: `translate(${mousePos.x * 0.2}px, ${mousePos.y * 0.2}px)` }} />
-        
-        {/* Architectural lines */}
-        <div className="absolute left-[10%] top-0 bottom-0 w-px bg-white/5" />
-        <div className="absolute right-[10%] top-0 bottom-0 w-px bg-white/5" />
-        
-        {/* Controlled, minimal accent glows (Not overwhelming) */}
-        <div className="absolute top-0 right-[20%] w-[500px] h-[500px] bg-primary/5 blur-[150px] rounded-full mix-blend-screen pointer-events-none" />
+    <div className="flex flex-col min-h-screen bg-background relative overflow-hidden">
+      {/* ══════════ ANIMATED BACKGROUND ══════════ */}
+      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-primary/10 blur-[120px] animate-[floatBg_12s_ease-in-out_infinite]" />
+        <div className="absolute bottom-[-15%] right-[-10%] w-[500px] h-[500px] rounded-full bg-primary/10 blur-[100px] animate-[floatBg_15s_ease-in-out_infinite_reverse]" />
+        <div className="absolute top-[40%] left-[50%] w-[400px] h-[400px] rounded-full bg-emerald-500/10 blur-[100px] animate-[floatBg_10s_ease-in-out_infinite_2s]" />
       </div>
 
-      {/* ══════════ HEADER / NAVIGATION ══════════ */}
-      <header className={`fixed top-0 w-full z-50 transition-colors duration-300 ${scrolled ? 'bg-[#050505]/95 backdrop-blur-md border-b border-white/10 py-4 shadow-lg' : 'bg-transparent border-b border-transparent py-6'}`}>
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      {/* ══════════ NAVBAR ══════════ */}
+      <header className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrolled ? 'bg-background/80 backdrop-blur-xl border-b border-border/50 shadow-sm' : 'bg-transparent'}`}>
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3 font-bold text-xl text-primary">
             {config?.logo_url ? (
-              <img src={config.logo_url} alt="Logo" className="max-h-10 max-w-[160px] object-contain drop-shadow-lg" />
+              <img src={config.logo_url} alt="Logo" className="max-h-12 max-w-[40px] object-contain" />
             ) : (
-              <div className="h-10 w-10 bg-primary/20 border border-primary flex items-center justify-center rounded">
-                <Shield className="h-5 w-5 text-primary" />
+              <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+                <Truck className="h-5 w-5 text-primary-foreground" />
               </div>
             )}
-            {!config?.logo_url && <span className="font-bold text-lg tracking-[0.2em] uppercase text-white/90">{platformName}</span>}
+            <span className="hidden sm:inline">{platformName}</span>
           </div>
-          
-          <nav className="hidden md:flex items-center gap-10 text-[11px] font-bold text-white/50 uppercase tracking-[0.2em]">
-            <a href="#arquitectura" className="hover:text-primary transition-colors flex items-center gap-2"><Database className="h-3 w-3" /> Infraestructura</a>
-            <a href="#operacion" className="hover:text-primary transition-colors flex items-center gap-2"><TerminalSquare className="h-3 w-3" /> Protocolos</a>
-            <a href="/login" className="flex items-center gap-2 border border-white/20 hover:border-primary text-white/90 hover:text-white bg-white/5 px-6 py-2 rounded-xl transition-all">
-              SISTEMA <ArrowRight className="h-3 w-3" />
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
+            <a href="#servicios" className="hover:text-primary transition-colors">Servicios</a>
+            <a href="#caracteristicas" className="hover:text-primary transition-colors">Características</a>
+            <a href="#nosotros" className="hover:text-primary transition-colors">Nosotros</a>
+            <a href="#contacto" className="hover:text-primary transition-colors">Contacto</a>
+            <a href="/login" className="bg-primary text-primary-foreground px-6 py-2.5 rounded-xl font-bold hover:bg-primary/90 transition-all hover:scale-105 shadow-lg shadow-primary/25">
+              Ingresar <ArrowRight className="inline h-4 w-4 ml-1" />
             </a>
           </nav>
+          <a href="/login" className="md:hidden bg-primary text-primary-foreground px-5 py-2 rounded-xl text-sm font-bold">Ingresar</a>
         </div>
       </header>
 
       <main className="flex-1">
-        {/* ══════════ HERO (SERIOUS & COMMAND-CENTER STYLE) ══════════ */}
-        <section className="relative min-h-[90vh] flex items-center px-6 pt-24 pb-12 z-10">
-          <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-12 items-center">
-            
-            <div className="text-left">
-              <div className="inline-flex items-center gap-3 border border-primary/30 bg-primary/10 px-4 py-1.5 text-[10px] font-bold text-primary mb-8 uppercase tracking-[0.3em] animate-fade-in-up rounded-full">
-                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                Panel de Control PESV
-              </div>
+        {/* ══════════ HERO ══════════ */}
+        <section className="relative min-h-screen flex items-center justify-center px-6 pt-20">
+          {/* Animated road lines */}
+          <div className="absolute bottom-0 left-0 w-full h-32 overflow-hidden opacity-10">
+            <div className="flex gap-8 animate-[slideRoad_3s_linear_infinite]">
+              {Array.from({ length: 20 }).map((_, i) => (
+                <div key={i} className="w-20 h-2 bg-primary rounded-full shrink-0" />
+              ))}
+            </div>
+          </div>
 
-              <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tighter leading-[1.05] mb-6 uppercase animate-fade-in-up text-white/90" style={{ animationDelay: '0.1s' }}>
-                Gestión de <br />
-                <span className="text-primary font-black">Seguridad Vial</span>
-              </h1>
-
-              <p className="text-base md:text-lg text-white/50 leading-relaxed mb-10 max-w-xl animate-fade-in-up border-l border-primary/50 pl-5 font-medium" style={{ animationDelay: '0.2s' }}>
-                Sistema centralizado para la capacitación, evaluación técnica y trazabilidad del personal operativo. Cumplimiento normativo asegurado mediante procesos auditables.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-4 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-                <a href="/login" className="inline-flex h-14 items-center justify-center bg-primary hover:bg-primary/90 text-white px-10 text-xs font-bold uppercase tracking-[0.2em] rounded-xl transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-                  Acceso a la Plataforma <ChevronRight className="ml-2 h-4 w-4" />
-                </a>
-              </div>
+          <div className="max-w-5xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 backdrop-blur-sm px-4 py-2 text-sm font-semibold text-primary mb-8" style={{ animation: 'fadeInUp 0.7s ease forwards' }}>
+              <Shield className="h-4 w-4" />
+              Líderes en Seguridad Vial y Transporte
             </div>
 
-            {/* Visual Element: Command Center Widget */}
-            <div className="hidden lg:block relative h-[500px] animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-              <div className="absolute inset-0 border border-white/10 bg-[#0a0a0a] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-                {/* Widget Header */}
-                <div className="h-10 border-b border-white/10 bg-[#111] flex items-center px-4 justify-between">
-                  <div className="flex gap-2">
-                    <div className="w-2 h-2 rounded-full bg-white/20" />
-                    <div className="w-2 h-2 rounded-full bg-white/20" />
-                    <div className="w-2 h-2 rounded-full bg-white/20" />
-                  </div>
-                  <div className="text-[9px] uppercase tracking-[0.2em] text-white/40">Terminal de Telemetría</div>
-                </div>
-                {/* Widget Body */}
-                <div className="flex-1 p-6 flex flex-col gap-4 relative">
-                   <div className="absolute top-0 right-0 p-4 opacity-10">
-                     <Radar className="w-48 h-48 animate-spin-slow" />
-                   </div>
-                   
-                   {/* Data rows */}
-                   <div className="flex items-center justify-between border-b border-white/5 pb-4 relative z-10">
-                     <div className="flex items-center gap-3">
-                       <Truck className="h-5 w-5 text-white/50" />
-                       <div>
-                         <p className="text-[10px] text-white/40 uppercase tracking-wider">Estado Flota</p>
-                         <p className="text-sm font-bold text-white">100% OPERATIVA</p>
-                       </div>
-                     </div>
-                     <Activity className="h-5 w-5 text-emerald-500" />
-                   </div>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.1] mb-8" style={{ animation: 'fadeInUp 0.7s ease 0.15s forwards', opacity: 0 }}>
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-foreground via-foreground to-foreground/70">{config?.landing_hero_titulo1 || 'Transporte Seguro,'}</span>
+              <br />
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary to-emerald-500 animate-pulse" style={{ animationDuration: '3s' }}>{config?.landing_hero_titulo2 || 'Personal Capacitado'}</span>
+            </h1>
 
-                   <div className="flex items-center justify-between border-b border-white/5 pb-4 relative z-10">
-                     <div className="flex items-center gap-3">
-                       <ShieldCheck className="h-5 w-5 text-white/50" />
-                       <div>
-                         <p className="text-[10px] text-white/40 uppercase tracking-wider">Certificaciones PESV</p>
-                         <p className="text-sm font-bold text-primary">AUDITORÍA APROBADA</p>
-                       </div>
-                     </div>
-                     <CheckCircle2 className="h-5 w-5 text-primary" />
-                   </div>
-                   
-                   {/* Animated Progress Bars */}
-                   <div className="mt-4 space-y-4 relative z-10">
-                     <div>
-                       <div className="flex justify-between text-[10px] text-white/40 uppercase tracking-wider mb-2">
-                         <span>Capacitación en Curso</span>
-                         <span>85%</span>
-                       </div>
-                       <div className="h-1.5 w-full bg-white/5 overflow-hidden rounded-full">
-                         <div className="h-full bg-primary w-[85%] animate-highway-scroll rounded-full" style={{ backgroundSize: '20px 100%', backgroundImage: 'linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent)' }} />
-                       </div>
-                     </div>
-                   </div>
-                </div>
-              </div>
-              
-              {/* Floating tech badge */}
-              <div className="absolute -bottom-6 -left-6 bg-[#111] border border-white/10 p-4 flex items-center gap-4 rounded-2xl shadow-2xl" style={{ transform: `translate(${-mousePos.x * 0.5}px, ${-mousePos.y * 0.5}px)` }}>
-                <div className="p-2 border border-primary/30 bg-primary/10 rounded-xl">
-                  <BarChart4 className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-[9px] uppercase text-white/40 tracking-wider">Monitoreo</p>
-                  <p className="text-sm font-bold">Tiempo Real</p>
-                </div>
-              </div>
+            <p className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground leading-relaxed mb-12" style={{ animation: 'fadeInUp 0.7s ease 0.3s forwards', opacity: 0 }}>
+              {config?.landing_hero_subtitulo || 'Plataforma integral para la gestión del Plan Estratégico de Seguridad Vial.'}
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center" style={{ animation: 'fadeInUp 0.7s ease 0.45s forwards', opacity: 0 }}>
+              <a href="/login" className="group inline-flex h-14 items-center justify-center rounded-2xl bg-primary px-10 text-base font-bold text-primary-foreground shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all hover:scale-105">
+                Comenzar Ahora
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </a>
+              <a href="#servicios" className="inline-flex h-14 items-center justify-center rounded-2xl border-2 border-border bg-card/50 backdrop-blur-sm px-10 text-base font-bold text-foreground hover:border-primary/50 hover:bg-primary/5 transition-all">
+                Conocer Más
+              </a>
             </div>
 
+            {/* Trust badges */}
+            <div className="mt-16 flex flex-wrap justify-center gap-6 text-sm text-muted-foreground" style={{ animation: 'fadeInUp 0.7s ease 0.6s forwards', opacity: 0 }}>
+              {[{ icon: CheckCircle, text: "Certificación Oficial" }, { icon: Shield, text: "Cumplimiento PESV" }, { icon: Users, text: "Capacitación en Línea" }].map((b, i) => (
+                <div key={i} className="flex items-center gap-2 bg-card/50 backdrop-blur-sm border border-border/50 px-4 py-2 rounded-full">
+                  <b.icon className="h-4 w-4 text-primary" />
+                  <span className="font-medium">{b.text}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* ══════════ INFRAESTRUCTURA (Tarjetas Técnicas Serias) ══════════ */}
-        <section id="arquitectura" className="py-24 px-6 border-y border-white/5 bg-[#050505]">
-          <div className="max-w-7xl mx-auto">
-            <FadeIn className="mb-16 md:flex justify-between items-end" direction="up">
-              <div className="max-w-3xl">
-                <h2 className="text-3xl md:text-4xl font-bold tracking-tighter uppercase text-white/90 mb-3">Infraestructura del Sistema</h2>
-                <p className="text-white/40 text-sm md:text-base leading-relaxed">Herramientas técnicas desarrolladas para la gestión administrativa y operativa del Plan Estratégico de Seguridad Vial.</p>
+        {/* ══════════ SERVICES ══════════ */}
+        <section id="servicios" className="py-24 px-6">
+          <div className="max-w-6xl mx-auto">
+            <FadeIn className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/20 text-primary text-sm font-bold px-4 py-1.5 rounded-full mb-4">
+                <Zap className="h-4 w-4" /> Nuestros Servicios
               </div>
+              <h2 className="text-3xl md:text-5xl font-black tracking-tight">Soluciones Integrales en<br /><span className="text-primary">Seguridad Vial</span></h2>
+              <p className="mt-4 text-muted-foreground max-w-2xl mx-auto text-lg">Todo lo que tu empresa necesita para cumplir con la normativa PESV y proteger a tu equipo en las vías.</p>
+            </FadeIn>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {services.map((s, i) => (
+                <FadeIn key={i} delay={i * 0.08}>
+                  <div className="group relative bg-card/50 backdrop-blur-md border border-border/50 rounded-3xl p-8 hover:border-primary/50 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] transition-all duration-500 hover:-translate-y-2 overflow-hidden h-full">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative z-10">
+                      <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${s.color} flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-lg animate-[float_6s_ease-in-out_infinite]`} style={{ animationDelay: `${i * 0.5}s` }}>
+                        <s.icon className="h-7 w-7 text-white" />
+                      </div>
+                      <h3 className="text-xl font-bold mb-3">{s.title}</h3>
+                      <p className="text-muted-foreground leading-relaxed">{s.desc}</p>
+                    </div>
+                  </div>
+                </FadeIn>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════ WHY US ══════════ */}
+        <section id="nosotros" className="py-24 px-6 bg-gradient-to-b from-primary/5 to-transparent">
+          <div className="max-w-6xl mx-auto">
+            <FadeIn className="text-center mb-16">
+              <h2 className="text-3xl md:text-5xl font-black tracking-tight">¿Por Qué <span className="text-primary">Elegirnos</span>?</h2>
+            </FadeIn>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {[
+                { icon: Route, title: "Experiencia en Ruta", desc: "Más de 10 años formando conductores profesionales con programas probados en campo." },
+                { icon: Shield, title: "Normativa al Día", desc: "Contenido constantemente actualizado según las últimas resoluciones de seguridad vial." },
+                { icon: Zap, title: "Plataforma en Línea", desc: "Capacitación 100% digital, accesible desde cualquier dispositivo, en cualquier momento." },
+                { icon: Heart, title: "Compromiso Real", desc: "Nuestra misión es salvar vidas. Cada conductor capacitado es una familia más segura." },
+              ].map((item, i) => (
+                <FadeIn key={i} delay={i * 0.1}>
+                  <div className="group flex gap-5 p-6 rounded-2xl bg-card/50 backdrop-blur-md border border-border/50 hover:border-primary/50 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] transition-all duration-500 hover:-translate-y-1 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-all duration-500 animate-[float_4s_ease-in-out_infinite]" style={{ animationDelay: `${i * 0.4}s` }}>
+                      <item.icon className="h-6 w-6 text-primary group-hover:text-white transition-colors duration-500" />
+                    </div>
+                    <div className="relative z-10">
+                      <h3 className="font-bold text-lg mb-1 group-hover:text-primary transition-colors duration-300">{item.title}</h3>
+                      <p className="text-muted-foreground leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                </FadeIn>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════ FEATURES (Replaces Testimonials) ══════════ */}
+        <section id="caracteristicas" className="py-24 px-6">
+          <div className="max-w-6xl mx-auto">
+            <FadeIn className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/20 text-primary text-sm font-bold px-4 py-1.5 rounded-full mb-4">
+                <Star className="h-4 w-4" /> Innovación
+              </div>
+              <h2 className="text-3xl md:text-5xl font-black tracking-tight">Características de la <span className="text-primary">Plataforma</span></h2>
             </FadeIn>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {features.map((f, i) => (
-                <FadeIn key={i} delay={f.delay} direction="up">
-                  <div className="h-full bg-[#0a0a0a] border border-white/5 p-8 transition-colors duration-300 hover:border-primary/50 group relative rounded-3xl overflow-hidden">
-                    {/* Top Accent Line */}
-                    <div className="absolute top-0 left-0 w-1/3 h-1 bg-primary/50 group-hover:w-full transition-all duration-500" />
-                    
-                    <div className="flex items-center gap-4 mb-6 relative z-10">
-                      <div className="p-3 bg-[#111] border border-white/10 group-hover:border-primary/30 transition-colors rounded-xl">
-                        <f.icon className="h-5 w-5 text-primary" />
+                <FadeIn key={i} delay={i * 0.12}>
+                  <div className="group bg-card/50 backdrop-blur-md border border-border/50 rounded-3xl p-8 hover:border-primary/50 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] transition-all duration-500 hover:-translate-y-2 h-full flex flex-col relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative z-10 flex flex-col h-full">
+                      <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-all duration-500 animate-[float_5s_ease-in-out_infinite]" style={{ animationDelay: `${i * 0.7}s` }}>
+                        <f.icon className="h-8 w-8 text-primary group-hover:text-white transition-colors duration-500" />
                       </div>
-                      <h3 className="font-bold text-sm uppercase tracking-widest text-white/90">{f.title}</h3>
+                      <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors duration-300">{f.title}</h3>
+                      <p className="text-muted-foreground leading-relaxed flex-1">{f.desc}</p>
                     </div>
-                    
-                    <p className="text-white/40 leading-relaxed text-sm">{f.desc}</p>
                   </div>
                 </FadeIn>
               ))}
@@ -234,78 +248,78 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ══════════ PROTOCOLOS OPERATIVOS (Lista Estructurada) ══════════ */}
-        <section id="operacion" className="py-24 px-6">
-          <div className="max-w-5xl mx-auto">
-            <FadeIn className="text-center mb-16" direction="up">
-              <div className="inline-flex items-center gap-2 text-primary text-[10px] font-bold uppercase tracking-[0.2em] mb-4">
-                <Settings2 className="h-3 w-3" /> Protocolo de Certificación
-              </div>
-              <h2 className="text-3xl md:text-4xl font-bold tracking-tighter uppercase text-white/90">Fases de Aprobación</h2>
+        {/* ══════════ CONTACT ══════════ */}
+        <section id="contacto" className="py-24 px-6 bg-gradient-to-b from-transparent to-muted/30">
+          <div className="max-w-6xl mx-auto">
+            <FadeIn className="text-center mb-16">
+              <h2 className="text-3xl md:text-5xl font-black tracking-tight">Contáctanos</h2>
+              <p className="mt-4 text-muted-foreground text-lg">Estamos listos para ayudarte a implementar tu programa PESV.</p>
             </FadeIn>
-
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
-                { id: "01", icon: CarFront, title: "Despliegue Operativo", desc: "Vinculación del usuario al módulo de instrucción teórica." },
-                { id: "02", icon: FileCheck, title: "Validación de Conocimientos", desc: "Ejecución de exámenes y simulacros técnicos evaluativos." },
-                { id: "03", icon: ShieldCheck, title: "Emisión de Certificados", desc: "Generación del aval digital requerido por los entes de control." },
-              ].map((step, i) => (
-                <FadeIn key={i} delay={i * 0.15} direction="up">
-                  <div className="flex flex-col md:flex-row items-center gap-6 bg-[#0a0a0a] border border-white/5 p-6 hover:bg-[#0c0c0c] transition-colors group rounded-2xl">
-                    <div className="flex items-center gap-6 w-full md:w-auto">
-                      <span className="text-4xl font-black text-white/5 group-hover:text-primary/20 transition-colors">{step.id}</span>
-                      <div className="p-4 bg-[#111] border border-white/10 shrink-0 rounded-xl">
-                        <step.icon className="h-6 w-6 text-primary" />
+                { icon: Phone, title: "Teléfono", info: config?.landing_telefono || "+57 300 123 4567", sub: config?.landing_telefono_sub || "Lun-Vie 8am-6pm" },
+                { icon: Mail, title: "Email", info: config?.landing_email || "contacto@pesveducation.com", sub: config?.landing_email_sub || "Respuesta en 24h" },
+                { icon: MapPin, title: "Oficina", info: config?.landing_oficina || "Bogotá, Colombia", sub: config?.landing_oficina_sub || "Cra 7 #45-21, Oficina 302" },
+              ].map((c, i) => (
+                <FadeIn key={i} delay={i * 0.1}>
+                  <div className="group text-center bg-card/50 backdrop-blur-md border border-border/50 rounded-3xl p-8 hover:border-primary/50 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] transition-all duration-500 hover:-translate-y-2 relative overflow-hidden h-full flex flex-col">
+                    <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative z-10 flex-1 flex flex-col items-center justify-center">
+                      <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5 group-hover:bg-primary group-hover:text-white transition-all duration-500 animate-[float_5s_ease-in-out_infinite]" style={{ animationDelay: `${i * 0.6}s` }}>
+                        <c.icon className="h-6 w-6 text-primary group-hover:text-white transition-colors duration-500" />
                       </div>
-                    </div>
-                    <div className="w-full">
-                      <h3 className="font-bold text-base mb-1 uppercase tracking-wider text-white/90">{step.title}</h3>
-                      <p className="text-white/40 text-sm">{step.desc}</p>
+                      <h3 className="font-bold text-lg group-hover:text-primary transition-colors duration-300">{c.title}</h3>
+                      <p className="text-primary font-bold mt-2 text-lg">{c.info}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{c.sub}</p>
                     </div>
                   </div>
                 </FadeIn>
               ))}
             </div>
-          </div>
-        </section>
-
-        {/* ══════════ DATOS TÉCNICOS (Footprint) ══════════ */}
-        <section className="py-16 px-6 bg-[#050505] border-y border-white/5">
-          <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-12">
-            {[
-              { label: "Soporte", value: "Trazabilidad 24/7" },
-              { label: "Exportación", value: "Formatos Auditables" },
-              { label: "Disponibilidad", value: "Servidores 99.9%" },
-              { label: "Seguridad", value: "Cifrado AES-256" },
-            ].map((stat, i) => (
-              <FadeIn key={i} delay={i * 0.1} direction="up">
-                <div className="border-l-2 border-primary/40 pl-4">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 mb-2">{stat.label}</p>
-                  <p className="font-bold text-sm tracking-wider text-white/80 uppercase">{stat.value}</p>
-                </div>
-              </FadeIn>
-            ))}
           </div>
         </section>
       </main>
 
-      {/* ══════════ FOOTER INSTITUCIONAL ══════════ */}
-      <footer className="bg-[#020202] pt-16 pb-8 border-t border-white/5 relative z-30">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex items-center gap-4">
-            {config?.logo_url ? (
-              <img src={config.logo_url} alt="Logo" className="max-h-8 max-w-[140px] object-contain grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all" />
-            ) : (
-              <Shield className="h-5 w-5 text-white/30" />
-            )}
-            {!config?.logo_url && <span className="font-bold tracking-widest text-sm text-white/30 uppercase">{platformName}</span>}
-          </div>
-          <div className="text-[10px] font-bold text-white/30 flex flex-col md:flex-row items-center gap-6 uppercase tracking-[0.2em]">
-            <p>© {new Date().getFullYear()} DERECHOS RESERVADOS.</p>
-            <div className="flex items-center gap-2 border border-white/10 px-4 py-2 rounded-xl bg-white/5">
-               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-               Sistemas Operativos en Línea
+      {/* ══════════ FOOTER ══════════ */}
+      <footer className="border-t border-border/40 bg-card/50 backdrop-blur-sm">
+        <div className="max-w-6xl mx-auto px-6 py-12">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-3 font-bold text-xl text-primary mb-4">
+                {config?.logo_url ? (
+                  <img src={config.logo_url} alt="Logo" className="max-h-10 max-w-[40px] object-contain" />
+                ) : (
+                  <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+                    <Truck className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                )}
+                {platformName}
+              </div>
+              <p className="text-muted-foreground max-w-sm leading-relaxed">{config?.landing_footer_texto || 'Plataforma líder en capacitación y certificación de seguridad vial para empresas de transporte de carga.'}</p>
             </div>
+            <div>
+              <h4 className="font-bold mb-4">Plataforma</h4>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <a href="#servicios" className="block hover:text-primary transition-colors">Servicios</a>
+                <a href="#caracteristicas" className="block hover:text-primary transition-colors">Características</a>
+                <a href="#nosotros" className="block hover:text-primary transition-colors">Nosotros</a>
+                <a href="/login" className="block hover:text-primary transition-colors">Iniciar Sesión</a>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-bold mb-4">Legal</h4>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <a href="/legal" className="block hover:text-primary transition-colors">Política de Privacidad</a>
+                <a href="/legal" className="block hover:text-primary transition-colors">Términos de Uso</a>
+                <a href="/legal" className="block hover:text-primary transition-colors">Protección de Datos</a>
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-border/40 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground">
+            <p>© {new Date().getFullYear()} {platformName}. Todos los derechos reservados.</p>
+            <p className="mt-3 md:mt-0 flex items-center gap-1">
+              <Shield className="h-4 w-4 text-primary" /> Comprometidos con la seguridad vial
+            </p>
           </div>
         </div>
       </footer>
@@ -313,22 +327,21 @@ export default function Home() {
       {/* ══════════ CSS ANIMATIONS ══════════ */}
       <style jsx global>{`
         @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
+          from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes highwayScroll {
-          0% { background-position: 0 0; }
-          100% { background-position: -40px 0; }
+        @keyframes slideRoad {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-112px); }
         }
-        .animate-fade-in-up {
-          animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-          opacity: 0;
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
         }
-        .animate-highway-scroll {
-          animation: highwayScroll 1s linear infinite;
-        }
-        .animate-spin-slow {
-          animation: spin 12s linear infinite;
+        @keyframes floatBg {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
         }
         html { scroll-behavior: smooth; }
       `}</style>

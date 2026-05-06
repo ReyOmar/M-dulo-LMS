@@ -2,7 +2,7 @@
 
 import { useRole, Role } from "@/contexts/RoleContext";
 import { useConfig } from "@/contexts/ConfigContext";
-import { GraduationCap, BookOpen, Clock, Award, Shield, Settings, Users, ArrowRight, Compass, ShieldAlert, BarChart3, Presentation, BookCheck, ClipboardList, LogOut, CheckCircle, Palette, ChevronUp, ClipboardCheck, MessageSquare, FileSignature } from "lucide-react";
+import { GraduationCap, BookOpen, Clock, Award, Shield, Settings, Users, ArrowRight, Compass, ShieldAlert, BarChart3, Presentation, BookCheck, ClipboardList, LogOut, CheckCircle, Palette, ChevronUp, ClipboardCheck, MessageSquare, FileSignature, Globe } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -220,6 +220,9 @@ export function Sidebar() {
                       </Link>
                       <Link href="/dashboard/admin/tema" className={linkClass('/dashboard/admin/tema')}>
                           <Palette className="h-4 w-4" /> Tema y Apariencia
+                      </Link>
+                      <Link href="/dashboard/admin/landing-config" className={linkClass('/dashboard/admin/landing-config')}>
+                          <Globe className="h-4 w-4" /> Landing Page
                       </Link>
                   </div>
               </>

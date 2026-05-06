@@ -26,6 +26,16 @@ export class ConfiguracionService implements OnModuleInit {
           border_radius: 12,
           mensaje_bienvenida: 'Bienvenido a PESV Education',
           idioma: 'es',
+          landing_hero_titulo1: 'Transporte Seguro,',
+          landing_hero_titulo2: 'Personal Capacitado',
+          landing_hero_subtitulo: 'Plataforma integral para la gestión del Plan Estratégico de Seguridad Vial. Capacitación, evaluación y certificación de conductores con tecnología de vanguardia.',
+          landing_telefono: '+57 300 123 4567',
+          landing_telefono_sub: 'Lun-Vie 8am-6pm',
+          landing_email: 'contacto@pesveducation.com',
+          landing_email_sub: 'Respuesta en 24h',
+          landing_oficina: 'Bogotá, Colombia',
+          landing_oficina_sub: 'Cra 7 #45-21, Oficina 302',
+          landing_footer_texto: 'Plataforma líder en capacitación y certificación de seguridad vial para empresas de transporte de carga.',
         },
       });
     }
@@ -45,6 +55,33 @@ export class ConfiguracionService implements OnModuleInit {
     
     this.lmsGateway.broadcast('config:updated', updated);
     return updated;
+  }
+
+  async getLandingConfig() {
+    return this.prisma.lms_configuracion.findUnique({
+      where: { id: 1 },
+      select: {
+        nombre_plataforma: true,
+        logo_url: true,
+        color_primario: true,
+        color_secundario: true,
+        fuente: true,
+        border_radius: true,
+        landing_hero_titulo1: true,
+        landing_hero_titulo2: true,
+        landing_hero_subtitulo: true,
+        landing_telefono: true,
+        landing_telefono_sub: true,
+        landing_email: true,
+        landing_email_sub: true,
+        landing_oficina: true,
+        landing_oficina_sub: true,
+        landing_footer_texto: true,
+        legal_terminos: true,
+        legal_privacidad: true,
+        legal_datos: true,
+      },
+    });
   }
 
   async getCertConfig() {

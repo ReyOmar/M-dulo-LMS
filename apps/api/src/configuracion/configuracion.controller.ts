@@ -21,6 +21,12 @@ export class ConfiguracionController {
     return this.configuracionService.updateConfig(body);
   }
 
+  @Public()
+  @Get('/landing')
+  getLandingConfig() {
+    return this.configuracionService.getLandingConfig();
+  }
+
   @Roles('ADMINISTRADOR')
   @Get('/certificados')
   getCertConfig() {

@@ -363,6 +363,27 @@ model lms_configuracion {
   cert_mostrar_firma        Boolean  @default(true)
   cert_mostrar_fecha_ingreso Boolean @default(false)
 
+  // Landing Page - Hero
+  landing_hero_titulo1   String   @default("Transporte Seguro,")
+  landing_hero_titulo2   String   @default("Personal Capacitado")
+  landing_hero_subtitulo String   @default("Plataforma integral para la gestión del Plan Estratégico de Seguridad Vial. Capacitación, evaluación y certificación de conductores con tecnología de vanguardia.")
+
+  // Landing Page - Contacto
+  landing_telefono       String   @default("+57 300 123 4567")
+  landing_telefono_sub   String   @default("Lun-Vie 8am-6pm")
+  landing_email          String   @default("contacto@pesveducation.com")
+  landing_email_sub      String   @default("Respuesta en 24h")
+  landing_oficina        String   @default("Bogotá, Colombia")
+  landing_oficina_sub    String   @default("Cra 7 #45-21, Oficina 302")
+
+  // Landing Page - Footer
+  landing_footer_texto   String   @default("Plataforma líder en capacitación y certificación de seguridad vial para empresas de transporte de carga.")
+
+  // Página Legal
+  legal_terminos         String   @default("")
+  legal_privacidad       String   @default("")
+  legal_datos            String   @default("")
+
   updated_at         DateTime @updatedAt
 }
 

@@ -82,7 +82,7 @@ export default function CursoVisorPage() {
   }, []);
 
   useEffect(() => {
-    if (pendingCelebration && !isQuizActive && !selectedRecurso) {
+    if (pendingCelebration && !isQuizActive) {
       const timer = setTimeout(() => {
         if (!celebrationShownRef.current) {
           celebrationShownRef.current = true;
@@ -90,10 +90,10 @@ export default function CursoVisorPage() {
           setShowCelebration(true);
         }
         setPendingCelebration(null);
-      }, 1500);
+      }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [pendingCelebration, isQuizActive, selectedRecurso, curso]);
+  }, [pendingCelebration, isQuizActive, curso]);
 
   // Listen for maintenance events on this specific course
   useEffect(() => {
@@ -232,29 +232,6 @@ export default function CursoVisorPage() {
     setSelectedRecurso(recurso);
     setSelectedModuloGuid(moduloGuid);
   };
-
-  // Validate if current selectedRecurso is still unlocked. If not (e.g. failed quiz resets module), deselect it.
-  useEffect(() => {
-    if (curso && selectedRecurso && progresoLoaded) {
-      let modIdx = -1;
-      let recIdx = -1;
-      const modulosList = curso.modulos || [];
-      for (let m = 0; m < modulosList.length; m++) {
-        if (modulosList[m].guid === selectedModuloGuid) {
-          modIdx = m;
-          const recursos = modulosList[m].lecciones?.[0]?.recursos || [];
-          recIdx = recursos.findIndex((r: any) => r.guid === selectedRecurso.guid);
-          break;
-        }
-      }
-      
-      if (modIdx !== -1 && recIdx !== -1) {
-        if (!isRecursoUnlocked(modIdx, recIdx)) {
-          setSelectedRecurso(null);
-        }
-      }
-    }
-  }, [curso, selectedRecurso, selectedModuloGuid, progresoLoaded, completados]);
 
   // Auto-select first uncompleted resource (Retomar Curso)
   useEffect(() => {
@@ -681,7 +658,20 @@ export default function CursoVisorPage() {
                     url_referencia={selectedRecurso.url_referencia}
                     archivo_adjunto={selectedRecurso.archivo_adjunto}
                     archivo_adjunto_nombre={selectedRecurso.archivo_adjunto_nombre}
-                    onFinish={() => fetchProgreso()}
+                    onFinish={async (success) => {
+                      await fetchProgreso();
+                      if (success === false && curso && selectedRecurso) {
+                        for (const m of curso.modulos) {
+                          if (m.lecciones.some(l => l.recursos.some(r => r.guid === selectedRecurso.guid))) {
+                            const firstResource = m.lecciones[0]?.recursos[0];
+                            if (firstResource) {
+                              setSelectedRecurso(firstResource);
+                            }
+                            return;
+                          }
+                        }
+                      }
+                    }}
                     onQuizStateChange={(active) => setIsQuizActive(active)}
                   />
                 )

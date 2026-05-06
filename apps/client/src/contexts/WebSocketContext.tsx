@@ -66,7 +66,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     // Use environment variable for API URL or default
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3200/api';
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
     const token = localStorage.getItem('lms_token');
     
     let wsUrl = apiBaseUrl.replace(/^http/, 'ws').replace('/api', '') + '/ws';
@@ -197,6 +197,14 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener('storage', handleStorageChange);
     
+    // Explicitly close connection if user closes tab/browser
+    const handleBeforeUnload = () => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.close(1000, 'Tab closed');
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     // Check periodically to ensure connection
     const connectionCheck = setInterval(() => {
       if (!wsRef.current) {
@@ -206,6 +214,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       clearInterval(connectionCheck);
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       if (wsRef.current) {

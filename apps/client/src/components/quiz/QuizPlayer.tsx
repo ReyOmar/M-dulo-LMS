@@ -23,12 +23,12 @@ interface QuizPlayerProps {
     recurso_guid: string;
     bloque_titulo: string;
     quiz_config_raw: string;
-    instrucciones_html: string;
+    instrucciones_html?: string;
     url_referencia?: string;
     archivo_adjunto?: string;
     archivo_adjunto_nombre?: string;
-    onFinish: () => void;
-    onQuizStateChange?: (active: boolean) => void;
+    onFinish: (success?: boolean) => void;
+    onQuizStateChange?: (isActive: boolean) => void;
 }
 
 export default function QuizPlayer({ 
@@ -52,6 +52,7 @@ export default function QuizPlayer({
     
     const [respuestas, setRespuestas] = useState<Record<string, string>>({});
     const [started, setStarted] = useState(false);
+    const [isStarting, setIsStarting] = useState(false);
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
     
     // Modals
@@ -154,8 +155,8 @@ export default function QuizPlayer({
     }, [started, timeLeft]);
 
     const handleStart = async () => {
-        if (!userGuid) return;
-        setLoading(true);
+        if (!userGuid || isStarting) return;
+        setIsStarting(true);
         try {
             await api.post(`/cursos/student/quiz/${recurso_guid}/start?usuario_guid=${userGuid}`);
             if (quizConfig && quizConfig.tiempo_minutos > 0) {
@@ -167,7 +168,7 @@ export default function QuizPlayer({
             console.error(err);
             showAlert.error("Error", "No se pudo iniciar el intento. Intenta de nuevo.");
         } finally {
-            setLoading(false);
+            setIsStarting(false);
         }
     };
 
@@ -209,6 +210,13 @@ export default function QuizPlayer({
     };
 
     const resetQuiz = async () => {
+        if (isStarting) return;
+        
+        const success = showResultModal ? showResultModal.nota >= 3.0 : (quizStatus?.mejor_nota ? quizStatus.mejor_nota >= 3.0 : false);
+        
+        // Bloqueamos la interfaz desde ya para evitar clics dobles mientras se redirige
+        setIsStarting(true);
+        
         setStarted(false);
         setTimeLeft(null);
         setRespuestas({});
@@ -218,8 +226,16 @@ export default function QuizPlayer({
         // Clear saved answers from localStorage
         try { localStorage.removeItem(storageKey); } catch {}
         if (onQuizStateChange) onQuizStateChange(false);
+        
         await fetchStatus();
-        onFinish(); // Callback to refresh course progress
+        
+        // Si tuvo éxito, se queda en la pantalla actual de completado, así que desbloqueamos.
+        // Si falló, lo mantenemos bloqueado porque el padre lo va a redireccionar y desmontar.
+        if (success) {
+            setIsStarting(false);
+        }
+        
+        onFinish(success); // Callback to refresh course progress and redirect if failed
     };
 
     if (loading) {
@@ -361,9 +377,15 @@ export default function QuizPlayer({
 
                             <button
                                 onClick={handleStart}
-                                className="bg-amber-500 hover:bg-amber-600 text-white text-xl px-16 py-5 rounded-[1.5rem] font-black shadow-2xl shadow-amber-500/30 transition-all hover:scale-105 active:scale-95 w-full sm:w-auto"
+                                disabled={isStarting}
+                                className={`text-xl px-16 py-5 rounded-[1.5rem] font-black transition-all w-full sm:w-auto inline-flex items-center justify-center gap-3 mx-auto ${
+                                    isStarting 
+                                    ? 'bg-muted text-muted-foreground cursor-not-allowed border border-border opacity-70' 
+                                    : 'bg-amber-500 hover:bg-amber-600 text-white shadow-2xl shadow-amber-500/30 hover:scale-105 active:scale-95'
+                                }`}
                             >
-                                Comenzar Intento
+                                {isStarting && <span className="w-5 h-5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin"></span>}
+                                {isStarting ? 'Cargando...' : 'Comenzar Intento'}
                             </button>
                         </div>
                     </div>
@@ -537,9 +559,15 @@ export default function QuizPlayer({
 
                         <button
                             onClick={resetQuiz}
-                            className="w-full py-5 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xl rounded-2xl shadow-2xl shadow-primary/30 transition-all hover:scale-105 active:scale-95"
+                            disabled={isStarting}
+                            className={`w-full py-5 font-black text-xl rounded-2xl shadow-2xl transition-all flex items-center justify-center gap-3 ${
+                                isStarting 
+                                ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-70 border border-border' 
+                                : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/30 hover:scale-105 active:scale-95'
+                            }`}
                         >
-                            Finalizar
+                            {isStarting && <span className="w-5 h-5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin"></span>}
+                            {isStarting ? 'Procesando...' : 'Finalizar'}
                         </button>
                     </div>
                 </div>

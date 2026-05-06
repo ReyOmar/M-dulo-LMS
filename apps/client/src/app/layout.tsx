@@ -9,7 +9,7 @@ import { WebSocketProvider } from "@/contexts/WebSocketContext";
 export async function generateMetadata(): Promise<Metadata> {
   let platformName = "Campus Virtual";
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3200/api';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
     const res = await fetch(`${apiUrl}/configuracion`, { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();

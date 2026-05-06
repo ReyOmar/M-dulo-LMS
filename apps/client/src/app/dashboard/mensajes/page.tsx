@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { MessageSquare, Send, ArrowLeft, Search, X, User, Clock, Check, Loader2, Inbox, UserPlus, CheckCircle, XCircle, Shield, Trash2, AlertTriangle } from "lucide-react";
+import { MessageSquare, Send, ArrowLeft, Search, X, User, Clock, Check, Loader2, Inbox, UserPlus, CheckCircle, XCircle, Shield, Trash2 } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { useWS } from "@/contexts/WebSocketContext";
 import api from "@/lib/api";
@@ -69,10 +69,6 @@ export default function MensajesPage() {
   // Pending requests
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [showRequests, setShowRequests] = useState(false);
-
-  // Modal states
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -176,24 +172,17 @@ export default function MensajesPage() {
     }
   };
 
-  const deleteConversation = () => {
+  const deleteConversation = async () => {
     if (!selectedContact) return;
-    setShowDeleteModal(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!selectedContact) return;
-    setDeleting(true);
+    if (!window.confirm(`¿Estás seguro de que quieres eliminar la conversación con ${selectedContact.nombre}?`)) return;
+    
     try {
       await api.delete(`/notificaciones/mensajes/${selectedContact.guid}`);
       setMessages([]);
       setSelectedContact(null);
-      setShowDeleteModal(false);
       fetchContacts();
     } catch (err) {
       console.error('Error deleting conversation:', err);
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -546,55 +535,6 @@ export default function MensajesPage() {
           )}
         </div>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && selectedContact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card border border-border shadow-2xl rounded-2xl p-6 w-full max-w-md animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="h-12 w-12 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
-                <Trash2 className="h-6 w-6 text-red-500" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold">Eliminar conversación</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  ¿Estás seguro de que deseas eliminar permanentemente tu chat con <span className="font-bold text-foreground">{selectedContact.nombre} {selectedContact.apellido}</span>?
-                </p>
-              </div>
-            </div>
-            
-            <div className="bg-muted/50 p-3 rounded-lg mb-6 border border-border">
-              <p className="text-xs text-muted-foreground flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                Esta acción no se puede deshacer y los mensajes se borrarán para ti.
-              </p>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                disabled={deleting}
-                className="px-4 py-2 rounded-xl text-sm font-bold text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={deleting}
-                className="px-6 py-2 rounded-xl text-sm font-bold bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-red-500/20"
-              >
-                {deleting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Eliminando...
-                  </>
-                ) : (
-                  'Sí, eliminar'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
