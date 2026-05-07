@@ -130,7 +130,7 @@ export default function SolicitudesPendientes() {
           </div>
         </div>
         <div className="p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+          <form onSubmit={(e) => { e.preventDefault(); handleSavePassword(); }} className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
             <div className="flex-1 w-full sm:max-w-md">
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-2">
                 Contraseña temporal para nuevos usuarios
@@ -156,7 +156,7 @@ export default function SolicitudesPendientes() {
               </p>
             </div>
             <button
-              onClick={handleSavePassword}
+              type="submit"
               disabled={savingPassword || newPassword === defaultPassword || newPassword.length < 6}
               className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-sm whitespace-nowrap
                 ${passwordSaved 
@@ -174,7 +174,7 @@ export default function SolicitudesPendientes() {
                 <><Save className="h-4 w-4" /> Guardar Contraseña</>
               )}
             </button>
-          </div>
+          </form>
           {newPassword !== defaultPassword && newPassword.length >= 6 && (
             <div className="mt-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-sm text-amber-600 dark:text-amber-400 font-medium animate-in fade-in duration-300">
               ⚠️ Has modificado la contraseña. Presiona <strong>&quot;Guardar Contraseña&quot;</strong> para que los próximos usuarios aprobados reciban esta nueva clave.

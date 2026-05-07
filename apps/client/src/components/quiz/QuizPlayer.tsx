@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { CheckCircle, Clock, AlertTriangle, Send, Trophy, XCircle, ExternalLink, Paperclip, LogOut } from "lucide-react";
 import api, { API_BASE_URL } from "@/lib/api";
 import { useAlert } from "@/contexts/AlertContext";
+import { sanitizeHTML } from "@/lib/sanitize";
 
 interface QuizOption { id: string; texto: string; }
 interface QuizQuestion { id: string; enunciado: string; opciones: QuizOption[]; }
@@ -315,7 +316,7 @@ export default function QuizPlayer({
                     {/* INSTRUCCIONES (Solo antes de empezar) */}
                     <div className="p-6 md:p-10 border-b border-border bg-amber-500/10">
                         <h3 className="font-bold text-xs text-amber-700 dark:text-amber-500 uppercase tracking-widest mb-4">Instrucciones del Cuestionario</h3>
-                        <div className="prose prose-slate dark:prose-invert max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: instrucciones_html || '<p class="text-muted-foreground italic opacity-70">Sin instrucciones específicas.</p>' }} />
+                        <div className="prose prose-slate dark:prose-invert max-w-none text-foreground" dangerouslySetInnerHTML={sanitizeHTML(instrucciones_html || '<p class="text-muted-foreground italic opacity-70">Sin instrucciones específicas.</p>')} />
                         
                         {(url_referencia || archivo_adjunto) && (
                             <div className="mt-8 space-y-3">

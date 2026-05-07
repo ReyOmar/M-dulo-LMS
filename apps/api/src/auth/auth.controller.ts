@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import { LoginDto } from './dto/login.dto';
 import { SolicitarAccesoDto } from './dto/solicitar-acceso.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -14,6 +15,7 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Public()
+  @Throttle({ default: { ttl: 60000, limit: 3 } }) // 3 access requests per minute
   @Post('solicitar')
   async requestAccess(@Body() dto: SolicitarAccesoDto) {
     return this.authService.requestAccess(dto);
@@ -27,18 +29,21 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { ttl: 60000, limit: 5 } }) // 5 attempts per minute
   @Post('establecer-password')
   async setupPassword(@Body() body: SetupPasswordDto) {
     return this.authService.setupPassword(body.email, body.contrasenaTemporal, body.nuevaContrasena);
   }
 
   @Public()
+  @Throttle({ default: { ttl: 60000, limit: 3 } }) // 3 reset requests per minute
   @Post('recuperar-contrasena')
   async requestPasswordReset(@Body() body: { email: string }) {
     return this.authService.requestPasswordReset(body.email);
   }
 
   @Public()
+  @Throttle({ default: { ttl: 60000, limit: 5 } }) // 5 reset attempts per minute
   @Post('restablecer-contrasena')
   async resetPassword(@Body() body: { token: string; nuevaContrasena: string }) {
     return this.authService.resetPassword(body.token, body.nuevaContrasena);
@@ -47,13 +52,13 @@ export class AuthController {
   // --- PERFIL DE USUARIO (autenticado) ---
 
   @Get('me')
-  async getMe(@CurrentUser() user: any) {
+  async getMe(@CurrentUser() user: JwtPayload) {
     if (!user) throw new ForbiddenException('No autenticado');
     return this.authService.getUserProfile(user.sub);
   }
 
   @Get('perfil/:guid')
-  async getProfile(@Param('guid') guid: string, @CurrentUser() user: any) {
+  async getProfile(@Param('guid') guid: string, @CurrentUser() user: JwtPayload) {
     // When JWT is available, enforce ownership; otherwise allow access by guid
     if (user && user.sub !== guid && user.role !== 'ADMINISTRADOR') {
       throw new ForbiddenException('No tienes permiso para ver este perfil.');
@@ -62,7 +67,7 @@ export class AuthController {
   }
 
   @Patch('perfil/:guid')
-  async updateProfile(@Param('guid') guid: string, @Body() dto: UpdateProfileDto, @CurrentUser() user: any) {
+  async updateProfile(@Param('guid') guid: string, @Body() dto: UpdateProfileDto, @CurrentUser() user: JwtPayload) {
     if (user && user.sub !== guid && user.role !== 'ADMINISTRADOR') {
       throw new ForbiddenException('No tienes permiso para modificar este perfil.');
     }

@@ -1,8 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenBlacklistService } from '../../auth/token-blacklist.service';
 
@@ -25,11 +26,11 @@ export class JwtAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
 
-    let payload: any = null;
+    let payload: JwtPayload | null = null;
 
     if (token) {
       try {
-        payload = await this.jwtService.verifyAsync(token, {
+        payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
           secret: this.configService.get<string>('JWT_SECRET'),
         });
 
@@ -69,7 +70,7 @@ export class JwtAuthGuard implements CanActivate {
             this.prisma.usuarios.update({
               where: { guid: payload.sub },
               data: { ultimo_acceso: new Date() }
-            }).catch(err => console.error("Error updating ultimo_acceso", err));
+            }).catch(err => Logger.error("Error updating ultimo_acceso", err, 'JwtAuthGuard'));
           }
         }
       } catch (err) {

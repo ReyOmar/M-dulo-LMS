@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenBlacklistService } from './token-blacklist.service';
@@ -9,6 +9,7 @@ import * as crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
@@ -68,7 +69,7 @@ export class AuthService {
         this.mailService.sendNewAccessRequest(admin.email, admin.nombre, {
           nombre: dto.nombre, apellido: dto.apellido, email: dto.email, rol_pedido: dto.rol_pedido,
         })
-      )).catch(err => console.error('Admin email error:', err));
+      )).catch(err => this.logger.error('Admin email error:', err));
     });
 
     return { message: 'Solicitud enviada al administrador exitosamente.', request_id: sol.id };
@@ -332,6 +333,8 @@ export class AuthService {
       const valid = await bcrypt.compare(data.contrasena_actual, user.contrasena);
       if (!valid) throw new BadRequestException('La contraseña actual es incorrecta.');
       updateData.contrasena = await bcrypt.hash(data.nueva_contrasena, 10);
+      // Force disconnect all active sessions so old tokens can't be reused
+      this.lmsGateway.forceDisconnect(guid, 'password_changed');
     }
 
     const updated = await this.prisma.usuarios.update({
@@ -398,6 +401,12 @@ export class AuthService {
       where: { id: resetRecord.id },
       data: { usado: true },
     });
+
+    // Force disconnect any active sessions for this user
+    const user = await this.prisma.usuarios.findUnique({ where: { email: resetRecord.email }, select: { guid: true } });
+    if (user) {
+      this.lmsGateway.forceDisconnect(user.guid, 'password_reset');
+    }
 
     return { message: 'Contraseña restablecida exitosamente. Ya puedes iniciar sesión.' };
   }

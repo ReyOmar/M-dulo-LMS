@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
@@ -7,6 +7,7 @@ import { LmsGateway } from '../ws/lms.gateway';
 
 @Injectable()
 export class SchedulerService implements OnModuleInit {
+  private readonly logger = new Logger(SchedulerService.name);
   // Track courses that were in BORRADOR so we can detect when they go back to PUBLICADO
   private previousDraftCourses = new Set<string>();
 
@@ -24,7 +25,7 @@ export class SchedulerService implements OnModuleInit {
       select: { guid: true },
     });
     drafts.forEach(d => this.previousDraftCourses.add(d.guid));
-    console.log('🕐 Scheduler initialized — monitoring', drafts.length, 'draft courses');
+    this.logger.log(`Scheduler initialized — monitoring ${drafts.length} draft courses`);
   }
 
   /**
@@ -33,7 +34,7 @@ export class SchedulerService implements OnModuleInit {
    */
   @Cron('0 8 * * *') // Every day at 8:00 AM
   async checkInactiveStudents() {
-    console.log('🕐 Running inactivity check...');
+    this.logger.log('Running inactivity check...');
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
 
     const inactiveStudents = await this.prisma.usuarios.findMany({
@@ -79,7 +80,7 @@ export class SchedulerService implements OnModuleInit {
           diasInactivo,
         );
 
-        console.log(`📧 Inactivity reminder sent to ${student.email} (${diasInactivo} days)`);
+        this.logger.log(`Inactivity reminder sent to ${student.email} (${diasInactivo} days)`);
       }
     }
   }
@@ -106,7 +107,7 @@ export class SchedulerService implements OnModuleInit {
         });
 
         if (curso && curso.estado === 'PUBLICADO') {
-          console.log(`📢 Course reactivated: ${curso.titulo}`);
+          this.logger.log(`Course reactivated: ${curso.titulo}`);
 
           // Get enrolled students
           const matriculas = await this.prisma.lms_matriculas.findMany({
@@ -215,11 +216,11 @@ export class SchedulerService implements OnModuleInit {
         titulo: '🔓 Recurso desbloqueado automáticamente',
         mensaje: `Tu tarea "${recursoInfo?.titulo || 'Tarea'}" lleva más de 48 horas esperando calificación. Hemos desbloqueado el siguiente recurso para que puedas seguir avanzando. La tarea sigue pendiente de revisión por el examinador.`,
         url_accion: '/dashboard/student/cursos',
-      }).catch((err) => console.error('Auto-unlock notification error:', err));
+      }).catch((err) => this.logger.error('Auto-unlock notification error:', err));
     }
 
     if (unlocked > 0) {
-      console.log(`🔓 Auto-unlocked ${unlocked} resources for pending submissions >48h`);
+      this.logger.log(`Auto-unlocked ${unlocked} resources for pending submissions >48h`);
       this.lmsGateway.broadcast('dashboard:refresh', { reason: 'auto_unlock' });
     }
   }

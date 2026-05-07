@@ -3,6 +3,7 @@ import { CursosService } from './cursos.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import { CreateCursoDto, AsignarCursoDto, UpdateCursoDto, CreateModuloDto, UpdateModuloDto } from './dto/cursos.dto';
 import { CreateBloqueDto, UpdateBloqueDto } from './dto/bloques.dto';
 
@@ -12,14 +13,14 @@ export class CursosController {
 
   @Get()
   async getCursos(
-    @CurrentUser() user: any, 
+    @CurrentUser() user: JwtPayload, 
     @Query('role') roleParam?: string, 
     @Query('usuario_guid') usuario_guid?: string,
     @Query('profesor_guid') profesor_guid?: string
   ) {
     // When JWT user is available, use their role directly; otherwise use query params
-    const userRole = user?.role || user?.rol || (roleParam === 'admin' ? 'ADMINISTRADOR' : roleParam === 'teacher' ? 'PROFESOR' : roleParam === 'student' ? 'ESTUDIANTE' : null);
-    const userGuid = user?.sub || user?.guid || usuario_guid || profesor_guid;
+    const userRole = user?.role || (roleParam === 'admin' ? 'ADMINISTRADOR' : roleParam === 'teacher' ? 'PROFESOR' : roleParam === 'student' ? 'ESTUDIANTE' : null);
+    const userGuid = user?.sub || usuario_guid || profesor_guid;
 
     if (userRole === 'ESTUDIANTE' && userGuid) {
       return this.cursosService.getCursosDeEstudiante(userGuid);
@@ -68,15 +69,15 @@ export class CursosController {
 
   @Roles('ADMINISTRADOR')
   @Post('/:guid/desasignar')
-  async desasignarCurso(@Param('guid') guid: string, @CurrentUser() user: any) {
-    const adminGuid = user?.sub || user?.guid;
+  async desasignarCurso(@Param('guid') guid: string, @CurrentUser() user: JwtPayload) {
+    const adminGuid = user.sub;
     if (!adminGuid) throw new BadRequestException('Falta guid del administrador');
     return this.cursosService.desasignarCurso(guid, adminGuid);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Patch('/:guid')
-  async updateCurso(@Param('guid') guid: string, @Body() body: UpdateCursoDto, @CurrentUser() user: any) {
+  async updateCurso(@Param('guid') guid: string, @Body() body: UpdateCursoDto, @CurrentUser() user: JwtPayload) {
     return this.cursosService.updateCurso(guid, body, user);
   }
 
@@ -138,8 +139,8 @@ export class CursosController {
   }
 
   @Post('/student/quiz/:bloque_guid/start')
-  async startQuiz(@Param('bloque_guid') bloque_guid: string, @Query('usuario_guid') usuario_guid: string, @CurrentUser() user: any) {
-    const finalGuid = user?.guid || usuario_guid;
+  async startQuiz(@Param('bloque_guid') bloque_guid: string, @Query('usuario_guid') usuario_guid: string, @CurrentUser() user: JwtPayload) {
+    const finalGuid = user.sub || usuario_guid;
     if (!finalGuid) {
         throw new BadRequestException('usuario_guid es requerido.');
     }
@@ -147,8 +148,8 @@ export class CursosController {
   }
 
   @Post('/student/quiz/:bloque_guid/submit')
-  async submitQuiz(@Param('bloque_guid') bloque_guid: string, @Body() body: any, @Query('usuario_guid') usuario_guid: string, @CurrentUser() user: any) {
-    const finalGuid = user?.guid || usuario_guid;
+  async submitQuiz(@Param('bloque_guid') bloque_guid: string, @Body() body: any, @Query('usuario_guid') usuario_guid: string, @CurrentUser() user: JwtPayload) {
+    const finalGuid = user.sub || usuario_guid;
     if (!finalGuid) {
         throw new BadRequestException('usuario_guid es requerido.');
     }
@@ -156,8 +157,8 @@ export class CursosController {
   }
 
   @Get('/student/quiz/:bloque_guid/status')
-  async getQuizStatus(@Param('bloque_guid') bloque_guid: string, @Query('usuario_guid') usuario_guid: string, @CurrentUser() user: any) {
-    const finalGuid = user?.guid || usuario_guid;
+  async getQuizStatus(@Param('bloque_guid') bloque_guid: string, @Query('usuario_guid') usuario_guid: string, @CurrentUser() user: JwtPayload) {
+    const finalGuid = user.sub || usuario_guid;
     if (!finalGuid) {
         throw new BadRequestException('usuario_guid es requerido.');
     }

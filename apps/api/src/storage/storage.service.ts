@@ -103,15 +103,6 @@ export class StorageService {
     return uniqueName;
   }
 
-  /**
-   * Legacy: Upload from Base64 string. 
-   * @deprecated Use uploadFromBuffer with multipart upload instead.
-   */
-  async uploadFile(base64Data: string, originalName: string): Promise<string> {
-    const base64Clean = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
-    const buffer = Buffer.from(base64Clean, 'base64');
-    return this.uploadFromBuffer(buffer, originalName);
-  }
 
   /**
    * Get the public URL for a file.

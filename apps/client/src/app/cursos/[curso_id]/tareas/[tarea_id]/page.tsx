@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useRole } from "@/contexts/RoleContext";
 import api, { API_BASE_URL } from "@/lib/api";
 import { useAlert } from "@/contexts/AlertContext";
+import { sanitizeHTML } from "@/lib/sanitize";
 
 export default function TareaVisorPage() {
   const { curso_id, tarea_id } = useParams();
@@ -190,7 +191,7 @@ export default function TareaVisorPage() {
           </div>
           <div className="p-8 prose prose-slate dark:prose-invert max-w-none">
             {tarea.contenido_html ? (
-              <div dangerouslySetInnerHTML={{ __html: tarea.contenido_html }} />
+              <div dangerouslySetInnerHTML={sanitizeHTML(tarea.contenido_html)} />
             ) : (
               <p className="text-muted-foreground italic">
                 El creador de la actividad no proporcionó una descripción adicional.

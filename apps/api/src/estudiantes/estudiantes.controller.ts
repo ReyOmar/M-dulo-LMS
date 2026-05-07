@@ -1,6 +1,7 @@
 import { Controller, Get, Patch, Post, Param, Body, Query } from '@nestjs/common';
 import { EstudiantesService } from './estudiantes.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import { Public } from '../common/decorators/public.decorator';
 import { MarcarRecursoDto } from './dto/marcar-recurso.dto';
 
@@ -9,26 +10,26 @@ export class EstudiantesController {
   constructor(private readonly estudiantesService: EstudiantesService) {}
 
   @Get('/student/progreso')
-  async getProgresoEstudiante(@CurrentUser() user: any, @Query('curso_guid') curso_guid: string, @Query('usuario_guid') usuario_guid?: string) {
-    const guid = user?.guid || usuario_guid;
+  async getProgresoEstudiante(@CurrentUser() user: JwtPayload, @Query('curso_guid') curso_guid: string, @Query('usuario_guid') usuario_guid?: string) {
+    const guid = usuario_guid || user.sub;
     return this.estudiantesService.getProgresoEstudiante(guid, curso_guid);
   }
 
   @Post('/student/completar-recurso')
-  async marcarRecursoCompletado(@CurrentUser() user: any, @Body() body: MarcarRecursoDto, @Query('usuario_guid') usuario_guid?: string) {
-    const guid = user?.guid || usuario_guid;
+  async marcarRecursoCompletado(@CurrentUser() user: JwtPayload, @Body() body: MarcarRecursoDto, @Query('usuario_guid') usuario_guid?: string) {
+    const guid = usuario_guid || user.sub;
     return this.estudiantesService.marcarRecursoCompletado(guid, body.recurso_guid);
   }
 
   @Get('/student/dias-activos')
-  async getDiasActivos(@CurrentUser() user: any, @Query('year') year: string, @Query('month') month: string, @Query('usuario_guid') usuario_guid?: string) {
-    const guid = user?.guid || usuario_guid;
+  async getDiasActivos(@CurrentUser() user: JwtPayload, @Query('year') year: string, @Query('month') month: string, @Query('usuario_guid') usuario_guid?: string) {
+    const guid = usuario_guid || user.sub;
     return this.estudiantesService.getDiasActivos(guid, parseInt(year, 10), parseInt(month, 10));
   }
 
   @Get('/student/notificaciones')
-  async getNotificacionesEstudiante(@CurrentUser() user: any, @Query('usuario_guid') usuario_guid?: string) {
-    const guid = user?.guid || usuario_guid;
+  async getNotificacionesEstudiante(@CurrentUser() user: JwtPayload, @Query('usuario_guid') usuario_guid?: string) {
+    const guid = usuario_guid || user.sub;
     return this.estudiantesService.getNotificacionesEstudiante(guid);
   }
 
@@ -38,18 +39,18 @@ export class EstudiantesController {
   }
 
   @Get('/student/metricas')
-  async getMetricasEstudiante(@CurrentUser() user: any, @Query('usuario_guid') usuario_guid?: string) {
-    const guid = user?.guid || usuario_guid;
+  async getMetricasEstudiante(@CurrentUser() user: JwtPayload, @Query('usuario_guid') usuario_guid?: string) {
+    const guid = usuario_guid || user.sub;
     return this.estudiantesService.getMetricasEstudiante(guid);
   }
 
   @Post('/student/heartbeat')
   async registrarHeartbeat(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload,
     @Body() body: { curso_guid: string },
     @Query('usuario_guid') usuario_guid?: string,
   ) {
-    const guid = user?.guid || usuario_guid;
+    const guid = usuario_guid || user.sub;
     return this.estudiantesService.registrarHeartbeat(guid, body.curso_guid);
   }
 }

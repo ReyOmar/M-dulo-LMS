@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { lms_tipo_recurso, lms_estado_curso } from '@prisma/client';
 import { LmsGateway } from '../ws/lms.gateway';
@@ -8,6 +8,7 @@ import { CertificadosService } from '../certificados/certificados.service';
 
 @Injectable()
 export class CursosService {
+  private readonly logger = new Logger(CursosService.name);
   constructor(
     private prisma: PrismaService,
     private lmsGateway: LmsGateway,
@@ -462,7 +463,7 @@ export class CursosService {
 
         // ── Check if this quiz completes the course for certificate generation ──
         this.checkCertificateAfterGrading(usuario_guid, recurso_guid).catch((err) => {
-          console.error('Post-quiz certificate check error:', err?.message || err);
+          this.logger.error('Post-quiz certificate check error:', err?.message || err);
         });
     } else {
         // FAILED: Reset module progress — student must redo the entire module
@@ -546,7 +547,7 @@ export class CursosService {
             estudiante
               ? this.mailService.sendQuizFailedModuleReset(estudiante.email, estudiante.nombre, quizName, modulo.titulo, nota)
               : Promise.resolve(),
-          ]).catch(err => console.error('Quiz notification error:', err));
+          ]).catch(err => this.logger.error('Quiz notification error:', err));
         }
     }
 
@@ -621,6 +622,6 @@ export class CursosService {
     if (!result.completo || !result.puede_generar_certificado) return;
 
     await this.certificadosService.generarCertificado(usuario_guid, curso_guid);
-    console.log(`🎓 Certificate auto-generated after quiz for user ${usuario_guid} in course ${curso_guid}`);
+    this.logger.log(`Certificate auto-generated after quiz for user ${usuario_guid} in course ${curso_guid}`);
   }
 }

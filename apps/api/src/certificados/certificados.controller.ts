@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Param, Body, Res, Query } from '@nestjs/common';
 import { CertificadosService } from './certificados.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import { FastifyReply } from 'fastify';
 import * as fs from 'fs';
 
@@ -14,11 +15,11 @@ export class CertificadosController {
    */
   @Post('/generar')
   async generarCertificado(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload,
     @Body() body: { curso_guid: string },
     @Query('usuario_guid') usuario_guid?: string,
   ) {
-    const guid = user?.guid || usuario_guid;
+    const guid = usuario_guid || user.sub;
     return this.certificadosService.generarCertificado(guid, body.curso_guid);
   }
 
@@ -29,10 +30,10 @@ export class CertificadosController {
   @Get('/verificar/:curso_guid')
   async verificarCurso(
     @Param('curso_guid') curso_guid: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload,
     @Query('usuario_guid') usuario_guid?: string,
   ) {
-    const guid = user?.guid || usuario_guid;
+    const guid = usuario_guid || user.sub;
     return this.certificadosService.verificarCursoCompleto(guid, curso_guid);
   }
 
@@ -41,10 +42,10 @@ export class CertificadosController {
    */
   @Get()
   async getCertificados(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload,
     @Query('usuario_guid') usuario_guid?: string,
   ) {
-    const guid = user?.guid || usuario_guid;
+    const guid = usuario_guid || user.sub;
     return this.certificadosService.getCertificadosEstudiante(guid);
   }
 

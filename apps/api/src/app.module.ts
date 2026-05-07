@@ -20,6 +20,7 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { MailModule } from './mail/mail.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { CertificadosModule } from './certificados/certificados.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { CertificadosModule } from './certificados/certificados.module';
     MailModule,
     SchedulerModule,
     CertificadosModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [

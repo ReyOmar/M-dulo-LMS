@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { lms_estado_entrega } from '@prisma/client';
@@ -9,6 +9,7 @@ import { CertificadosService } from '../certificados/certificados.service';
 
 @Injectable()
 export class EvaluacionesService {
+  private readonly logger = new Logger(EvaluacionesService.name);
   constructor(
     private prisma: PrismaService,
     private storageService: StorageService,
@@ -262,14 +263,14 @@ export class EvaluacionesService {
 
         await Promise.all([notifPromise, emailPromise]);
       } catch (err) {
-        console.error('Grade notification error:', err);
+        this.logger.error('Grade notification error:', err);
       }
     })();
 
     // ── Check if this grading completes the course for certificate generation ──
     if (data.calificacion >= 3.0 && entrega.tarea_guid) {
       this.checkCertificateAfterGrading(entrega.usuario_guid, entrega.tarea_guid).catch((err) => {
-        console.error('Post-grading certificate check error:', err?.message || err);
+        this.logger.error('Post-grading certificate check error:', err?.message || err);
       });
     }
 
@@ -310,6 +311,6 @@ export class EvaluacionesService {
 
     // All conditions met — auto-generate certificate!
     await this.certificadosService.generarCertificado(usuario_guid, curso_guid);
-    console.log(`🎓 Certificate auto-generated after grading for user ${usuario_guid} in course ${curso_guid}`);
+    this.logger.log(`Certificate auto-generated after grading for user ${usuario_guid} in course ${curso_guid}`);
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificadosService } from '../certificados/certificados.service';
 
@@ -6,6 +6,7 @@ const AUTO_UNLOCK_HOURS = 48;
 
 @Injectable()
 export class EstudiantesService {
+  private readonly logger = new Logger(EstudiantesService.name);
   constructor(
     private prisma: PrismaService,
     private certificadosService: CertificadosService,
@@ -96,7 +97,7 @@ export class EstudiantesService {
     // ── Auto-detect course completion and generate certificate ──
     // Fire-and-forget: don't block the student's response
     this.checkAndGenerateCertificate(usuario_guid, recurso_guid).catch((err) => {
-      console.error('Auto-certificate check error:', err?.message || err);
+      this.logger.error('Auto-certificate check error:', err?.message || err);
     });
 
     return result;
@@ -133,7 +134,7 @@ export class EstudiantesService {
     if (!result.completo || !result.puede_generar_certificado) return;
 
     await this.certificadosService.generarCertificado(usuario_guid, curso_guid);
-    console.log(`🎓 Auto-generated certificate for user ${usuario_guid} in course ${curso_guid}`);
+    this.logger.log(`Auto-generated certificate for user ${usuario_guid} in course ${curso_guid}`);
   }
 
   async getDiasActivos(usuario_guid: string, year: number, month: number) {

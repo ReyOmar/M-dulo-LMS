@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LmsGateway } from '../ws/lms.gateway';
 import { ConfiguracionService } from '../configuracion/configuracion.service';
@@ -13,6 +13,7 @@ const CERTS_DIR = path.join(process.cwd(), 'uploads', 'certificados');
 
 @Injectable()
 export class CertificadosService {
+  private readonly logger = new Logger(CertificadosService.name);
   constructor(
     private prisma: PrismaService,
     private lmsGateway: LmsGateway,
@@ -313,7 +314,7 @@ export class CertificadosService {
       url_accion: '/dashboard/student/certificados',
       ref_tipo: 'certificado',
       ref_guid: certificado.guid,
-    }).catch((err) => console.error('Certificate notification error:', err));
+    }).catch((err) => this.logger.error('Certificate notification error:', err));
 
     return certificado;
   }

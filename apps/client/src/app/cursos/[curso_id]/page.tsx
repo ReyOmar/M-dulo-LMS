@@ -7,6 +7,7 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import Link from "next/link";
 import api, { API_BASE_URL } from "@/lib/api";
 import { useWS } from "@/contexts/WebSocketContext";
+import { sanitizeHTML } from "@/lib/sanitize";
 import QuizPlayer from "@/components/quiz/QuizPlayer";
 import AssignmentPlayer from "@/components/tareas/AssignmentPlayer";
 
@@ -544,7 +545,7 @@ export default function CursoVisorPage() {
               {/* TEXTO */}
               {selectedRecurso.tipo === 'TEXTO' && (
                 <div className="space-y-6">
-                  <div className="prose prose-slate dark:prose-invert max-w-none bg-card rounded-2xl p-8 border border-border/50 shadow-sm" dangerouslySetInnerHTML={{ __html: selectedRecurso.contenido_html || '<p class="text-muted-foreground italic">Sin contenido.</p>' }} />
+                  <div className="prose prose-slate dark:prose-invert max-w-none bg-card rounded-2xl p-8 border border-border/50 shadow-sm" dangerouslySetInnerHTML={sanitizeHTML(selectedRecurso.contenido_html || '<p class="text-muted-foreground italic">Sin contenido.</p>')} />
                   {selectedRecurso.url_referencia && (
                     <a href={ensureAbsoluteUrl(selectedRecurso.url_referencia)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl text-sm text-primary font-medium hover:bg-primary/10 transition-colors">
                       <ExternalLink className="h-4 w-4" /> {selectedRecurso.url_referencia}
@@ -639,7 +640,7 @@ export default function CursoVisorPage() {
                 viewOnlyMode ? (
                   <div className="space-y-4">
                     {selectedRecurso.contenido_html && (
-                      <div className="prose prose-slate dark:prose-invert max-w-none bg-card rounded-2xl p-6 border border-border/50 shadow-sm" dangerouslySetInnerHTML={{ __html: selectedRecurso.contenido_html }} />
+                      <div className="prose prose-slate dark:prose-invert max-w-none bg-card rounded-2xl p-6 border border-border/50 shadow-sm" dangerouslySetInnerHTML={sanitizeHTML(selectedRecurso.contenido_html)} />
                     )}
                     <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 flex items-center gap-3">
                       <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />

@@ -1,5 +1,5 @@
 // Prisma TS Server Refresh Trigger
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,6 +7,7 @@ import { ConfiguracionService } from '../configuracion/configuracion.service';
 
 @Injectable()
 export class MailService implements OnModuleInit {
+  private readonly logger = new Logger(MailService.name);
   private transporter: nodemailer.Transporter | null = null;
   private fromAddress: string;
   private fromName: string;
@@ -38,7 +39,7 @@ export class MailService implements OnModuleInit {
         auth: { user: smtpUser, pass: smtpPass },
       });
       this.enabled = true;
-      console.log(`📧 Mail service [PRODUCTION]: ${smtpHost}:${smtpPort}`);
+      this.logger.log(`Mail service [PRODUCTION]: ${smtpHost}:${smtpPort}`);
     } else {
       // Development fallback: Ethereal (catches all emails, provides preview URL)
       try {
@@ -51,10 +52,10 @@ export class MailService implements OnModuleInit {
         });
         this.fromAddress = testAccount.user;
         this.enabled = true;
-        console.log(`📧 Mail service [DEV/ETHEREAL]: ${testAccount.user}`);
-        console.log(`📧 Preview emails at: https://ethereal.email/login (user: ${testAccount.user}, pass: ${testAccount.pass})`);
+        this.logger.log(`Mail service [DEV/ETHEREAL]: ${testAccount.user}`);
+        this.logger.log(`Preview emails at: https://ethereal.email/login (user: ${testAccount.user}, pass: ${testAccount.pass})`);
       } catch (err) {
-        console.log('📧 Mail service DISABLED — Could not create Ethereal account. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env for production.');
+        this.logger.warn('Mail service DISABLED — Could not create Ethereal account. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env for production.');
       }
     }
   }
@@ -81,7 +82,7 @@ export class MailService implements OnModuleInit {
    */
   async sendMail(to: string, subject: string, html: string): Promise<boolean> {
     if (!this.enabled || !this.transporter) {
-      console.log(`📧 [MOCK] Email to ${to}: ${subject}`);
+      this.logger.debug(`[MOCK] Email to ${to}: ${subject}`);
       return false;
     }
 
@@ -92,15 +93,15 @@ export class MailService implements OnModuleInit {
         subject,
         html,
       });
-      console.log(`📧 Email sent to ${to}: ${subject}`);
+      this.logger.log(`Email sent to ${to}: ${subject}`);
       // Show preview URL for Ethereal (dev mode)
       const previewUrl = nodemailer.getTestMessageUrl(info);
       if (previewUrl) {
-        console.log(`📧 Preview: ${previewUrl}`);
+        this.logger.debug(`Preview: ${previewUrl}`);
       }
       return true;
     } catch (err) {
-      console.error(`📧 Email error to ${to}:`, err);
+      this.logger.error(`Email error to ${to}:`, err);
       return false;
     }
   }

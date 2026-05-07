@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { WebSocketGateway, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -45,6 +45,7 @@ interface ConnectedClient {
 @Injectable()
 export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit {
   private clients: ConnectedClient[] = [];
+  private readonly logger = new Logger(LmsGateway.name);
   private courseEditors: Map<string, CourseEditor> = new Map();
 
   constructor(
@@ -88,26 +89,24 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
           client.close(4002, 'Token inválido');
           return;
         }
+      } else {
+        // No token provided — reject the connection
+        client.close(4001, 'Autenticación requerida');
+        return;
       }
 
       const connectedClient: ConnectedClient = {
         socket: client,
-        guid: payload?.sub || '',
-        role: payload?.role || 'GUEST',
+        guid: payload.sub,
+        role: payload.role || 'ESTUDIANTE',
       };
 
-      // Only track and notify presence for authenticated users
-      if (payload?.sub && connectedClient.guid) {
-        this.clients.push(connectedClient);
-        this.broadcast('presence:update', {
-          guid: payload.sub,
-          status: 'online',
-          onlineUsers: this.getOnlineUserGuids(),
-        });
-      } else {
-        // Still track unauthenticated clients for broadcast purposes
-        this.clients.push(connectedClient);
-      }
+      this.clients.push(connectedClient);
+      this.broadcast('presence:update', {
+        guid: payload.sub,
+        status: 'online',
+        onlineUsers: this.getOnlineUserGuids(),
+      });
 
       // Send current course editing state to the newly connected client
       if (this.courseEditors.size > 0) {
@@ -169,7 +168,7 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
                 data: { ultimo_acceso: new Date() }
               });
             } catch (e) {
-              console.error("Error updating ultimo_acceso on disconnect", e);
+              this.logger.error('Error updating ultimo_acceso on disconnect', e);
             }
           }
 
@@ -224,7 +223,7 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
       try {
         client.socket.send(message);
       } catch (err) {
-        console.error(`WS send error to ${client.guid}:`, err);
+        this.logger.error(`WS send error to ${client.guid}:`, err);
       }
     }
   }
@@ -241,7 +240,7 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
       try {
         client.socket.send(message);
       } catch (err) {
-        console.error(`WS send error to ${client.guid}:`, err);
+        this.logger.error(`WS send error to ${client.guid}:`, err);
       }
     }
   }

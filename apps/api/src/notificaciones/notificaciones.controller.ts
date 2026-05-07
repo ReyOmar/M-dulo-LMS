@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query } from '@nestjs/common';
 import { NotificacionesService } from './notificaciones.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import { Roles } from '../common/decorators/roles.decorator';
 
 @Controller('notificaciones')
@@ -11,8 +12,8 @@ export class NotificacionesController {
    * Get notifications for the current user.
    */
   @Get()
-  async getNotificaciones(@CurrentUser() user: any, @Query('limit') limit?: string) {
-    const guid = user?.sub || user?.guid;
+  async getNotificaciones(@CurrentUser() user: JwtPayload, @Query('limit') limit?: string) {
+    const guid = user.sub;
     return this.notificacionesService.getNotificaciones(guid, limit ? parseInt(limit, 10) : 30);
   }
 
@@ -20,8 +21,8 @@ export class NotificacionesController {
    * Count unread notifications for the current user.
    */
   @Get('no-leidas')
-  async contarNoLeidas(@CurrentUser() user: any) {
-    const guid = user?.sub || user?.guid;
+  async contarNoLeidas(@CurrentUser() user: JwtPayload) {
+    const guid = user.sub;
     return this.notificacionesService.contarNoLeidas(guid);
   }
 
@@ -37,8 +38,8 @@ export class NotificacionesController {
    * Mark all notifications as read.
    */
   @Patch('leer-todas')
-  async marcarTodasLeidas(@CurrentUser() user: any) {
-    const guid = user?.sub || user?.guid;
+  async marcarTodasLeidas(@CurrentUser() user: JwtPayload) {
+    const guid = user.sub;
     return this.notificacionesService.marcarTodasLeidas(guid);
   }
 
@@ -46,8 +47,8 @@ export class NotificacionesController {
    * Delete all notifications for the current user.
    */
   @Delete('limpiar')
-  async limpiarNotificaciones(@CurrentUser() user: any) {
-    const guid = user?.sub || user?.guid;
+  async limpiarNotificaciones(@CurrentUser() user: JwtPayload) {
+    const guid = user.sub;
     return this.notificacionesService.limpiarNotificaciones(guid);
   }
 
@@ -57,8 +58,8 @@ export class NotificacionesController {
    * Send a message to another user.
    */
   @Post('mensajes')
-  async enviarMensaje(@CurrentUser() user: any, @Body() body: { destinatario_guid: string; asunto: string; contenido: string; ref_tipo?: string; ref_guid?: string }) {
-    const guid = user?.sub || user?.guid;
+  async enviarMensaje(@CurrentUser() user: JwtPayload, @Body() body: { destinatario_guid: string; asunto: string; contenido: string; ref_tipo?: string; ref_guid?: string }) {
+    const guid = user.sub;
     return this.notificacionesService.enviarMensaje({
       remitente_guid: guid,
       ...body,
@@ -69,8 +70,8 @@ export class NotificacionesController {
    * Get conversation with a specific user.
    */
   @Get('mensajes/:contacto_guid')
-  async getConversacion(@CurrentUser() user: any, @Param('contacto_guid') contacto_guid: string) {
-    const guid = user?.sub || user?.guid;
+  async getConversacion(@CurrentUser() user: JwtPayload, @Param('contacto_guid') contacto_guid: string) {
+    const guid = user.sub;
     return this.notificacionesService.getConversacion(guid, contacto_guid);
   }
 
@@ -78,8 +79,8 @@ export class NotificacionesController {
    * Get list of message contacts.
    */
   @Get('mensajes-contactos')
-  async getContactos(@CurrentUser() user: any) {
-    const guid = user?.sub || user?.guid;
+  async getContactos(@CurrentUser() user: JwtPayload) {
+    const guid = user.sub;
     return this.notificacionesService.getContactos(guid);
   }
 
@@ -87,8 +88,8 @@ export class NotificacionesController {
    * Mark messages from a user as read.
    */
   @Patch('mensajes/:remitente_guid/leer')
-  async marcarMensajesLeidos(@CurrentUser() user: any, @Param('remitente_guid') remitente_guid: string) {
-    const guid = user?.sub || user?.guid;
+  async marcarMensajesLeidos(@CurrentUser() user: JwtPayload, @Param('remitente_guid') remitente_guid: string) {
+    const guid = user.sub;
     return this.notificacionesService.marcarMensajesLeidos(remitente_guid, guid);
   }
 
@@ -96,8 +97,8 @@ export class NotificacionesController {
    * Delete conversation with a specific user.
    */
   @Delete('mensajes/:contacto_guid')
-  async eliminarConversacion(@CurrentUser() user: any, @Param('contacto_guid') contacto_guid: string) {
-    const guid = user?.sub || user?.guid;
+  async eliminarConversacion(@CurrentUser() user: JwtPayload, @Param('contacto_guid') contacto_guid: string) {
+    const guid = user.sub;
     return this.notificacionesService.eliminarConversacion(guid, contacto_guid);
   }
 
@@ -107,8 +108,8 @@ export class NotificacionesController {
    * Search for users in the same courses to start a conversation.
    */
   @Get('chat/buscar')
-  async buscarContactosCurso(@CurrentUser() user: any, @Query('q') search: string) {
-    const guid = user?.sub || user?.guid;
+  async buscarContactosCurso(@CurrentUser() user: JwtPayload, @Query('q') search: string) {
+    const guid = user.sub;
     return this.notificacionesService.buscarContactosCurso(guid, search || '');
   }
 
@@ -116,8 +117,8 @@ export class NotificacionesController {
    * Send a contact request.
    */
   @Post('chat/solicitar')
-  async solicitarContacto(@CurrentUser() user: any, @Body() body: { receptor_guid: string; curso_guid: string }) {
-    const guid = user?.sub || user?.guid;
+  async solicitarContacto(@CurrentUser() user: JwtPayload, @Body() body: { receptor_guid: string; curso_guid: string }) {
+    const guid = user.sub;
     return this.notificacionesService.solicitarContacto(guid, body.receptor_guid, body.curso_guid);
   }
 
@@ -125,8 +126,8 @@ export class NotificacionesController {
    * Accept or reject a contact request.
    */
   @Patch('chat/responder/:id')
-  async responderContacto(@CurrentUser() user: any, @Param('id') id: string, @Body() body: { aceptar: boolean }) {
-    const guid = user?.sub || user?.guid;
+  async responderContacto(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Body() body: { aceptar: boolean }) {
+    const guid = user.sub;
     return this.notificacionesService.responderContacto(guid, parseInt(id, 10), body.aceptar);
   }
 
@@ -134,8 +135,8 @@ export class NotificacionesController {
    * Get pending contact requests.
    */
   @Get('chat/solicitudes')
-  async getSolicitudesPendientes(@CurrentUser() user: any) {
-    const guid = user?.sub || user?.guid;
+  async getSolicitudesPendientes(@CurrentUser() user: JwtPayload) {
+    const guid = user.sub;
     return this.notificacionesService.getSolicitudesPendientes(guid);
   }
 
@@ -143,8 +144,8 @@ export class NotificacionesController {
    * Get approved contacts only (replaces old getContactos).
    */
   @Get('chat/contactos')
-  async getContactosAprobados(@CurrentUser() user: any) {
-    const guid = user?.sub || user?.guid;
+  async getContactosAprobados(@CurrentUser() user: JwtPayload) {
+    const guid = user.sub;
     return this.notificacionesService.getContactosAprobados(guid);
   }
 }

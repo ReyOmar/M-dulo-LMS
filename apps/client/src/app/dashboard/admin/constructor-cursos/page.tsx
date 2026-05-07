@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import api, { API_BASE_URL } from "@/lib/api";
 import { useAlert } from "@/contexts/AlertContext";
+import { sanitizeHTML } from "@/lib/sanitize";
 
 export default function ConstructorCursosRoot() {
   const { role, user } = useRole();
@@ -349,21 +350,24 @@ export default function ConstructorCursosRoot() {
 
   const handleCrearCurso = async () => {
       try {
-          setLoading(true);
           const res = await api.post('/cursos', { titulo: 'Curso Nuevo', profesor_guid: user?.guid });
           const newCourse = res.data;
           
-          // Fetch full details and navigate without reloading the page
-          const resDetails = await api.get(`/cursos/${newCourse.guid}`);
-          setActiveCourse(resDetails.data);
+          // Optimistic UI update to avoid loading screen freeze
+          const fullCourse = { ...newCourse, modulos: [] };
+          setActiveCourse(fullCourse);
+          setCursos(prev => [newCourse, ...prev]);
           setSelectedItem({type: null, data: null});
           setExpandedModules({});
           setMenuOpenForModule(null);
+          
+          // Update URL
           router.push(`?curso=${newCourse.guid}`);
-      } catch (err) {
-          console.error(err);
-      } finally {
-          setLoading(false);
+          
+          // Fetch full details in background
+          api.get(`/cursos/${newCourse.guid}`).then(r => setActiveCourse(r.data)).catch(console.error);
+      } catch {
+          showAlert.error('Error', 'No se pudo crear el curso.');
       }
   };
 
@@ -373,8 +377,8 @@ export default function ConstructorCursosRoot() {
           await api.post(`/cursos/${activeCourse.guid}/modulos`, { titulo: `Módulo ${activeCourse.modulos?.length + 1 || 1} Nuevo` });
           // Refresh course details
           await refreshActiveCourse();
-      } catch (err) {
-          console.error(err);
+      } catch {
+          showAlert.error('Error', 'No se pudo crear el módulo.');
       }
   };
 
@@ -395,8 +399,8 @@ export default function ConstructorCursosRoot() {
           await api.patch(`/cursos/${activeCourse.guid}`, { titulo: newTitle });
           setActiveCourse((prev: any) => ({...prev, titulo: newTitle}));
           fetchData();
-      } catch (err) {
-          console.error(err);
+      } catch {
+          showAlert.error('Error', 'No se pudo actualizar el título.');
       }
   };
 
@@ -405,8 +409,8 @@ export default function ConstructorCursosRoot() {
       try {
           await api.patch(`/cursos/modulos/${moduleId}`, { titulo: newTitle });
           await refreshActiveCourse();
-      } catch (err) {
-          console.error(err);
+      } catch {
+          showAlert.error('Error', 'No se pudo renombrar el módulo.');
       }
   };
 
@@ -549,8 +553,8 @@ export default function ConstructorCursosRoot() {
               });
               
               setSelectedItem({type: null, data: null});
-          } catch (err) {
-              console.error(err);
+          } catch {
+              showAlert.error('Error', 'No se pudo eliminar el recurso.');
           }
       });
   };
@@ -678,8 +682,8 @@ export default function ConstructorCursosRoot() {
                                         setMenuOpenForModule(null);
                                         setCursos(prev => prev.filter(c => c.guid !== deletedGuid));
                                         window.history.replaceState({}, '', window.location.pathname);
-                                    } catch (err) {
-                                        console.error(err);
+                                    } catch {
+                                        showAlert.error('Error', 'No se pudo eliminar el curso.');
                                     }
                                 }
                             }}
@@ -748,8 +752,8 @@ export default function ConstructorCursosRoot() {
                                                                     await api.patch(`/cursos/${activeCourse.guid}`, { imagen_portada: null });
                                                                     setActiveCourse((prev: any) => ({ ...prev, imagen_portada: null }));
                                                                     fetchData();
-                                                                } catch (err) {
-                                                                    console.error(err);
+                                                                } catch {
+                                                                    showAlert.error('Error', 'No se pudo eliminar la portada.');
                                                                 }
                                                             });
                                                         }}
@@ -835,7 +839,7 @@ export default function ConstructorCursosRoot() {
                                 <div className="p-8 overflow-y-auto flex-1 space-y-8 bg-background">
                                     {bloqueTipo === 'PARRAFO' && (
                                         <>
-                                            <div className="prose dark:prose-invert max-w-none bg-muted/10 p-8 rounded-2xl border border-border/50 shadow-inner" dangerouslySetInnerHTML={{ __html: bloqueHtml || '<p class="text-muted-foreground italic">Sin contenido escrito.</p>' }} />
+                                            <div className="prose dark:prose-invert max-w-none bg-muted/10 p-8 rounded-2xl border border-border/50 shadow-inner" dangerouslySetInnerHTML={sanitizeHTML(bloqueHtml || '<p class="text-muted-foreground italic">Sin contenido escrito.</p>')} />
                                             {selectedItem.data && renderExtrasPreview(selectedItem.data)}
                                         </>
                                     )}
@@ -867,7 +871,7 @@ export default function ConstructorCursosRoot() {
                                         <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden max-w-3xl mx-auto">
                                             <div className="p-6 border-b border-border bg-muted/10">
                                                 <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-4">Instrucciones de la Tarea</h3>
-                                                <div className="prose dark:prose-invert max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: bloqueHtml || '<p class="text-muted-foreground italic opacity-70">No hay instrucciones definidas.</p>' }} />
+                                                <div className="prose dark:prose-invert max-w-none text-foreground" dangerouslySetInnerHTML={sanitizeHTML(bloqueHtml || '<p class="text-muted-foreground italic opacity-70">No hay instrucciones definidas.</p>')} />
                                                 {selectedItem.data && renderExtrasPreview(selectedItem.data)}
                                             </div>
                                             <div className="p-8 flex flex-col items-center justify-center text-center">
@@ -887,7 +891,7 @@ export default function ConstructorCursosRoot() {
                                         <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden max-w-3xl mx-auto">
                                             <div className="p-6 border-b border-border bg-amber-500/10">
                                                 <h3 className="font-bold text-sm text-amber-700 dark:text-amber-500 uppercase tracking-wider mb-4">Instrucciones del Cuestionario</h3>
-                                                <div className="prose dark:prose-invert max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: bloqueHtml || '<p class="text-muted-foreground italic opacity-70">No hay instrucciones definidas.</p>' }} />
+                                                <div className="prose dark:prose-invert max-w-none text-foreground" dangerouslySetInnerHTML={sanitizeHTML(bloqueHtml || '<p class="text-muted-foreground italic opacity-70">No hay instrucciones definidas.</p>')} />
                                                 {selectedItem.data && renderExtrasPreview(selectedItem.data)}
                                             </div>
                                             <div className="p-8 flex flex-col items-center justify-center text-center">

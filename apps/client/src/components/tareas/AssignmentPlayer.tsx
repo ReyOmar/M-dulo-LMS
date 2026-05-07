@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { Check, UploadCloud, File as FileIcon, Loader2, Trophy, Clock, AlertTriangle, Paperclip, CheckCircle2, Download, Award } from "lucide-react";
 import api, { API_BASE_URL } from "@/lib/api";
 import { useWS } from "@/contexts/WebSocketContext";
+import { sanitizeHTML } from "@/lib/sanitize";
 
 interface AssignmentPlayerProps {
     curso_id: string;
@@ -145,7 +146,7 @@ export default function AssignmentPlayer({
                 </div>
                 <div className="p-8 prose prose-slate dark:prose-invert max-w-none text-foreground/90">
                     {instrucciones_html ? (
-                        <div dangerouslySetInnerHTML={{ __html: instrucciones_html }} />
+                        <div dangerouslySetInnerHTML={sanitizeHTML(instrucciones_html)} />
                     ) : (
                         <p className="text-muted-foreground italic m-0">Sin instrucciones adicionales.</p>
                     )}

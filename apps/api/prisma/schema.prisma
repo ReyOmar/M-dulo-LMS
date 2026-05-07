@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
 }
 
 // ── SISTEMA DE AUTENTICACIÓN INDEPENDIENTE ──
@@ -128,7 +128,7 @@ model lms_solicitudes_acceso {
 model lms_cursos {
   guid              String             @id @default(uuid())
   titulo            String
-  descripcion       String?
+  descripcion       String?            @db.Text
   descripcion_corta String?
   imagen_portada    String?
   nivel             lms_nivel_dificultad @default(PRINCIPIANTE)
@@ -198,13 +198,13 @@ model lms_recursos {
   leccion               lms_lecciones         @relation(fields: [leccion_guid], references: [guid], onDelete: Cascade)
   titulo                String
   tipo                  lms_tipo_recurso
-  contenido_html        String?
+  contenido_html        String?            @db.Text
   url_archivo           String?
   url_referencia        String?               // URL externa opcional para recursos adicionales
-  archivo_adjunto       String?               // Base64 del archivo adjunto (PDF, Word, PPT, etc.)
+  archivo_adjunto       String?               @db.LongText // Base64 del archivo adjunto (PDF, Word, PPT, etc.)
   archivo_adjunto_nombre String?              // Nombre original del archivo adjunto
   archivo_max_size_mb   Int?                  // Límite de peso de archivo en MB (admin y estudiante)
-  quiz_config           String?               // JSON: { intentos_permitidos, tiempo_minutos, preguntas: [...] }
+  quiz_config           String?               @db.Text // JSON: { intentos_permitidos, tiempo_minutos, preguntas: [...] }
   orden                 Int                   @default(0)
   obligatorio           Boolean               @default(true)
   tiempo_lectura        Int?                  // Estimado en minutos
@@ -230,7 +230,7 @@ model lms_entregas {
   intento_numero  Int                  @default(1)
   fecha_inicio    DateTime?            // Para tracking de tiempo en examen
   fecha_entrega   DateTime?
-  contenido_texto String?
+  contenido_texto String?              @db.Text
   ip_address      String?
 
   created_at      DateTime             @default(now())
@@ -295,7 +295,7 @@ model lms_mensajes {
   destinatario_guid String
   destinatario    usuarios @relation("mensajes_recibidos", fields: [destinatario_guid], references: [guid], onDelete: Cascade)
   asunto          String
-  contenido       String
+  contenido       String               @db.Text
   leido           Boolean  @default(false)
   ref_tipo        String?  // 'quiz_retry', 'entrega_revision', 'general'
   ref_guid        String?  // GUID del recurso/entrega relacionado
@@ -351,7 +351,7 @@ model lms_configuracion {
   contrasena_defecto String   @default("pesvauth2026") // Contraseña por defecto para nuevos usuarios
   email_remitente    String?
   email_nombre       String?
-  bienvenida_html    String?
+  bienvenida_html    String?            @db.Text
 
   // Certificados config
   cert_titulo_personalizado String?
@@ -380,9 +380,9 @@ model lms_configuracion {
   landing_footer_texto   String   @default("Plataforma líder en capacitación y certificación de seguridad vial para empresas de transporte de carga.")
 
   // Página Legal
-  legal_terminos         String   @default("")
-  legal_privacidad       String   @default("")
-  legal_datos            String   @default("")
+  legal_terminos         String?  @db.Text
+  legal_privacidad       String?  @db.Text
+  legal_datos            String?  @db.Text
 
   updated_at         DateTime @updatedAt
 }
@@ -455,7 +455,7 @@ model lms_eventos_correo {
   identificador    String   @unique // Ej: 'RECUPERAR_PASSWORD', 'NUEVA_ENTREGA'
   nombre_legible   String   
   descripcion      String
-  variables        String   // JSON array de variables permitidas ej: ["nombre", "token", "curso"]
+  variables        String   @db.Text // JSON array de variables permitidas ej: ["nombre", "token", "curso"]
   plantillas       lms_plantillas_correo[]
 }
 
@@ -465,7 +465,7 @@ model lms_plantillas_correo {
   evento           lms_eventos_correo @relation(fields: [evento_id], references: [id], onDelete: Cascade)
   nombre_interno   String   // Para que el admin lo identifique
   asunto           String
-  cuerpo_html      String
+  cuerpo_html      String   @db.Text
   activo           Boolean  @default(true)
   es_sistema       Boolean  @default(false) // Las de sistema no se pueden borrar
   created_at       DateTime @default(now())

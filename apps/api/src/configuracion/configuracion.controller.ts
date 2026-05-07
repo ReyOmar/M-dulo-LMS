@@ -3,6 +3,7 @@ import { ConfiguracionService } from './configuracion.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import { UpdateConfiguracionDto } from './dto/update-configuracion.dto';
 
 @Controller('configuracion')
@@ -42,18 +43,18 @@ export class ConfiguracionController {
   // ── Examiner Firma Endpoints ──
 
   @Get('/firma')
-  getFirma(@CurrentUser() user: any, @Query('usuario_guid') usuario_guid?: string) {
-    const guid = user?.guid || usuario_guid;
+  getFirma(@CurrentUser() user: JwtPayload, @Query('usuario_guid') usuario_guid?: string) {
+    const guid = usuario_guid || user.sub;
     return this.configuracionService.getFirma(guid);
   }
 
   @Post('/firma')
   updateFirma(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload,
     @Body() body: { firma_url?: string; firma_nombre?: string; firma_cargo?: string },
     @Query('usuario_guid') usuario_guid?: string,
   ) {
-    const guid = user?.guid || usuario_guid;
+    const guid = usuario_guid || user.sub;
     return this.configuracionService.updateFirma(guid, body);
   }
 

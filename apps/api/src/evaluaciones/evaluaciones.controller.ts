@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Param, Body, Query, UnauthorizedException
 import { EvaluacionesService } from './evaluaciones.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import { CalificarEntregaDto } from './dto/calificar-entrega.dto';
 
 @Controller('cursos')
@@ -14,11 +15,11 @@ export class EvaluacionesController {
    */
   @Post('/tareas/:tarea_guid/entregas')
   async submitEntrega(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload,
     @Param('tarea_guid') tarea_guid: string,
     @Req() req: any,
   ) {
-    const userGuid = user?.sub || user?.guid;
+    const userGuid = user.sub;
     if (!userGuid) throw new UnauthorizedException('Debes iniciar sesión para subir tu tarea.');
 
     const data = await req.file();
@@ -44,8 +45,8 @@ export class EvaluacionesController {
   }
 
   @Get('/tareas/:tarea_guid/entregas/mine')
-  async getEntrega(@CurrentUser() user: any, @Param('tarea_guid') tarea_guid: string) {
-    const userGuid = user?.sub || user?.guid;
+  async getEntrega(@CurrentUser() user: JwtPayload, @Param('tarea_guid') tarea_guid: string) {
+    const userGuid = user.sub;
     if (!userGuid) throw new UnauthorizedException('Usuario no autenticado correctamente.');
     const entrega = await this.evaluacionesService.getEntrega(tarea_guid, userGuid);
     return entrega || { estado: 'PENDIENTE' };

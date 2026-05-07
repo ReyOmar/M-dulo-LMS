@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Save, X, Eye, EyeOff, FileCode2, AtSign } from 'lucide-react';
+import { sanitizeHTML } from '@/lib/sanitize';
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -116,7 +117,7 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
                 <div className="bg-primary p-4 text-white font-bold text-sm">
                   Asunto: {asunto || 'Sin Asunto'}
                 </div>
-                <div className="p-4 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: cuerpoHtml }} />
+                <div className="p-4 prose prose-sm max-w-none" dangerouslySetInnerHTML={sanitizeHTML(cuerpoHtml)} />
               </div>
             </div>
           ) : (

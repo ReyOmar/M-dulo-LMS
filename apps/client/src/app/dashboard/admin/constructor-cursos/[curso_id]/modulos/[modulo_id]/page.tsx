@@ -7,6 +7,7 @@ import { ArrowLeft, Plus, Image as ImageIcon, Type, FileText, CheckCircle, Uploa
 import Link from "next/link";
 import api, { API_BASE_URL } from "@/lib/api";
 import { useAlert } from "@/contexts/AlertContext";
+import { sanitizeHTML } from "@/lib/sanitize";
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -240,7 +241,7 @@ export default function ModuleEditorPage() {
                               <button onClick={() => handleDeleteBlock(r.guid)} className="p-1.5 bg-muted rounded text-muted-foreground hover:text-red-500 transition-colors"><Trash2 className="h-4 w-4" /></button>
                           </div>
 
-                          {r.tipo === 'TEXTO' && <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: r.contenido_html }} />}
+                          {r.tipo === 'TEXTO' && <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={sanitizeHTML(r.contenido_html)} />}
                           {r.tipo === 'ENLACE' && (r.contenido_html?.startsWith('data:image') || r.url_archivo?.startsWith('data:image')) && <img src={r.contenido_html || r.url_archivo} alt="Módulo Media" className="max-h-64 object-cover rounded-lg mx-auto" />}
                           {r.tipo === 'ENLACE' && !(r.contenido_html?.startsWith('data:image') || r.url_archivo?.startsWith('data:image')) && (
                               <div className="flex items-center gap-4 text-pink-500 hover:opacity-80 transition-opacity">

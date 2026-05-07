@@ -6,6 +6,7 @@ import { useRole } from "@/contexts/RoleContext";
 import { useWS } from "@/contexts/WebSocketContext";
 import api from "@/lib/api";
 import { PageLoader } from "@/components/ui/PageLoader";
+import { useAlert } from "@/contexts/AlertContext";
 
 interface Contact {
   guid: string;
@@ -51,6 +52,7 @@ interface PendingRequest {
 export default function MensajesPage() {
   const { user } = useRole();
   const { subscribe } = useWS();
+  const { showConfirm } = useAlert();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -174,7 +176,12 @@ export default function MensajesPage() {
 
   const deleteConversation = async () => {
     if (!selectedContact) return;
-    if (!window.confirm(`¿Estás seguro de que quieres eliminar la conversación con ${selectedContact.nombre}?`)) return;
+    const confirmed = await showConfirm(
+      'Eliminar conversación',
+      `¿Estás seguro de que quieres eliminar la conversación con ${selectedContact.nombre}? Esta acción no se puede deshacer.`,
+      'Eliminar'
+    );
+    if (!confirmed) return;
     
     try {
       await api.delete(`/notificaciones/mensajes/${selectedContact.guid}`);

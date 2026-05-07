@@ -133,22 +133,22 @@ export function Sidebar() {
           {role === "teacher" && (
               <div className="space-y-1 mb-8 animate-in slide-in-from-left-2">
                   <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Gestión de Evaluaciones</p>
-                  <Link href="/dashboard" className={linkClass('/dashboard')}>
+                  <Link prefetch={true} href="/dashboard" className={linkClass('/dashboard')}>
                       <Presentation className="h-4 w-4" /> Asignaciones
                   </Link>
-                  <Link href="/dashboard/examiner/monitoreo" className={linkClass('/dashboard/examiner/monitoreo')}>
+                  <Link prefetch={true} href="/dashboard/examiner/monitoreo" className={linkClass('/dashboard/examiner/monitoreo')}>
                       <Users className="h-4 w-4" /> Monitoreo de Estudiantes
                   </Link>
-                  <Link href="/dashboard/examiner/pruebas" className={linkClass('/dashboard/examiner/pruebas')}>
+                  <Link prefetch={true} href="/dashboard/examiner/pruebas" className={linkClass('/dashboard/examiner/pruebas')}>
                       <ClipboardCheck className="h-4 w-4" /> Monitoreo de Pruebas
                   </Link>
-                  <Link href="/dashboard/examiner/calificaciones" className={linkClass('/dashboard/examiner/calificaciones')}>
+                  <Link prefetch={true} href="/dashboard/examiner/calificaciones" className={linkClass('/dashboard/examiner/calificaciones')}>
                       <BookCheck className="h-4 w-4" /> Calificación Manual
                   </Link>
-                  <Link href="/dashboard/examiner/firma" className={linkClass('/dashboard/examiner/firma')}>
+                  <Link prefetch={true} href="/dashboard/examiner/firma" className={linkClass('/dashboard/examiner/firma')}>
                       <FileSignature className="h-4 w-4" /> Mi Firma
                   </Link>
-                  <Link href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')}>
+                  <Link prefetch={true} href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')}>
                       <MessageSquare className="h-4 w-4" />
                       <span>Mensajes</span>
                       {unreadMessagesCount > 0 && !pathname.startsWith('/dashboard/mensajes') && (
@@ -164,16 +164,16 @@ export function Sidebar() {
           {role === "student" && (
               <div className="space-y-1 mb-8 animate-in slide-in-from-left-2">
                   <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Área de Aprendizaje</p>
-                  <Link href="/dashboard" className={linkClass('/dashboard')}>
+                  <Link prefetch={true} href="/dashboard" className={linkClass('/dashboard')}>
                       <Compass className="h-4 w-4" /> Mi Tablero
                   </Link>
-                  <Link href="/dashboard/student/cursos" className={linkClass('/dashboard/student/cursos')}>
+                  <Link prefetch={true} href="/dashboard/student/cursos" className={linkClass('/dashboard/student/cursos')}>
                       <BookOpen className="h-4 w-4" /> Mis Cursos Activos
                   </Link>
-                  <Link href="/dashboard/student/certificados" className={linkClass('/dashboard/student/certificados')}>
+                  <Link prefetch={true} href="/dashboard/student/certificados" className={linkClass('/dashboard/student/certificados')}>
                       <Award className="h-4 w-4" /> Mis Certificados PDF
                   </Link>
-                  <Link href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')}>
+                  <Link prefetch={true} href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')}>
                       <MessageSquare className="h-4 w-4" />
                       <span>Mensajes</span>
                       {unreadMessagesCount > 0 && !pathname.startsWith('/dashboard/mensajes') && (
@@ -190,27 +190,27 @@ export function Sidebar() {
               <>
                   <div className="space-y-1 mb-6">
                       <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Visión Global</p>
-                      <Link href="/dashboard" className={linkClass('/dashboard')}>
+                      <Link prefetch={true} href="/dashboard" className={linkClass('/dashboard')}>
                           <BarChart3 className="h-4 w-4" /> Panel Administrativo
                       </Link>
                   </div>
 
                   <div className="space-y-1 mb-6 animate-in slide-in-from-left-2">
                       <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Construcción</p>
-                      <Link href="/dashboard/admin/constructor-cursos" className={linkClass('/dashboard/admin/constructor-cursos')}>
+                      <Link prefetch={true} href="/dashboard/admin/constructor-cursos" className={linkClass('/dashboard/admin/constructor-cursos')}>
                           <BookOpen className="h-4 w-4" /> Gestión de Cursos
                       </Link>
-                      <Link href="/dashboard/admin/asignacion-cursos" className={linkClass('/dashboard/admin/asignacion-cursos')}>
+                      <Link prefetch={true} href="/dashboard/admin/asignacion-cursos" className={linkClass('/dashboard/admin/asignacion-cursos')}>
                           <ClipboardList className="h-4 w-4" /> Asignación de Cursos
                       </Link>
                   </div>
 
                   <div className="space-y-1 mb-6 animate-in slide-in-from-left-2">
                       <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Administración del Sistema</p>
-                      <Link href="/dashboard/admin/usuarios" className={linkClass('/dashboard/admin/usuarios')}>
+                      <Link prefetch={true} href="/dashboard/admin/usuarios" className={linkClass('/dashboard/admin/usuarios')}>
                           <Users className="h-4 w-4" /> Base de Usuarios
                       </Link>
-                      <Link href="/dashboard/admin/solicitudes" className={linkClass('/dashboard/admin/solicitudes')}>
+                      <Link prefetch={true} href="/dashboard/admin/solicitudes" className={linkClass('/dashboard/admin/solicitudes')}>
                           <Users className="h-4 w-4" /> 
                           <span>Solicitudes Pendientes</span>
                           {solicitudesCount > 0 && (
@@ -219,16 +219,16 @@ export function Sidebar() {
                             </span>
                           )}
                       </Link>
-                      <Link href="/dashboard/admin/certificados-config" className={linkClass('/dashboard/admin/certificados-config')}>
+                      <Link prefetch={true} href="/dashboard/admin/certificados-config" className={linkClass('/dashboard/admin/certificados-config')}>
                           <FileSignature className="h-4 w-4" /> Certificados
                       </Link>
-                      <Link href="/dashboard/admin/tema" className={linkClass('/dashboard/admin/tema')}>
+                      <Link prefetch={true} href="/dashboard/admin/tema" className={linkClass('/dashboard/admin/tema')}>
                           <Palette className="h-4 w-4" /> Tema y Apariencia
                       </Link>
-                      <Link href="/dashboard/admin/landing-config" className={linkClass('/dashboard/admin/landing-config')}>
+                      <Link prefetch={true} href="/dashboard/admin/landing-config" className={linkClass('/dashboard/admin/landing-config')}>
                           <Globe className="h-4 w-4" /> Landing Page
                       </Link>
-                      <Link href="/dashboard/admin/correos" className={linkClass('/dashboard/admin/correos')}>
+                      <Link prefetch={true} href="/dashboard/admin/correos" className={linkClass('/dashboard/admin/correos')}>
                           <Mail className="h-4 w-4" /> Correos y Eventos
                       </Link>
                   </div>
