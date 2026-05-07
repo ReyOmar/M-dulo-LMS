@@ -186,15 +186,15 @@ export class CertificadosService {
       m.lecciones.flatMap((l) => l.recursos.filter((r) => r.tipo === 'TAREA')),
     ).length;
 
-    // Calculate average grade from deliveries
+    // Calculate average grade from deliveries — use numeric field
     const entregas = await this.prisma.lms_entregas.findMany({
       where: {
         usuario_guid,
         tarea_guid: { in: allResourceGuids },
         estado: 'CALIFICADA',
-        contenido_texto: { startsWith: 'NOTA:' },
+        calificacion: { not: null },
       },
-      select: { contenido_texto: true },
+      select: { calificacion: true },
     });
 
     let notaPromedio: number | null = null;
@@ -202,9 +202,8 @@ export class CertificadosService {
       let sum = 0;
       let count = 0;
       for (const e of entregas) {
-        const match = e.contenido_texto?.match(/NOTA:\s*([\d.]+)/);
-        if (match) {
-          sum += parseFloat(match[1]);
+        if (e.calificacion != null) {
+          sum += Number(e.calificacion);
           count++;
         }
       }
@@ -317,6 +316,44 @@ export class CertificadosService {
     }).catch((err) => this.logger.error('Certificate notification error:', err));
 
     return certificado;
+  }
+
+  /**
+   * Centralized method: after grading or resource completion, check if the student
+   * has now completed all requirements for a certificate.
+   * Called by EvaluacionesService, CursosService, and EstudiantesService.
+   */
+  async checkCertificateAfterGrading(usuario_guid: string, tarea_guid: string) {
+    // Find which course this task belongs to
+    const recurso = await this.prisma.lms_recursos.findUnique({
+      where: { guid: tarea_guid },
+      select: {
+        leccion: {
+          select: {
+            modulo: {
+              select: { curso_guid: true }
+            }
+          }
+        }
+      }
+    });
+    if (!recurso) return;
+
+    const curso_guid = recurso.leccion.modulo.curso_guid;
+
+    // Check if certificate already exists
+    const existing = await this.prisma.lms_certificados.findUnique({
+      where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
+    });
+    if (existing) return;
+
+    // Verify full completion + all tasks graded
+    const result = await this.verificarCursoCompleto(usuario_guid, curso_guid);
+    if (!result.completo || !result.puede_generar_certificado) return;
+
+    // All conditions met — auto-generate certificate!
+    await this.generarCertificado(usuario_guid, curso_guid);
+    this.logger.log(`Certificate auto-generated after grading for user ${usuario_guid} in course ${curso_guid}`);
   }
 
   /**

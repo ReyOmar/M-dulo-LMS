@@ -486,43 +486,61 @@ export class NotificacionesService {
 
     if (contactGuids.length === 0) return [];
 
-    // Fetch user info and last messages
-    const usuarios = await this.prisma.usuarios.findMany({
-      where: { guid: { in: contactGuids } },
-      select: { guid: true, nombre: true, apellido: true, email: true, rol: true },
-    });
-
-    // Get last message for each contact
-    const result: { guid: string; nombre: string; apellido: string; rol: string; ultimo_mensaje: string; ultimo_mensaje_fecha: string; no_leidos: number }[] = [];
-    for (const u of usuarios) {
-      const lastMsg = await this.prisma.lms_mensajes.findFirst({
+    // Batch: Fetch user info, all relevant messages, and unread counts in parallel
+    const [usuarios, allMessages, unreadCounts] = await Promise.all([
+      this.prisma.usuarios.findMany({
+        where: { guid: { in: contactGuids } },
+        select: { guid: true, nombre: true, apellido: true, email: true, rol: true },
+      }),
+      // Fetch all messages between current user and contacts (most recent first)
+      this.prisma.lms_mensajes.findMany({
         where: {
           OR: [
-            { remitente_guid: usuario_guid, destinatario_guid: u.guid },
-            { remitente_guid: u.guid, destinatario_guid: usuario_guid },
+            { remitente_guid: usuario_guid, destinatario_guid: { in: contactGuids } },
+            { remitente_guid: { in: contactGuids }, destinatario_guid: usuario_guid },
           ],
         },
         orderBy: { created_at: 'desc' },
-      });
-
-      const unreadCount = await this.prisma.lms_mensajes.count({
+        select: { remitente_guid: true, destinatario_guid: true, contenido: true, created_at: true },
+      }),
+      // Batch unread counts
+      this.prisma.lms_mensajes.groupBy({
+        by: ['remitente_guid'],
         where: {
-          remitente_guid: u.guid,
+          remitente_guid: { in: contactGuids },
           destinatario_guid: usuario_guid,
           leido: false,
         },
-      });
+        _count: true,
+      }),
+    ]);
 
-      result.push({
+    // Build lookup maps from batch results
+    const unreadMap = new Map<string, number>();
+    for (const uc of unreadCounts) {
+      unreadMap.set(uc.remitente_guid, uc._count);
+    }
+
+    const lastMsgMap = new Map<string, { contenido: string; created_at: Date }>();
+    for (const msg of allMessages) {
+      const contactGuid = msg.remitente_guid === usuario_guid ? msg.destinatario_guid : msg.remitente_guid;
+      if (!lastMsgMap.has(contactGuid)) {
+        lastMsgMap.set(contactGuid, { contenido: msg.contenido, created_at: msg.created_at });
+      }
+    }
+
+    const result = usuarios.map(u => {
+      const lastMsg = lastMsgMap.get(u.guid);
+      return {
         guid: u.guid,
         nombre: u.nombre,
         apellido: u.apellido,
         rol: u.rol,
         ultimo_mensaje: lastMsg?.contenido || '',
         ultimo_mensaje_fecha: lastMsg?.created_at?.toISOString() || new Date().toISOString(),
-        no_leidos: unreadCount,
-      });
-    }
+        no_leidos: unreadMap.get(u.guid) || 0,
+      };
+    });
 
     // Sort by last message date
     result.sort((a, b) => new Date(b.ultimo_mensaje_fecha).getTime() - new Date(a.ultimo_mensaje_fecha).getTime());

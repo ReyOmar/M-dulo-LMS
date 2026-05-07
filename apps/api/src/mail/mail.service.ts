@@ -78,7 +78,8 @@ export class MailService implements OnModuleInit {
   }
 
   /**
-   * Send an email. Returns silently if mail is not configured.
+   * Send an email with retry logic. Returns silently if mail is not configured.
+   * Retries up to 3 times with exponential backoff (1s, 2s, 4s).
    */
   async sendMail(to: string, subject: string, html: string): Promise<boolean> {
     if (!this.enabled || !this.transporter) {
@@ -86,24 +87,33 @@ export class MailService implements OnModuleInit {
       return false;
     }
 
-    try {
-      const info = await this.transporter.sendMail({
-        from: `"${this.fromName}" <${this.fromAddress}>`,
-        to,
-        subject,
-        html,
-      });
-      this.logger.log(`Email sent to ${to}: ${subject}`);
-      // Show preview URL for Ethereal (dev mode)
-      const previewUrl = nodemailer.getTestMessageUrl(info);
-      if (previewUrl) {
-        this.logger.debug(`Preview: ${previewUrl}`);
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const info = await this.transporter.sendMail({
+          from: `"${this.fromName}" <${this.fromAddress}>`,
+          to,
+          subject,
+          html,
+        });
+        this.logger.log(`Email sent to ${to}: ${subject}`);
+        // Show preview URL for Ethereal (dev mode)
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        if (previewUrl) {
+          this.logger.debug(`Preview: ${previewUrl}`);
+        }
+        return true;
+      } catch (err) {
+        if (attempt < MAX_RETRIES) {
+          const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+          this.logger.warn(`Email to ${to} failed (attempt ${attempt}/${MAX_RETRIES}), retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          this.logger.error(`Email to ${to} FAILED after ${MAX_RETRIES} attempts: ${(err as Error)?.message || err}`);
+        }
       }
-      return true;
-    } catch (err) {
-      this.logger.error(`Email error to ${to}:`, err);
-      return false;
     }
+    return false;
   }
 
   // ─── TEMPLATE RENDERING ──────────────────────────────────

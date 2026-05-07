@@ -11,6 +11,9 @@ export class MatriculasController {
   @Roles('ADMINISTRADOR')
   @Post('/seed-matriculas')
   async seedMatriculas() {
+    if (process.env.NODE_ENV === 'production') {
+      return { error: 'Este endpoint no está disponible en producción.' };
+    }
     return this.matriculasService.seedMatriculas();
   }
 

@@ -104,6 +104,7 @@ export class CursosService {
           orderBy: { orden: 'asc' },
           include: {
             lecciones: {
+              orderBy: { orden: 'asc' },
               include: {
                 recursos: {
                   orderBy: { orden: 'asc' }
@@ -388,10 +389,28 @@ export class CursosService {
   }
 
   async evaluarQuiz(recurso_guid: string, usuario_guid: string, respuestas: Record<string, string>) {
-    const bloque = await this.prisma.lms_recursos.findUnique({ where: { guid: recurso_guid } });
+    const bloque = await this.prisma.lms_recursos.findUnique({
+      where: { guid: recurso_guid },
+      include: {
+        leccion: {
+          select: {
+            modulo: {
+              select: {
+                curso: { select: { nota_aprobacion: true } }
+              }
+            }
+          }
+        }
+      }
+    });
     if (!bloque || bloque.tipo !== 'TAREA' || !bloque.quiz_config) {
       throw new BadRequestException('El recurso no es un cuestionario válido.');
     }
+
+    // Get the course's passing grade (defaults to 3.0 on scale 0-5)
+    const notaAprobacion = bloque.leccion?.modulo?.curso?.nota_aprobacion
+      ? Number(bloque.leccion.modulo.curso.nota_aprobacion)
+      : 3.0;
 
     let quizConfig: any;
     try { quizConfig = JSON.parse(bloque.quiz_config); } catch {
@@ -425,6 +444,8 @@ export class CursosService {
             data: {
                 estado: 'CALIFICADA',
                 fecha_entrega: new Date(),
+                calificacion: nota,
+                comentario_calificacion: `${correctas}/${total} correctas`,
                 contenido_texto: `NOTA: ${nota.toFixed(1)} | ${correctas}/${total} correctas`,
             }
         });
@@ -436,12 +457,14 @@ export class CursosService {
                 estado: 'CALIFICADA',
                 fecha_inicio: new Date(),
                 fecha_entrega: new Date(),
+                calificacion: nota,
+                comentario_calificacion: `${correctas}/${total} correctas`,
                 contenido_texto: `NOTA: ${nota.toFixed(1)} | ${correctas}/${total} correctas`,
             }
         });
     }
 
-    if (nota >= 3.0) {
+    if (nota >= notaAprobacion) {
         const existente = await this.prisma.lms_progreso_recurso.findFirst({
             where: { usuario_guid, recurso_guid }
         });
@@ -462,7 +485,7 @@ export class CursosService {
         });
 
         // ── Check if this quiz completes the course for certificate generation ──
-        this.checkCertificateAfterGrading(usuario_guid, recurso_guid).catch((err) => {
+        this.certificadosService.checkCertificateAfterGrading(usuario_guid, recurso_guid).catch((err) => {
           this.logger.error('Post-quiz certificate check error:', err?.message || err);
         });
     } else {
@@ -590,38 +613,5 @@ export class CursosService {
       fecha_inicio: inProgressAttempt?.fecha_inicio,
       puede_reintentar: !progreso && !inProgressAttempt,
     };
-  }
-
-  /**
-   * After grading a quiz, check if the student has now completed all requirements
-   * for a certificate (all resources done + all tasks graded).
-   */
-  private async checkCertificateAfterGrading(usuario_guid: string, recurso_guid: string) {
-    const recurso = await this.prisma.lms_recursos.findUnique({
-      where: { guid: recurso_guid },
-      select: {
-        leccion: {
-          select: {
-            modulo: {
-              select: { curso_guid: true }
-            }
-          }
-        }
-      }
-    });
-    if (!recurso) return;
-
-    const curso_guid = recurso.leccion.modulo.curso_guid;
-
-    const existing = await this.prisma.lms_certificados.findUnique({
-      where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
-    });
-    if (existing) return;
-
-    const result = await this.certificadosService.verificarCursoCompleto(usuario_guid, curso_guid);
-    if (!result.completo || !result.puede_generar_certificado) return;
-
-    await this.certificadosService.generarCertificado(usuario_guid, curso_guid);
-    this.logger.log(`Certificate auto-generated after quiz for user ${usuario_guid} in course ${curso_guid}`);
   }
 }

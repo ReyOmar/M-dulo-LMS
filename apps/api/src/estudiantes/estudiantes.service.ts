@@ -96,45 +96,11 @@ export class EstudiantesService {
 
     // ── Auto-detect course completion and generate certificate ──
     // Fire-and-forget: don't block the student's response
-    this.checkAndGenerateCertificate(usuario_guid, recurso_guid).catch((err) => {
+    this.certificadosService.checkCertificateAfterGrading(usuario_guid, recurso_guid).catch((err) => {
       this.logger.error('Auto-certificate check error:', err?.message || err);
     });
 
     return result;
-  }
-
-  /**
-   * Check if completing this resource means the entire course is done.
-   * If so, automatically generate the certificate (only if all tasks are graded).
-   */
-  private async checkAndGenerateCertificate(usuario_guid: string, recurso_guid: string) {
-    const recurso = await this.prisma.lms_recursos.findUnique({
-      where: { guid: recurso_guid },
-      select: {
-        leccion: {
-          select: {
-            modulo: {
-              select: { curso_guid: true }
-            }
-          }
-        }
-      }
-    });
-    if (!recurso) return;
-
-    const curso_guid = recurso.leccion.modulo.curso_guid;
-
-    const existingCert = await this.prisma.lms_certificados.findUnique({
-      where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
-    });
-    if (existingCert) return;
-
-    // Verify full course completion INCLUDING grading status
-    const result = await this.certificadosService.verificarCursoCompleto(usuario_guid, curso_guid);
-    if (!result.completo || !result.puede_generar_certificado) return;
-
-    await this.certificadosService.generarCertificado(usuario_guid, curso_guid);
-    this.logger.log(`Auto-generated certificate for user ${usuario_guid} in course ${curso_guid}`);
   }
 
   async getDiasActivos(usuario_guid: string, year: number, month: number) {

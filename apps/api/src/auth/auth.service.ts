@@ -124,44 +124,69 @@ export class AuthService {
     };
   }
 
+  /** Validates password strength: min 8 chars, at least one letter and one number */
+  private validatePasswordStrength(password: string): void {
+    if (!password || password.length < 8) {
+      throw new BadRequestException('La contraseña debe tener al menos 8 caracteres.');
+    }
+    if (!/[a-zA-Z]/.test(password)) {
+      throw new BadRequestException('La contraseña debe incluir al menos una letra.');
+    }
+    if (!/[0-9]/.test(password)) {
+      throw new BadRequestException('La contraseña debe incluir al menos un número.');
+    }
+  }
+
   async setupPassword(email: string, contrasenaTemporal: string, nuevaContrasena: string) {
+    this.validatePasswordStrength(nuevaContrasena);
+
     const user = await this.prisma.usuarios.findUnique({ where: { email } });
     if (!user) {
       throw new NotFoundException('Usuario no existe.');
     }
 
+    // Case 1: Account created by admin WITHOUT password (contrasena = NULL)
+    // Only require the temporary password input to match the system default
     if (!user.contrasena) {
-       throw new BadRequestException('La cuenta no tiene contraseña configurada. Contacte a soporte.');
-    }
+      const defaultPwd = await this.getDefaultPassword();
+      if (contrasenaTemporal !== defaultPwd) {
+        throw new UnauthorizedException('La contraseña temporal es incorrecta.');
+      }
+    } else {
+      // Case 2: Account has a hashed password — verify it
+      const isTempValid = await bcrypt.compare(contrasenaTemporal, user.contrasena);
+      if (!isTempValid) {
+        throw new UnauthorizedException('La contraseña temporal es incorrecta.');
+      }
 
-    // Verify the temporary password
-    const isTempValid = await bcrypt.compare(contrasenaTemporal, user.contrasena);
-    if (!isTempValid) {
-      throw new UnauthorizedException('La contraseña temporal es incorrecta.');
-    }
-
-    // Check if it's actually the default password (only allow setup if it is the default)
-    const defaultPwd = await this.getDefaultPassword();
-    const isDefault = await bcrypt.compare(defaultPwd, user.contrasena);
-    if (!isDefault) {
-      throw new BadRequestException('La cuenta ya tiene una contraseña personalizada y no es la temporal.');
+      // Only allow setup if the current password IS the default
+      if (!user.usa_clave_defecto) {
+        throw new BadRequestException('La cuenta ya tiene una contraseña personalizada. Usa la opción de cambiar contraseña desde tu perfil.');
+      }
     }
 
     const hashed = await bcrypt.hash(nuevaContrasena, 10);
-    await this.prisma.usuarios.update({
+    const updatedUser = await this.prisma.usuarios.update({
       where: { email },
-      data: { contrasena: hashed }
+      data: { contrasena: hashed, usa_clave_defecto: false }
     });
 
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_password_setup' });
 
-    return { message: 'Contraseña establecida exitosamente.' };
+    // Auto-login after successful password setup for smooth UX
+    const payload = { sub: updatedUser.guid, role: updatedUser.rol, email: updatedUser.email };
+    const token = await this.jwtService.signAsync(payload);
+
+    return {
+      message: 'Contraseña establecida exitosamente.',
+      token,
+      user: { guid: updatedUser.guid, role: updatedUser.rol, nombre: updatedUser.nombre, apellido: updatedUser.apellido }
+    };
   }
 
   // --- MÉTODOS DE ADMINISTRADOR ---
 
   async getAllUsers() {
-    const defaultPwd = await this.getDefaultPassword();
     const users = await this.prisma.usuarios.findMany({
       orderBy: { created_at: 'desc' },
       select: {
@@ -174,7 +199,7 @@ export class AuthService {
         created_at: true,
         updated_at: true,
         ultimo_acceso: true,
-        contrasena: true,
+        usa_clave_defecto: true,
         _count: {
           select: {
             cursos_impartidos: true,
@@ -184,23 +209,14 @@ export class AuthService {
       }
     });
 
-    return Promise.all(users.map(async user => {
-      const { contrasena, _count, activo: dbActivo, ...rest } = user;
-      const usa_clave_defecto = contrasena ? await bcrypt.compare(defaultPwd, contrasena) : true;
-      
-      let computedActivo = dbActivo;
-      if (user.rol === 'PROFESOR') {
-        computedActivo = _count.cursos_impartidos > 0;
-      } else if (user.rol === 'ESTUDIANTE') {
-        computedActivo = _count.matriculas > 0;
-      }
-
+    return users.map(user => {
+      const { _count, ...rest } = user;
       return {
         ...rest,
-        activo: computedActivo,
-        usa_clave_defecto
+        tiene_cursos: _count.cursos_impartidos,
+        tiene_matriculas: _count.matriculas,
       };
-    }));
+    });
   }
 
   async getAdminStats() {
@@ -328,11 +344,13 @@ export class AuthService {
 
     // Password change
     if (data.nueva_contrasena) {
+      this.validatePasswordStrength(data.nueva_contrasena);
       if (!data.contrasena_actual) throw new BadRequestException('Debes ingresar tu contraseña actual.');
       if (!user.contrasena) throw new BadRequestException('No tienes contraseña configurada.');
       const valid = await bcrypt.compare(data.contrasena_actual, user.contrasena);
       if (!valid) throw new BadRequestException('La contraseña actual es incorrecta.');
       updateData.contrasena = await bcrypt.hash(data.nueva_contrasena, 10);
+      updateData.usa_clave_defecto = false;
       // Force disconnect all active sessions so old tokens can't be reused
       this.lmsGateway.forceDisconnect(guid, 'password_changed');
     }

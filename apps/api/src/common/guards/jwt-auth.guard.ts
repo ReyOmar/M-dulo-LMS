@@ -9,6 +9,10 @@ import { TokenBlacklistService } from '../../auth/token-blacklist.service';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
+  // Throttle ultimo_acceso updates: max once every 5 minutes per user
+  private lastAccessUpdates = new Map<string, number>();
+  private static readonly ACCESS_UPDATE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
@@ -66,11 +70,16 @@ export class JwtAuthGuard implements CanActivate {
             // Sync role from DB (in case admin changed it)
             request.user = { ...payload, role: dbUser.rol };
 
-            // Update ultimo_acceso asynchronously without blocking the request
-            this.prisma.usuarios.update({
-              where: { guid: payload.sub },
-              data: { ultimo_acceso: new Date() }
-            }).catch(err => Logger.error("Error updating ultimo_acceso", err, 'JwtAuthGuard'));
+            // Throttled update: only write ultimo_acceso if >5min since last write
+            const now = Date.now();
+            const lastUpdate = this.lastAccessUpdates.get(payload.sub) || 0;
+            if (now - lastUpdate > JwtAuthGuard.ACCESS_UPDATE_INTERVAL_MS) {
+              this.lastAccessUpdates.set(payload.sub, now);
+              this.prisma.usuarios.update({
+                where: { guid: payload.sub },
+                data: { ultimo_acceso: new Date() }
+              }).catch(err => Logger.error("Error updating ultimo_acceso", err, 'JwtAuthGuard'));
+            }
           }
         }
       } catch (err) {

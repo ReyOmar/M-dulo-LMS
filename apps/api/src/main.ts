@@ -8,6 +8,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { WsAdapter } from '@nestjs/platform-ws';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import compress from '@fastify/compress';
 import multipart from '@fastify/multipart';
 import helmet from '@fastify/helmet';
@@ -48,10 +49,13 @@ async function bootstrap() {
   }
   
   app.setGlobalPrefix('api');
+  app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
     }),
   );
 

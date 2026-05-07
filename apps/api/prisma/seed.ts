@@ -2,6 +2,16 @@
 import { PrismaClient, lms_rol_usuario } from '@prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
+
+// ── Guard: Prevent accidental execution in production ──
+if (process.env.NODE_ENV === 'production') {
+  console.error('❌ SEED BLOCKED: Cannot run seed in production. Set NODE_ENV to "development" to proceed.');
+  process.exit(1);
+}
+
+// Generate strong random passwords for seed users
+const generatePassword = () => crypto.randomBytes(6).toString('base64url'); // ~8 chars, URL-safe
 
 // Parse DATABASE_URL: mysql://user:password@host:port/database
 function parseDbUrl(url: string) {
@@ -16,9 +26,13 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log('Seeding database with secure credentials...');
 
-  const adminPassword = await bcrypt.hash('admin123', 10);
-  const examPassword = await bcrypt.hash('exam123', 10);
-  const capaPassword = await bcrypt.hash('capa123', 10);
+  const adminPwd = generatePassword();
+  const examPwd = generatePassword();
+  const capaPwd = generatePassword();
+
+  const adminPassword = await bcrypt.hash(adminPwd, 10);
+  const examPassword = await bcrypt.hash(examPwd, 10);
+  const capaPassword = await bcrypt.hash(capaPwd, 10);
 
   const adminUser = await prisma.usuarios.upsert({
     where: { email: 'admin@pesv.com' },
@@ -230,9 +244,12 @@ async function main() {
   }
 
   console.log('--- CREDENCIALES GENERADAS EXITOSAMENTE ---');
-  console.log(`ADMIN: ${adminUser.email} / admin123`);
-  console.log(`SUPERVISOR: ${teacherUser.email} / exam123`);
-  console.log(`CAPACITADO: ${studentUser.email} / capa123`);
+  console.log('⚠️  GUARDE ESTAS CONTRASEÑAS — No se pueden recuperar.');
+  console.log(`ADMIN: ${adminUser.email} / ${adminPwd}`);
+  console.log(`SUPERVISOR: ${teacherUser.email} / ${examPwd}`);
+  console.log(`CAPACITADO: ${studentUser.email} / ${capaPwd}`);
+  console.log('---');
+  console.log('Nota: Estos usuarios deberán cambiar su contraseña en el primer inicio de sesión.');
 }
 
 main()

@@ -38,6 +38,7 @@ model usuarios {
   mensajes_recibidos  lms_mensajes[] @relation("mensajes_recibidos")
 
   ultimo_acceso     DateTime?
+  usa_clave_defecto Boolean         @default(true)
 
   // Firma del examinador/instructor (para certificados)
   firma_url         String?
@@ -95,9 +96,10 @@ enum lms_tipo_notificacion {
 }
 
 enum lms_escala_calificacion {
+  NUMERICA   // 0.0-5.0 (default)
   PORCENTAJE // 0-100
-  PUNTOS // ej. 0-50
-  LETRAS // A, B, C, D, F
+  PUNTOS     // ej. 0-50
+  LETRAS     // A, B, C, D, F
 }
 
 enum lms_tipo_matricula {
@@ -140,8 +142,8 @@ model lms_cursos {
   max_estudiantes   Int?
 
   // Reglas de Negocio
-  escala            lms_escala_calificacion @default(PORCENTAJE)
-  nota_aprobacion   Decimal            @default(60.0)
+  escala            lms_escala_calificacion @default(NUMERICA)
+  nota_aprobacion   Decimal            @default(3.0) // Mínima para aprobar en escala 0.0-5.0
   orden_estricto    Boolean            @default(true) // Fuerza linealidad (no saltar)
   emite_certificado Boolean            @default(true)
 
@@ -231,12 +233,16 @@ model lms_entregas {
   fecha_inicio    DateTime?            // Para tracking de tiempo en examen
   fecha_entrega   DateTime?
   contenido_texto String?              @db.Text
+  calificacion    Decimal?             // Nota numérica (ej. 4.5) — reemplaza parseo de contenido_texto
+  comentario_calificacion String?      @db.Text // Comentario del examinador al calificar
   ip_address      String?
 
   created_at      DateTime             @default(now())
   updated_at      DateTime             @updatedAt
 
   @@index([usuario_guid])
+  @@index([tarea_guid])
+  @@index([tarea_guid, usuario_guid])
 }
 
 // ── PROGRESO Y MATRÍCULAS ──

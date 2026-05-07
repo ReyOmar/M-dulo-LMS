@@ -102,13 +102,18 @@ export default function LoginPage() {
       setErrorMsg("");
 
       try {
-        await api.post("/auth/establecer-password", { email, contrasenaTemporal: password, nuevaContrasena: newPassword });
-  
-        // Iniciar sesión automáticamente después de establecerla
-        const { data } = await api.post("/auth/login", { email, contrasena: newPassword });
-        syncSession(data.token, data.user);
-        setRedirecting(true);
-        router.push("/dashboard");
+        // Backend now returns token + user directly from setup (auto-login)
+        const { data } = await api.post("/auth/establecer-password", { email, contrasenaTemporal: password, nuevaContrasena: newPassword });
+        
+        if (data.token && data.user) {
+          syncSession(data.token, data.user);
+          showAlert.success("¡Contraseña establecida!", "Tu contraseña ha sido configurada exitosamente.");
+          setRedirecting(true);
+          router.push("/dashboard");
+        } else {
+          showAlert.success("Contraseña establecida", data.message || "Ahora puedes iniciar sesión con tu nueva contraseña.");
+          handleGoToLogin();
+        }
 
       } catch (err: any) {
           if (err.response?.status === 429) {

@@ -125,7 +125,7 @@ export class DashboardsService {
       this.prisma.usuarios.findMany({ where: { rol: 'ESTUDIANTE', activo: true }, select: { guid: true } }),
       this.prisma.lms_cursos.count({ where: { estado: 'PUBLICADO' } }),
       this.prisma.lms_cursos.count({ where: { estado: 'BORRADOR' } }),
-      this.prisma.lms_entregas.findMany({ where: { estado: 'CALIFICADA' }, select: { contenido_texto: true } }),
+      this.prisma.lms_entregas.findMany({ where: { estado: 'CALIFICADA', calificacion: { not: null } }, select: { calificacion: true } }),
       this.prisma.lms_matriculas.count(),
       this.prisma.lms_cursos.findMany({ where: { estado: 'PUBLICADO' }, select: { guid: true, titulo: true } }),
       this.prisma.lms_matriculas.findMany({ select: { usuario_guid: true, curso_guid: true } }),
@@ -148,12 +148,12 @@ export class DashboardsService {
     }).length || profesores.length; // fallback
     const estudiantesActivos = [...estudGuids].filter(g => matriculasByUser.has(g)).length;
 
-    // Average grades from calificadas
+    // Average grades from calificadas — use numeric field directly
     let sumaNotas = 0, countNotas = 0;
     for (const e of entregasCalificadas) {
-      if (e.contenido_texto?.startsWith('NOTA:')) {
-        const nota = parseFloat(e.contenido_texto.replace('NOTA: ', '').split('|')[0].trim());
-        if (!isNaN(nota)) { sumaNotas += nota; countNotas++; }
+      if (e.calificacion != null) {
+        sumaNotas += Number(e.calificacion);
+        countNotas++;
       }
     }
     const promedioGlobal = countNotas > 0 ? Math.round((sumaNotas / countNotas) * 10) / 10 : 0;

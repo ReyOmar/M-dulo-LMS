@@ -139,29 +139,17 @@ export class CursosController {
   }
 
   @Post('/student/quiz/:bloque_guid/start')
-  async startQuiz(@Param('bloque_guid') bloque_guid: string, @Query('usuario_guid') usuario_guid: string, @CurrentUser() user: JwtPayload) {
-    const finalGuid = user.sub || usuario_guid;
-    if (!finalGuid) {
-        throw new BadRequestException('usuario_guid es requerido.');
-    }
-    return this.cursosService.startQuiz(bloque_guid, finalGuid);
+  async startQuiz(@Param('bloque_guid') bloque_guid: string, @CurrentUser() user: JwtPayload) {
+    return this.cursosService.startQuiz(bloque_guid, user.sub);
   }
 
   @Post('/student/quiz/:bloque_guid/submit')
-  async submitQuiz(@Param('bloque_guid') bloque_guid: string, @Body() body: any, @Query('usuario_guid') usuario_guid: string, @CurrentUser() user: JwtPayload) {
-    const finalGuid = user.sub || usuario_guid;
-    if (!finalGuid) {
-        throw new BadRequestException('usuario_guid es requerido.');
-    }
-    return this.cursosService.evaluarQuiz(bloque_guid, finalGuid, body.respuestas || {});
+  async submitQuiz(@Param('bloque_guid') bloque_guid: string, @Body() body: any, @CurrentUser() user: JwtPayload) {
+    return this.cursosService.evaluarQuiz(bloque_guid, user.sub, body.respuestas || {});
   }
 
   @Get('/student/quiz/:bloque_guid/status')
-  async getQuizStatus(@Param('bloque_guid') bloque_guid: string, @Query('usuario_guid') usuario_guid: string, @CurrentUser() user: JwtPayload) {
-    const finalGuid = user.sub || usuario_guid;
-    if (!finalGuid) {
-        throw new BadRequestException('usuario_guid es requerido.');
-    }
-    return this.cursosService.getQuizStatus(bloque_guid, finalGuid);
+  async getQuizStatus(@Param('bloque_guid') bloque_guid: string, @CurrentUser() user: JwtPayload) {
+    return this.cursosService.getQuizStatus(bloque_guid, user.sub);
   }
 }
