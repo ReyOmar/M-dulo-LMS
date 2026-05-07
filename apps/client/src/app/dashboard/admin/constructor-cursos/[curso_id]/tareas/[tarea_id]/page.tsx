@@ -6,6 +6,10 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { ArrowLeft, Save, Type, Calendar, Link as LinkIcon, Paperclip, Upload, X, ShieldCheck, UploadCloud, Loader2 } from "lucide-react";
 import api, { API_BASE_URL } from "@/lib/api";
 import { useAlert } from "@/contexts/AlertContext";
+import dynamic from 'next/dynamic';
+import 'react-quill-new/dist/quill.snow.css';
+
+const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
 export default function ConfigurarTareaPage() {
   const { curso_id, tarea_id } = useParams();
@@ -131,18 +135,15 @@ export default function ConfigurarTareaPage() {
             <h2 className="font-bold">Instrucciones de la Actividad</h2>
           </div>
           <div className="p-6 space-y-4">
-            <div className="flex gap-2 bg-muted p-2 rounded-xl w-fit">
-              <button onClick={() => setHtmlContent(htmlContent + '<b>Negrita</b>')} className="px-3 py-1 bg-background rounded font-bold text-sm shadow-sm border border-border">B</button>
-              <button onClick={() => setHtmlContent(htmlContent + '<i>Cursiva</i>')} className="px-3 py-1 bg-background rounded italic text-sm shadow-sm border border-border">I</button>
-              <button onClick={() => setHtmlContent(htmlContent + '<ul><li>Item 1</li></ul>')} className="px-3 py-1 bg-background rounded text-sm shadow-sm border border-border">Lista</button>
-              <button onClick={() => setHtmlContent(htmlContent + '<h3>Subtítulo</h3>')} className="px-3 py-1 bg-background rounded text-sm shadow-sm border border-border font-semibold">H3</button>
+            <div className="bg-background rounded-xl border border-border/50 mt-4">
+              <ReactQuill 
+                theme="snow"
+                value={htmlContent}
+                onChange={setHtmlContent}
+                className="h-[300px]"
+                placeholder="Escribe las instrucciones detalladas de la tarea aquí..."
+              />
             </div>
-            <textarea
-              className="w-full h-64 p-4 border border-border rounded-xl resize-y focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-mono bg-background"
-              placeholder="Escribe las instrucciones detalladas de la tarea aquí..."
-              value={htmlContent}
-              onChange={(e) => setHtmlContent(e.target.value)}
-            />
             <p className="text-xs text-muted-foreground font-medium">Puedes usar HTML para dar formato visual a las instrucciones que verán los estudiantes.</p>
           </div>
         </div>

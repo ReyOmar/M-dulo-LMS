@@ -662,7 +662,7 @@ export default function CursoVisorPage() {
                       await fetchProgreso();
                       if (success === false && curso && selectedRecurso) {
                         for (const m of curso.modulos) {
-                          if (m.lecciones.some(l => l.recursos.some(r => r.guid === selectedRecurso.guid))) {
+                          if (m.lecciones.some((l: any) => l.recursos.some((r: any) => r.guid === selectedRecurso.guid))) {
                             const firstResource = m.lecciones[0]?.recursos[0];
                             if (firstResource) {
                               setSelectedRecurso(firstResource);

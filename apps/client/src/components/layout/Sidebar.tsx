@@ -2,7 +2,7 @@
 
 import { useRole, Role } from "@/contexts/RoleContext";
 import { useConfig } from "@/contexts/ConfigContext";
-import { GraduationCap, BookOpen, Clock, Award, Shield, Settings, Users, ArrowRight, Compass, ShieldAlert, BarChart3, Presentation, BookCheck, ClipboardList, LogOut, CheckCircle, Palette, ChevronUp, ClipboardCheck, MessageSquare, FileSignature, Globe } from "lucide-react";
+import { GraduationCap, BookOpen, Clock, Award, Shield, Settings, Users, ArrowRight, Compass, ShieldAlert, BarChart3, Presentation, BookCheck, ClipboardList, LogOut, CheckCircle, Palette, ChevronUp, ClipboardCheck, MessageSquare, FileSignature, Globe, Mail } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -10,6 +10,7 @@ import { UserSettingsModal } from "@/components/features/UserSettingsModal";
 import { useState, useRef, useEffect } from "react";
 import api from "@/lib/api";
 import { useWS } from "@/contexts/WebSocketContext";
+import { NotificationCenter } from "@/components/features/NotificationCenter";
 
 export function Sidebar() {
   const { role, realRole, simulatedRole, setSimulatedRole, user, logout } = useRole();
@@ -112,15 +113,18 @@ export function Sidebar() {
 
   return (
     <>
-      <aside className="w-80 border-r border-border bg-card flex flex-col fixed h-full z-10 transition-all">
-        <div className="h-20 flex items-center px-6 border-b border-border/40 shrink-0">
-          <div className="flex items-center gap-2 font-bold text-lg text-primary">
+      <aside className="w-80 border-r border-border bg-card flex flex-col fixed h-full z-[100] transition-all">
+        <div className="h-20 flex items-center justify-between px-6 border-b border-border/40 shrink-0 gap-2">
+          <div className="flex items-center gap-2 font-bold text-lg text-primary overflow-hidden flex-1">
             {config?.logo_url ? (
-               <img src={config.logo_url} alt="Logo" className="max-h-12 max-w-[40px] object-contain" />
+               <img src={config.logo_url} alt="Logo" className="max-h-12 max-w-[40px] object-contain shrink-0" />
             ) : (
-               <GraduationCap className="h-6 w-6 text-primary" />
+               <GraduationCap className="h-6 w-6 text-primary shrink-0" />
             )}
             <span className={config?.logo_url ? "hidden sm:inline truncate" : "truncate"}>{config?.nombre_plataforma || 'PESV Education'} {simulatedRole && "(Simulado)"}</span>
+          </div>
+          <div className="shrink-0 flex items-center">
+            <NotificationCenter />
           </div>
         </div>
         
@@ -223,6 +227,9 @@ export function Sidebar() {
                       </Link>
                       <Link href="/dashboard/admin/landing-config" className={linkClass('/dashboard/admin/landing-config')}>
                           <Globe className="h-4 w-4" /> Landing Page
+                      </Link>
+                      <Link href="/dashboard/admin/correos" className={linkClass('/dashboard/admin/correos')}>
+                          <Mail className="h-4 w-4" /> Correos y Eventos
                       </Link>
                   </div>
               </>

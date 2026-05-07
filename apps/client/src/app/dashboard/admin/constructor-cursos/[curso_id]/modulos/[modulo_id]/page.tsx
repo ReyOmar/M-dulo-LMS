@@ -7,6 +7,10 @@ import { ArrowLeft, Plus, Image as ImageIcon, Type, FileText, CheckCircle, Uploa
 import Link from "next/link";
 import api, { API_BASE_URL } from "@/lib/api";
 import { useAlert } from "@/contexts/AlertContext";
+import dynamic from 'next/dynamic';
+import 'react-quill-new/dist/quill.snow.css';
+
+const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
 export default function ModuleEditorPage() {
   const { curso_id, modulo_id } = useParams();
@@ -321,17 +325,15 @@ export default function ModuleEditorPage() {
                       <button onClick={() => { setActiveModal(null); setEditingBlockId(null); }} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
                   </div>
                   <div className="p-6 flex-1 bg-white dark:bg-card">
-                      <div className="flex gap-2 mb-2 p-2 bg-muted rounded-xl">
-                          <button onClick={() => setBloqueHtml(bloqueHtml + '<b>Texto Bold</b>')} className="px-3 py-1 bg-background rounded font-bold text-sm shadow-smborder border-border">B</button>
-                          <button onClick={() => setBloqueHtml(bloqueHtml + '<i>Cursiva</i>')} className="px-3 py-1 bg-background rounded italic text-sm shadow-sm border border-border">I</button>
-                          <button onClick={() => setBloqueHtml(bloqueHtml + '<ul><li>Punto 1</li></ul>')} className="px-3 py-1 bg-background rounded text-sm shadow-sm border border-border">Lista</button>
+                      <div className="bg-background rounded-xl border border-border/50">
+                          <ReactQuill 
+                              theme="snow"
+                              value={bloqueHtml}
+                              onChange={setBloqueHtml}
+                              className="h-64"
+                              placeholder="Escribe tu contenido aquí..."
+                          />
                       </div>
-                      <textarea 
-                          className="w-full h-64 p-4 border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-mono"
-                          placeholder="Escribe tu contenido HTML o texto aquí..."
-                          value={bloqueHtml}
-                          onChange={(e) => setBloqueHtml(e.target.value)}
-                      />
                   </div>
                   <div className="p-4 border-t border-border flex justify-end gap-3 bg-muted/10">
                       <button onClick={() => { setActiveModal(null); setEditingBlockId(null); }} className="px-4 py-2 font-bold text-muted-foreground hover:bg-muted rounded-lg">Cancelar</button>

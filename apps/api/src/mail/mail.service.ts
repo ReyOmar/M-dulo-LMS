@@ -1,6 +1,9 @@
+// Prisma TS Server Refresh Trigger
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { PrismaService } from '../prisma/prisma.service';
+import { ConfiguracionService } from '../configuracion/configuracion.service';
 
 @Injectable()
 export class MailService implements OnModuleInit {
@@ -10,7 +13,11 @@ export class MailService implements OnModuleInit {
   private appUrl: string;
   private enabled: boolean = false;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private prisma: PrismaService,
+    private configuracionService: ConfiguracionService
+  ) {
     this.fromAddress = this.configService.get<string>('SMTP_FROM') || 'noreply@lms.local';
     this.fromName = this.configService.get<string>('SMTP_FROM_NAME') || 'Campus Virtual';
     this.appUrl = this.configService.get<string>('APP_URL') || 'http://localhost:3100';
@@ -52,6 +59,23 @@ export class MailService implements OnModuleInit {
     }
   }
 
+  // ─── API METHODS ─────────────────────────────────────────
+
+  async getAllEventos() {
+    return this.prisma.lms_eventos_correo.findMany({
+      include: {
+        plantillas: true,
+      },
+    });
+  }
+
+  async updateTemplate(id: number, dto: { asunto?: string, cuerpo_html?: string, activo?: boolean }) {
+    return this.prisma.lms_plantillas_correo.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
   /**
    * Send an email. Returns silently if mail is not configured.
    */
@@ -81,199 +105,105 @@ export class MailService implements OnModuleInit {
     }
   }
 
+  // ─── TEMPLATE RENDERING ──────────────────────────────────
+
+  private async renderTemplate(identificador: string, variables: Record<string, string | number>) {
+    const evento = await this.prisma.lms_eventos_correo.findUnique({
+      where: { identificador },
+      include: { plantillas: { where: { activo: true } } },
+    });
+
+    if (!evento || evento.plantillas.length === 0) return null;
+
+    const plantilla = evento.plantillas[0]; // take the first active
+    let html = plantilla.cuerpo_html;
+    let asunto = plantilla.asunto;
+
+    for (const [key, value] of Object.entries(variables)) {
+      const regex = new RegExp(`{{${key}}}`, 'g');
+      html = html.replace(regex, String(value));
+      asunto = asunto.replace(regex, String(value));
+    }
+
+    return { html: await this.wrapTemplate(html), asunto };
+  }
+
   // ─── TEMPLATE METHODS ────────────────────────────────────
 
-  /**
-   * Send password recovery email with a reset link.
-   */
   async sendPasswordResetEmail(email: string, token: string, nombre: string) {
     const resetUrl = `${this.appUrl}/restablecer-contrasena?token=${token}`;
-    const html = this.wrapTemplate(`
-      <h2 style="color:#1e293b;margin:0 0 16px">Recuperar Contraseña</h2>
-      <p style="color:#64748b;font-size:15px;line-height:1.6">
-        Hola <strong>${nombre}</strong>, recibimos una solicitud para restablecer tu contraseña.
-      </p>
-      <p style="color:#64748b;font-size:15px;line-height:1.6">
-        Haz clic en el siguiente botón para crear una nueva contraseña:
-      </p>
-      <div style="text-align:center;margin:32px 0">
-        <a href="${resetUrl}" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">
-          Restablecer Contraseña
-        </a>
-      </div>
-      <p style="color:#94a3b8;font-size:13px;line-height:1.6">
-        Si no solicitaste este cambio, ignora este correo. El enlace expira en 1 hora.
-      </p>
-      <p style="color:#94a3b8;font-size:12px;margin-top:24px;word-break:break-all">
-        Link directo: <a href="${resetUrl}" style="color:#4f46e5">${resetUrl}</a>
-      </p>
-    `);
-    return this.sendMail(email, 'Recuperar Contraseña - Campus Virtual', html);
+    const rendered = await this.renderTemplate('RECUPERAR_PASSWORD', { nombre, resetUrl });
+    if (!rendered) return false;
+    return this.sendMail(email, rendered.asunto, rendered.html);
   }
 
-  /**
-   * Send grade notification email.
-   */
   async sendGradeNotification(email: string, nombre: string, tarea: string, calificacion: number) {
     const emoji = calificacion >= 3.0 ? '🎉' : '⚠️';
-    const html = this.wrapTemplate(`
-      <h2 style="color:#1e293b;margin:0 0 16px">${emoji} Calificación Recibida</h2>
-      <p style="color:#64748b;font-size:15px;line-height:1.6">
-        Hola <strong>${nombre}</strong>, tu entrega en <strong>"${tarea}"</strong> ha sido calificada.
-      </p>
-      <div style="text-align:center;margin:24px 0;padding:20px;background:#f1f5f9;border-radius:12px">
-        <span style="font-size:36px;font-weight:800;color:${calificacion >= 3.0 ? '#10b981' : '#ef4444'}">${calificacion.toFixed(1)}</span>
-        <span style="font-size:18px;color:#94a3b8">/5.0</span>
-      </div>
-      ${calificacion < 3.0 ? '<p style="color:#ef4444;font-size:14px;font-weight:600">Debes subir un nuevo documento para mejorar tu nota.</p>' : '<p style="color:#10b981;font-size:14px;font-weight:600">¡Buen trabajo! Sigue así.</p>'}
-      <div style="text-align:center;margin:24px 0">
-        <a href="${this.appUrl}/dashboard" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:12px 32px;border-radius:12px;text-decoration:none;font-size:14px">
-          Ir al Campus
-        </a>
-      </div>
-    `);
-    return this.sendMail(email, `Calificación: ${tarea} — ${calificacion.toFixed(1)}/5.0`, html);
+    const mensaje_aprobacion = calificacion < 3.0 ? '<p style="color:#ef4444;font-size:14px;font-weight:600">Debes subir un nuevo documento para mejorar tu nota.</p>' : '<p style="color:#10b981;font-size:14px;font-weight:600">¡Buen trabajo! Sigue así.</p>';
+    const rendered = await this.renderTemplate('CALIFICACION_RECIBIDA', { nombre, tarea, calificacion, emoji, mensaje_aprobacion, url_campus: `${this.appUrl}/dashboard` });
+    if (!rendered) return false;
+    return this.sendMail(email, rendered.asunto, rendered.html);
   }
 
-  /**
-   * Send inactivity reminder email.
-   */
   async sendInactivityReminder(email: string, nombre: string, diasInactivo: number) {
-    const html = this.wrapTemplate(`
-      <h2 style="color:#1e293b;margin:0 0 16px">🔔 Te extrañamos, ${nombre}</h2>
-      <p style="color:#64748b;font-size:15px;line-height:1.6">
-        Han pasado <strong>${diasInactivo} días</strong> sin que accedas a la plataforma de capacitación.
-      </p>
-      <p style="color:#64748b;font-size:15px;line-height:1.6">
-        Tu progreso es importante. ¡Vuelve y continúa tu aprendizaje!
-      </p>
-      <div style="text-align:center;margin:32px 0">
-        <a href="${this.appUrl}/dashboard" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">
-          Retomar Capacitación
-        </a>
-      </div>
-    `);
-    return this.sendMail(email, `Recordatorio: Llevas ${diasInactivo} días sin acceder`, html);
+    const rendered = await this.renderTemplate('RECORDATORIO_INACTIVIDAD', { nombre, diasInactivo, url_campus: `${this.appUrl}/dashboard` });
+    if (!rendered) return false;
+    return this.sendMail(email, rendered.asunto, rendered.html);
   }
 
-  /**
-   * Send course reactivated notification.
-   */
   async sendCourseReactivated(email: string, nombre: string, cursoTitulo: string) {
-    const html = this.wrapTemplate(`
-      <h2 style="color:#1e293b;margin:0 0 16px">✅ Curso Reactivado</h2>
-      <p style="color:#64748b;font-size:15px;line-height:1.6">
-        Hola <strong>${nombre}</strong>, el curso <strong>"${cursoTitulo}"</strong> que estaba en mantenimiento ya está disponible nuevamente.
-      </p>
-      <div style="text-align:center;margin:32px 0">
-        <a href="${this.appUrl}/dashboard" style="display:inline-block;background:#10b981;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">
-          Continuar Curso
-        </a>
-      </div>
-    `);
-    return this.sendMail(email, `Curso Reactivado: ${cursoTitulo}`, html);
+    const rendered = await this.renderTemplate('CURSO_REACTIVADO', { nombre, cursoTitulo, url_campus: `${this.appUrl}/dashboard` });
+    if (!rendered) return false;
+    return this.sendMail(email, rendered.asunto, rendered.html);
   }
 
-  /**
-   * Send admin notification about new access request.
-   */
   async sendNewAccessRequest(adminEmail: string, adminNombre: string, solicitante: { nombre: string; apellido: string; email: string; rol_pedido: string }) {
     const rolLabel = solicitante.rol_pedido === 'ESTUDIANTE' ? 'Capacitante' : solicitante.rol_pedido === 'PROFESOR' ? 'Examinador' : 'Administrador';
-    const html = this.wrapTemplate(`
-      <h2 style="color:#1e293b;margin:0 0 16px">📋 Nueva Solicitud de Acceso</h2>
-      <p style="color:#64748b;font-size:15px;line-height:1.6">
-        Hola <strong>${adminNombre}</strong>, hay una nueva solicitud de acceso pendiente de aprobación.
-      </p>
-      <div style="background:#f1f5f9;border-radius:12px;padding:20px;margin:20px 0">
-        <table style="width:100%;border-collapse:collapse;font-size:14px">
-          <tr><td style="padding:6px 0;color:#94a3b8;width:100px">Nombre:</td><td style="padding:6px 0;color:#1e293b;font-weight:600">${solicitante.nombre} ${solicitante.apellido}</td></tr>
-          <tr><td style="padding:6px 0;color:#94a3b8">Email:</td><td style="padding:6px 0;color:#1e293b;font-weight:600">${solicitante.email}</td></tr>
-          <tr><td style="padding:6px 0;color:#94a3b8">Cargo:</td><td style="padding:6px 0;color:#1e293b;font-weight:600">${rolLabel}</td></tr>
-        </table>
-      </div>
-      <div style="text-align:center;margin:24px 0">
-        <a href="${this.appUrl}/dashboard/admin/solicitudes" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">
-          Revisar Solicitud
-        </a>
-      </div>
-    `);
-    return this.sendMail(adminEmail, `Nueva Solicitud: ${solicitante.nombre} ${solicitante.apellido}`, html);
+    const solicitanteNombre = `${solicitante.nombre} ${solicitante.apellido}`;
+    const rendered = await this.renderTemplate('NUEVA_SOLICITUD_ACCESO', { adminNombre, solicitanteNombre, solicitanteEmail: solicitante.email, solicitanteRol: rolLabel, url_solicitudes: `${this.appUrl}/dashboard/admin/solicitudes` });
+    if (!rendered) return false;
+    return this.sendMail(adminEmail, rendered.asunto, rendered.html);
   }
 
-  /**
-   * Send examiner notification about new submission.
-   */
   async sendNewSubmissionNotification(examinerEmail: string, examinerNombre: string, estudiante: string, tarea: string, curso: string) {
-    const html = this.wrapTemplate(`
-      <h2 style="color:#1e293b;margin:0 0 16px">📝 Nueva Entrega Recibida</h2>
-      <p style="color:#64748b;font-size:15px;line-height:1.6">
-        Hola <strong>${examinerNombre}</strong>, <strong>${estudiante}</strong> ha enviado una entrega para revisar.
-      </p>
-      <div style="background:#f1f5f9;border-radius:12px;padding:20px;margin:20px 0">
-        <table style="width:100%;border-collapse:collapse;font-size:14px">
-          <tr><td style="padding:6px 0;color:#94a3b8;width:100px">Tarea:</td><td style="padding:6px 0;color:#1e293b;font-weight:600">${tarea}</td></tr>
-          <tr><td style="padding:6px 0;color:#94a3b8">Curso:</td><td style="padding:6px 0;color:#1e293b;font-weight:600">${curso}</td></tr>
-          <tr><td style="padding:6px 0;color:#94a3b8">Estudiante:</td><td style="padding:6px 0;color:#1e293b;font-weight:600">${estudiante}</td></tr>
-        </table>
-      </div>
-      <div style="text-align:center;margin:24px 0">
-        <a href="${this.appUrl}/dashboard/examiner/calificaciones" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">
-          Ir a Calificaciones
-        </a>
-      </div>
-    `);
-    return this.sendMail(examinerEmail, `Nueva Entrega: ${tarea} — ${estudiante}`, html);
+    const rendered = await this.renderTemplate('NUEVA_ENTREGA', { examinerNombre, estudiante, tarea, curso, url_calificaciones: `${this.appUrl}/dashboard/examiner/calificaciones` });
+    if (!rendered) return false;
+    return this.sendMail(examinerEmail, rendered.asunto, rendered.html);
   }
 
-  /**
-   * Send quiz failure + module reset notification.
-   */
   async sendQuizFailedModuleReset(email: string, nombre: string, quizTitulo: string, moduloTitulo: string, nota: number) {
-    const html = this.wrapTemplate(`
-      <h2 style="color:#1e293b;margin:0 0 16px">🔄 Módulo Reiniciado</h2>
-      <p style="color:#64748b;font-size:15px;line-height:1.6">
-        Hola <strong>${nombre}</strong>, no superaste el cuestionario <strong>"${quizTitulo}"</strong>.
-      </p>
-      <div style="text-align:center;margin:24px 0;padding:20px;background:#fef2f2;border-radius:12px">
-        <span style="font-size:36px;font-weight:800;color:#ef4444">${nota.toFixed(1)}</span>
-        <span style="font-size:18px;color:#94a3b8">/5.0</span>
-      </div>
-      <p style="color:#64748b;font-size:15px;line-height:1.6">
-        Has sido devuelto al inicio del módulo <strong>"${moduloTitulo}"</strong>. Debes repasar todo el contenido antes de volver a intentar el cuestionario.
-      </p>
-      <p style="color:#10b981;font-size:14px;font-weight:600">
-        ✅ Tus entregas de archivos ya completadas se mantienen.
-      </p>
-      <div style="text-align:center;margin:32px 0">
-        <a href="${this.appUrl}/dashboard" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">
-          Repasar Módulo
-        </a>
-      </div>
-    `);
-    return this.sendMail(email, `Módulo Reiniciado: ${moduloTitulo}`, html);
+    const rendered = await this.renderTemplate('MODULO_REINICIADO', { nombre, quizTitulo, moduloTitulo, nota, url_campus: `${this.appUrl}/dashboard` });
+    if (!rendered) return false;
+    return this.sendMail(email, rendered.asunto, rendered.html);
   }
 
   /**
-   * Wrap content in a styled email template.
+   * Wrap content in a styled email template dynamically using DB config.
    */
-  private wrapTemplate(content: string): string {
+  private async wrapTemplate(content: string): Promise<string> {
+    const config = await this.configuracionService.getConfig();
+    const colorPrimario = config?.color_primario || '#4f46e5';
+    const titulo = config?.nombre_plataforma || 'Campus Virtual';
+    const logoHtml = config?.logo_url ? `<img src="${config.logo_url}" alt="${titulo}" style="max-height:40px;vertical-align:middle" />` : `<h1 style="color:#ffffff;font-size:18px;margin:0;font-weight:700">${titulo}</h1>`;
+
     return `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f8fafc">
   <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06)">
-    <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:28px 32px">
-      <h1 style="color:#ffffff;font-size:18px;margin:0;font-weight:700">Campus Virtual</h1>
+    <div style="background:${colorPrimario};padding:28px 32px">
+      ${logoHtml}
     </div>
     <div style="padding:32px">
       ${content}
     </div>
     <div style="padding:20px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center">
-      <p style="color:#94a3b8;font-size:12px;margin:0">Este es un correo automático, por favor no respondas directamente.</p>
+      <p style="color:#94a3b8;font-size:12px;margin:0">Este es un correo automático de ${titulo}, por favor no respondas directamente.</p>
     </div>
   </div>
 </body>
 </html>`;
   }
 }
+

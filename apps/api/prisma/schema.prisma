@@ -447,3 +447,27 @@ model lms_contacto_chat {
   @@index([receptor_guid])
   @@index([solicitante_guid])
 }
+
+// ── PLANTILLAS DE CORREO ──
+
+model lms_eventos_correo {
+  id               Int      @id @default(autoincrement())
+  identificador    String   @unique // Ej: 'RECUPERAR_PASSWORD', 'NUEVA_ENTREGA'
+  nombre_legible   String   
+  descripcion      String
+  variables        String   // JSON array de variables permitidas ej: ["nombre", "token", "curso"]
+  plantillas       lms_plantillas_correo[]
+}
+
+model lms_plantillas_correo {
+  id               Int      @id @default(autoincrement())
+  evento_id        Int
+  evento           lms_eventos_correo @relation(fields: [evento_id], references: [id], onDelete: Cascade)
+  nombre_interno   String   // Para que el admin lo identifique
+  asunto           String
+  cuerpo_html      String
+  activo           Boolean  @default(true)
+  es_sistema       Boolean  @default(false) // Las de sistema no se pueden borrar
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+}

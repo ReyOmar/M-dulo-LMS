@@ -167,7 +167,7 @@ export function NotificationCenter() {
 
       {/* Notification Panel */}
       {open && (
-        <div className="absolute right-0 top-12 w-[380px] max-h-[520px] bg-card border border-border rounded-2xl shadow-2xl z-50 overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
+        <div className="absolute -left-10 sm:left-0 top-14 w-[320px] sm:w-[380px] max-h-[520px] bg-card border border-border rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] z-[99999] overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-card to-muted/30">
             <div className="flex items-center gap-2">

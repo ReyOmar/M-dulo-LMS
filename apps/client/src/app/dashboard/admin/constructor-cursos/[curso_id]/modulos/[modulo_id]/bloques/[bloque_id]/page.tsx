@@ -8,6 +8,10 @@ import api, { API_BASE_URL } from "@/lib/api";
 import { useAlert } from "@/contexts/AlertContext";
 import { useWS } from "@/contexts/WebSocketContext";
 import { useRole } from "@/contexts/RoleContext";
+import dynamic from 'next/dynamic';
+import 'react-quill-new/dist/quill.snow.css';
+
+const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
 // Types
 interface QuizOption { id: string; texto: string; es_correcta: boolean; }
@@ -284,17 +288,15 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-2">
                                 {bloque.tipo === 'TEXTO' ? 'Contenido del Párrafo' : isQuiz ? 'Instrucciones del Cuestionario' : 'Instrucciones para la Tarea'}
                             </label>
-                            <div className="flex gap-2 mb-2 p-2 bg-muted rounded-xl">
-                                <button type="button" onClick={() => setContenidoHtml(contenidoHtml + '<b>Texto Bold</b>')} className="px-3 py-1 bg-background rounded font-bold text-sm shadow-sm border border-border hover:bg-border/50">B</button>
-                                <button type="button" onClick={() => setContenidoHtml(contenidoHtml + '<i>Cursiva</i>')} className="px-3 py-1 bg-background rounded italic text-sm shadow-sm border border-border hover:bg-border/50">I</button>
-                                <button type="button" onClick={() => setContenidoHtml(contenidoHtml + '<ul><li>Punto 1</li></ul>')} className="px-3 py-1 bg-background rounded text-sm shadow-sm border border-border hover:bg-border/50">Lista</button>
+                            <div className="bg-background rounded-xl border border-border/50 flex-1 flex flex-col mt-2">
+                                <ReactQuill 
+                                    theme="snow"
+                                    value={contenidoHtml}
+                                    onChange={setContenidoHtml}
+                                    className="flex-1 min-h-[250px]"
+                                    placeholder={bloque.tipo === 'TEXTO' ? "Escribe tu contenido aquí..." : "Escribe las instrucciones detalladas..."}
+                                />
                             </div>
-                            <textarea 
-                                className="w-full flex-1 p-5 border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-sm leading-relaxed min-h-[200px]"
-                                placeholder={bloque.tipo === 'TEXTO' ? "Escribe tu contenido HTML o texto aquí..." : "Escribe las instrucciones detalladas..."}
-                                value={contenidoHtml}
-                                onChange={(e) => setContenidoHtml(e.target.value)}
-                            />
                         </div>
                     )}
 

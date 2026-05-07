@@ -112,3 +112,44 @@ input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
     display: none;
 }
+
+/* Ocultar barras de desplazamiento (scrollbars) manteniendo la funcionalidad de scroll */
+::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  background: transparent;
+}
+
+* {
+  scrollbar-width: none;
+}
+
+/* ReactQuill overrides for dark mode compatibility and height */
+.ql-toolbar {
+  @apply !bg-muted/30 !border-border/50 !rounded-t-xl;
+}
+.ql-container {
+  @apply !border-border/50 !rounded-b-xl !text-foreground !font-sans;
+}
+.ql-editor {
+  @apply !min-h-[200px] !max-h-[60vh] !overflow-y-auto;
+}
+.dark .ql-snow .ql-stroke {
+  stroke: hsl(var(--foreground)) !important;
+}
+.dark .ql-snow .ql-fill {
+  fill: hsl(var(--foreground)) !important;
+}
+.dark .ql-snow .ql-picker {
+  color: hsl(var(--foreground)) !important;
+}
+/* Fix Quill Dropdowns */
+.ql-snow .ql-picker-options {
+  @apply !bg-card !border !border-border !rounded-lg !shadow-xl !z-[9999];
+}
+.ql-snow .ql-picker-item {
+  @apply !text-foreground hover:!text-primary;
+}
+.ql-snow .ql-picker-item.ql-selected {
+  @apply !text-primary !font-bold;
+}
