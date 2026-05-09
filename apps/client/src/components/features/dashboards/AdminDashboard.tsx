@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { BookOpen, Users, Award, GraduationCap, AlertCircle, TrendingUp } from "lucide-react";
-import { PageLoader } from "@/components/ui/PageLoader";
-import { StatCard } from "@/components/ui/StatCard";
+import { useEffect, useState } from 'react';
+import { BookOpen, Users, Award, GraduationCap, AlertCircle, TrendingUp } from 'lucide-react';
+import { PageLoader } from '@/components/ui/PageLoader';
+import { StatCard } from '@/components/ui/StatCard';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import api from "@/lib/api";
-import { useWS } from "@/contexts/WebSocketContext";
-import { useRole } from "@/contexts/RoleContext";
+import api from '@/lib/api';
+import { useWS } from '@/contexts/WebSocketContext';
+import { useRole } from '@/contexts/RoleContext';
 
 // Dynamically import Recharts to avoid SSR issues
-const AreaChart = dynamic(() => import('recharts').then(m => m.AreaChart), { ssr: false });
-const Area = dynamic(() => import('recharts').then(m => m.Area), { ssr: false });
-const XAxis = dynamic(() => import('recharts').then(m => m.XAxis), { ssr: false });
-const YAxis = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false });
-const Tooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false });
-const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
-const PieChart = dynamic(() => import('recharts').then(m => m.PieChart), { ssr: false });
-const Pie = dynamic(() => import('recharts').then(m => m.Pie), { ssr: false });
-const Cell = dynamic(() => import('recharts').then(m => m.Cell), { ssr: false });
+const AreaChart = dynamic(() => import('recharts').then((m) => m.AreaChart), { ssr: false });
+const Area = dynamic(() => import('recharts').then((m) => m.Area), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then((m) => m.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then((m) => m.YAxis), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then((m) => m.Tooltip), { ssr: false });
+const ResponsiveContainer = dynamic(() => import('recharts').then((m) => m.ResponsiveContainer), { ssr: false });
+const PieChart = dynamic(() => import('recharts').then((m) => m.PieChart), { ssr: false });
+const Pie = dynamic(() => import('recharts').then((m) => m.Pie), { ssr: false });
+const Cell = dynamic(() => import('recharts').then((m) => m.Cell), { ssr: false });
 
 // Chart colors using the transport palette
 const CHART_COLORS = {
@@ -33,9 +33,9 @@ const CHART_COLORS = {
 
 function getGreeting(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return "Buenos días";
-  if (hour < 18) return "Buenas tardes";
-  return "Buenas noches";
+  if (hour < 12) return 'Buenos días';
+  if (hour < 18) return 'Buenas tardes';
+  return 'Buenas noches';
 }
 
 export function AdminDashboard() {
@@ -48,8 +48,14 @@ export function AdminDashboard() {
 
   const fetchDashboardData = () => {
     Promise.all([
-      api.get('/auth/solicitudes').then(r => r.data).catch(() => []),
-      api.get('/dashboards/admin/dashboard-stats').then(r => r.data).catch(() => null)
+      api
+        .get('/auth/solicitudes')
+        .then((r) => r.data)
+        .catch(() => []),
+      api
+        .get('/dashboards/admin/dashboard-stats')
+        .then((r) => r.data)
+        .catch(() => null),
     ]).then(([solicitudes, dashStats]) => {
       const pending = Array.isArray(solicitudes) ? solicitudes.filter((s: any) => s.estado === 'PENDIENTE').length : 0;
       setSolicitudesPendientes(pending);
@@ -61,11 +67,11 @@ export function AdminDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-    
+
     // Subscribe to events that should trigger a dashboard refresh
     const unsubscribeRefresh = subscribe('dashboard:refresh', fetchDashboardData);
     const unsubscribeReq = subscribe('request:new', fetchDashboardData);
-    
+
     return () => {
       unsubscribeRefresh();
       unsubscribeReq();
@@ -90,8 +96,12 @@ export function AdminDashboard() {
         </div>
         {/* Skeleton KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="rounded-2xl border border-border/50 p-6 space-y-3" style={{ animationDelay: `${i * 80}ms` }}>
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="rounded-2xl border border-border/50 p-6 space-y-3"
+              style={{ animationDelay: `${i * 80}ms` }}
+            >
               <div className="flex items-center justify-between">
                 <div className="h-10 w-10 rounded-xl bg-muted animate-shimmer" />
                 <div className="h-4 w-16 rounded bg-muted animate-shimmer" />
@@ -124,9 +134,7 @@ export function AdminDashboard() {
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-10">
         <div>
           <p className="text-sm font-medium text-muted-foreground mb-1">{getGreeting()},</p>
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-            {user?.nombre || 'Administrador'}
-          </h1>
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">{user?.nombre || 'Administrador'}</h1>
           <p className="text-muted-foreground text-sm mt-1">Panel de control de la plataforma</p>
         </div>
         <div className="flex items-center gap-2 bg-card border border-border/50 px-3 py-1.5 rounded-full shadow-sm">
@@ -136,7 +144,15 @@ export function AdminDashboard() {
           </span>
           <p className="text-xs text-muted-foreground font-medium">
             <span className="text-foreground font-semibold">
-              {lastUpdated ? lastUpdated.toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true }) : '...'}
+              {lastUpdated
+                ? lastUpdated.toLocaleString('es-ES', {
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true,
+                  })
+                : '...'}
             </span>
           </p>
         </div>
@@ -151,7 +167,7 @@ export function AdminDashboard() {
           color="primary"
           trend={{
             value: stats?.usuarios?.estudiantes || 0,
-            label: `${stats?.usuarios?.estudiantes || 0} estudiantes · ${stats?.usuarios?.profesores || 0} profesores`
+            label: `${stats?.usuarios?.estudiantes || 0} estudiantes · ${stats?.usuarios?.profesores || 0} profesores`,
           }}
           href="/dashboard/admin/usuarios"
           className="stagger-1 animate-fade-slide-in"
@@ -163,7 +179,7 @@ export function AdminDashboard() {
           color="info"
           trend={{
             value: stats?.cursos?.publicados || 0,
-            label: `${stats?.cursos?.publicados || 0} publicados · ${stats?.cursos?.borrador || 0} borrador`
+            label: `${stats?.cursos?.publicados || 0} publicados · ${stats?.cursos?.borrador || 0} borrador`,
           }}
           href="/dashboard/constructor-cursos"
           className="stagger-2 animate-fade-slide-in"
@@ -172,10 +188,10 @@ export function AdminDashboard() {
           label="Solicitudes Pendientes"
           value={solicitudesPendientes}
           icon={<AlertCircle className="h-5 w-5" />}
-          color={solicitudesPendientes > 0 ? "warning" : "success"}
+          color={solicitudesPendientes > 0 ? 'warning' : 'success'}
           trend={{
             value: solicitudesPendientes > 0 ? -1 : 1,
-            label: solicitudesPendientes > 0 ? 'Requieren revisión' : 'Todo al día'
+            label: solicitudesPendientes > 0 ? 'Requieren revisión' : 'Todo al día',
           }}
           href="/dashboard/admin/solicitudes"
           className="stagger-3 animate-fade-slide-in"
@@ -188,7 +204,14 @@ export function AdminDashboard() {
           color="accent"
           trend={{
             value: (stats?.promedioGlobal || 0) >= 3 ? 1 : -1,
-            label: stats?.promedioGlobal >= 4 ? 'Excelente rendimiento' : stats?.promedioGlobal >= 3 ? 'Buen rendimiento' : stats?.promedioGlobal > 0 ? 'Necesita mejora' : 'Sin calificaciones'
+            label:
+              stats?.promedioGlobal >= 4
+                ? 'Excelente rendimiento'
+                : stats?.promedioGlobal >= 3
+                  ? 'Buen rendimiento'
+                  : stats?.promedioGlobal > 0
+                    ? 'Necesita mejora'
+                    : 'Sin calificaciones',
           }}
           className="stagger-4 animate-fade-slide-in"
         />
@@ -196,7 +219,6 @@ export function AdminDashboard() {
 
       {/* ── Charts Row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-        
         {/* Weekly Activity Chart — 2 columns */}
         <div className="lg:col-span-2 relative overflow-hidden rounded-2xl border border-border/50 p-6 shadow-sm bg-card/70 backdrop-blur-md stagger-5 animate-fade-slide-in">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent pointer-events-none" />
@@ -228,8 +250,17 @@ export function AdminDashboard() {
                       <stop offset="100%" stopColor={CHART_COLORS.success} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <XAxis
+                    dataKey="day"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  />
                   <Tooltip
                     contentStyle={{
                       background: 'hsl(var(--card))',
@@ -239,8 +270,20 @@ export function AdminDashboard() {
                       fontSize: '13px',
                     }}
                   />
-                  <Area type="monotone" dataKey="sesiones" stroke={CHART_COLORS.primary} strokeWidth={2.5} fill="url(#gradSesiones)" />
-                  <Area type="monotone" dataKey="entregas" stroke={CHART_COLORS.success} strokeWidth={2} fill="url(#gradEntregas)" />
+                  <Area
+                    type="monotone"
+                    dataKey="sesiones"
+                    stroke={CHART_COLORS.primary}
+                    strokeWidth={2.5}
+                    fill="url(#gradSesiones)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="entregas"
+                    stroke={CHART_COLORS.success}
+                    strokeWidth={2}
+                    fill="url(#gradEntregas)"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -287,13 +330,19 @@ export function AdminDashboard() {
                 {/* Legend */}
                 <div className="space-y-2 mt-4">
                   {courseDistribution.map((c: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between text-xs group/item hover:bg-muted/30 rounded-lg px-2 py-1 transition-colors">
+                    <div
+                      key={i}
+                      className="flex items-center justify-between text-xs group/item hover:bg-muted/30 rounded-lg px-2 py-1 transition-colors"
+                    >
                       <div className="flex items-center gap-2">
                         <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: c.color }} />
                         <span className="font-medium text-foreground">{c.name}</span>
                       </div>
                       <span className="font-bold text-muted-foreground group-hover/item:text-foreground transition-colors">
-                        {c.value} <span className="font-normal">({totalMatriculas > 0 ? Math.round(c.value / totalMatriculas * 100) : 0}%)</span>
+                        {c.value}{' '}
+                        <span className="font-normal">
+                          ({totalMatriculas > 0 ? Math.round((c.value / totalMatriculas) * 100) : 0}%)
+                        </span>
                       </span>
                     </div>
                   ))}
@@ -308,7 +357,6 @@ export function AdminDashboard() {
           </div>
         </div>
       </div>
-
     </div>
   );
 }

@@ -1,15 +1,34 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, FileText, Type, CheckCircle, Trophy, Lock, PlayCircle, Paperclip, UploadCloud, Loader2, ExternalLink, AlertTriangle, Award, Sparkles, Download, Clock, Eye } from "lucide-react";
-import { PageLoader } from "@/components/ui/PageLoader";
-import Link from "next/link";
-import api, { API_BASE_URL } from "@/lib/api";
-import { useWS } from "@/contexts/WebSocketContext";
-import { sanitizeHTML } from "@/lib/sanitize";
-import QuizPlayer from "@/components/quiz/QuizPlayer";
-import AssignmentPlayer from "@/components/tareas/AssignmentPlayer";
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import {
+  ArrowLeft,
+  BookOpen,
+  FileText,
+  Type,
+  CheckCircle,
+  Trophy,
+  Lock,
+  PlayCircle,
+  Paperclip,
+  UploadCloud,
+  Loader2,
+  ExternalLink,
+  AlertTriangle,
+  Award,
+  Sparkles,
+  Download,
+  Clock,
+  Eye,
+} from 'lucide-react';
+import { PageLoader } from '@/components/ui/PageLoader';
+import Link from 'next/link';
+import api, { API_BASE_URL } from '@/lib/api';
+import { useWS } from '@/contexts/WebSocketContext';
+import { sanitizeHTML } from '@/lib/sanitize';
+import QuizPlayer from '@/components/quiz/QuizPlayer';
+import AssignmentPlayer from '@/components/tareas/AssignmentPlayer';
 
 export default function CursoVisorPage() {
   const { curso_id } = useParams();
@@ -24,7 +43,9 @@ export default function CursoVisorPage() {
   const [inMaintenance, setInMaintenance] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationData, setCelebrationData] = useState<{ curso_titulo: string } | null>(null);
-  const [tareasPendientes, setTareasPendientes] = useState<{ recurso_guid: string; tarea_titulo: string; fecha_entrega: string }[]>([]);
+  const [tareasPendientes, setTareasPendientes] = useState<
+    { recurso_guid: string; tarea_titulo: string; fecha_entrega: string }[]
+  >([]);
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [courseCompleted, setCourseCompleted] = useState(false);
   const [viewOnlyMode, setViewOnlyMode] = useState(false);
@@ -36,20 +57,22 @@ export default function CursoVisorPage() {
   const { subscribe, maintenanceCourses } = useWS();
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("lms_user");
+    const savedUser = localStorage.getItem('lms_user');
     if (savedUser) {
-      try { setUserGuid(JSON.parse(savedUser).guid); } catch {}
+      try {
+        setUserGuid(JSON.parse(savedUser).guid);
+      } catch {}
     }
   }, []);
 
   useEffect(() => {
     if (!curso_id) return;
-    
+
     fetchCurso();
 
     const unsub1 = subscribe('course:updated', fetchCurso);
     const unsub2 = subscribe('dashboard:refresh', fetchCurso);
-    
+
     return () => {
       unsub1();
       unsub2();
@@ -58,7 +81,7 @@ export default function CursoVisorPage() {
 
   useEffect(() => {
     if (!curso_id || !userGuid) return;
-    
+
     fetchProgreso();
 
     const unsub1 = subscribe('submission:graded', fetchProgreso);
@@ -69,7 +92,7 @@ export default function CursoVisorPage() {
       }
     });
     const unsub4 = subscribe('submission:new', fetchProgreso);
-    
+
     return () => {
       unsub1();
       unsub2();
@@ -116,7 +139,10 @@ export default function CursoVisorPage() {
         fetchCurso();
       }
     });
-    return () => { unsub(); unsub2(); };
+    return () => {
+      unsub();
+      unsub2();
+    };
   }, [subscribe, curso_id]);
 
   // Heartbeat for active time tracking
@@ -161,7 +187,9 @@ export default function CursoVisorPage() {
 
       // Check if course has a certificate (already completed)
       try {
-        const verifRes = await api.get(`/estudiantes/student/certificados/verificar/${curso_id}?usuario_guid=${userGuid}`);
+        const verifRes = await api.get(
+          `/estudiantes/student/certificados/verificar/${curso_id}?usuario_guid=${userGuid}`,
+        );
         const verifData = verifRes.data;
         if (verifData.completo && verifData.puede_generar_certificado) {
           // Check if certificate actually exists
@@ -182,18 +210,18 @@ export default function CursoVisorPage() {
     }
   };
 
-  const marcarCompletado = useCallback(async (recurso_guid: string) => {
-    if (!userGuid || completados.includes(recurso_guid)) return;
-    try {
-      await api.post(`/estudiantes/student/completar-recurso?usuario_guid=${userGuid}`, { recurso_guid });
-      setCompletados(prev => [...prev, recurso_guid]);
-    } catch (err) {
-      console.error(err);
-    }
-  }, [userGuid, completados]);
-
-
-
+  const marcarCompletado = useCallback(
+    async (recurso_guid: string) => {
+      if (!userGuid || completados.includes(recurso_guid)) return;
+      try {
+        await api.post(`/estudiantes/student/completar-recurso?usuario_guid=${userGuid}`, { recurso_guid });
+        setCompletados((prev) => [...prev, recurso_guid]);
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    [userGuid, completados],
+  );
 
   // Helper to ensure URLs are absolute
   const ensureAbsoluteUrl = (url: string) => {
@@ -226,7 +254,7 @@ export default function CursoVisorPage() {
   };
 
   const isRecursoCompleted = (guid: string) => completados.includes(guid);
-  const isRecursoPendingGrading = (guid: string) => tareasPendientes.some(t => t.recurso_guid === guid);
+  const isRecursoPendingGrading = (guid: string) => tareasPendientes.some((t) => t.recurso_guid === guid);
 
   const handleSelectRecurso = (recurso: any, moduloGuid: string, moduleIndex: number, resourceIndex: number) => {
     if (!isRecursoUnlocked(moduleIndex, resourceIndex)) return;
@@ -284,17 +312,15 @@ export default function CursoVisorPage() {
   useEffect(() => {
     if (!curso || !progresoLoaded || pendingModalShownRef.current || celebrationShownRef.current) return;
     const allRecursos = (curso.modulos || []).flatMap((m: any) =>
-      (m.lecciones || []).flatMap((l: any) => l.recursos || [])
+      (m.lecciones || []).flatMap((l: any) => l.recursos || []),
     );
     if (allRecursos.length === 0) return;
 
     // A resource is "done from the student's side" if:
     // - It's in completados (graded/completed), OR
     // - It has a pending submission (student uploaded their work)
-    const pendingGuids = new Set(tareasPendientes.map(t => t.recurso_guid));
-    const allDoneOrSubmitted = allRecursos.every((r: any) =>
-      completados.includes(r.guid) || pendingGuids.has(r.guid)
-    );
+    const pendingGuids = new Set(tareasPendientes.map((t) => t.recurso_guid));
+    const allDoneOrSubmitted = allRecursos.every((r: any) => completados.includes(r.guid) || pendingGuids.has(r.guid));
 
     if (allDoneOrSubmitted && tareasPendientes.length > 0) {
       pendingModalShownRef.current = true;
@@ -305,9 +331,12 @@ export default function CursoVisorPage() {
   const getRecursoIcon = (recurso: any, completed: boolean, locked: boolean) => {
     if (locked) return <Lock className="h-4 w-4 text-muted-foreground/50" />;
     if (recurso.tipo === 'TEXTO') return <Type className={`h-4 w-4 ${completed ? 'text-emerald-500' : ''}`} />;
-    if (recurso.tipo === 'ENLACE') return <PlayCircle className={`h-4 w-4 ${completed ? 'text-emerald-500' : 'text-pink-500'}`} />;
-    if (recurso.tipo === 'TAREA' && recurso.titulo?.startsWith('[QUIZ]')) return <CheckCircle className={`h-4 w-4 ${completed ? 'text-emerald-500' : 'text-amber-500'}`} />;
-    if (recurso.tipo === 'TAREA') return <FileText className={`h-4 w-4 ${completed ? 'text-emerald-500' : 'text-blue-500'}`} />;
+    if (recurso.tipo === 'ENLACE')
+      return <PlayCircle className={`h-4 w-4 ${completed ? 'text-emerald-500' : 'text-pink-500'}`} />;
+    if (recurso.tipo === 'TAREA' && recurso.titulo?.startsWith('[QUIZ]'))
+      return <CheckCircle className={`h-4 w-4 ${completed ? 'text-emerald-500' : 'text-amber-500'}`} />;
+    if (recurso.tipo === 'TAREA')
+      return <FileText className={`h-4 w-4 ${completed ? 'text-emerald-500' : 'text-blue-500'}`} />;
     return <BookOpen className="h-4 w-4" />;
   };
 
@@ -330,7 +359,9 @@ export default function CursoVisorPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold">Curso no encontrado</h1>
-        <Link href="/dashboard" className="mt-4 text-primary font-bold">Volver al inicio</Link>
+        <Link href="/dashboard" className="mt-4 text-primary font-bold">
+          Volver al inicio
+        </Link>
       </div>
     );
   }
@@ -345,7 +376,8 @@ export default function CursoVisorPage() {
           </div>
           <h1 className="text-3xl font-black mb-4 text-foreground tracking-tight">Curso en Mantenimiento</h1>
           <p className="text-muted-foreground mb-2 text-lg leading-relaxed">
-            El administrador o examinador ha iniciado un período de mantenimiento para el curso <strong className="text-foreground">{curso.titulo}</strong>.
+            El administrador o examinador ha iniciado un período de mantenimiento para el curso{' '}
+            <strong className="text-foreground">{curso.titulo}</strong>.
           </p>
           <p className="text-muted-foreground mb-10 text-sm">
             Todos los contenidos se conservan intactos. Vuelve más tarde cuando el curso sea publicado de nuevo.
@@ -374,7 +406,10 @@ export default function CursoVisorPage() {
             <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-primary/5 rounded-full" />
 
             <div className="relative z-10">
-              <div className="w-24 h-24 bg-gradient-to-br from-emerald-500/20 to-primary/20 rounded-full flex items-center justify-center mx-auto mb-5 ring-4 ring-background shadow-xl" style={{ animation: 'bounce 2s infinite' }}>
+              <div
+                className="w-24 h-24 bg-gradient-to-br from-emerald-500/20 to-primary/20 rounded-full flex items-center justify-center mx-auto mb-5 ring-4 ring-background shadow-xl"
+                style={{ animation: 'bounce 2s infinite' }}
+              >
                 <Trophy className="h-12 w-12 text-emerald-500" />
               </div>
               <div className="flex items-center justify-center gap-2 mb-3">
@@ -382,18 +417,15 @@ export default function CursoVisorPage() {
                 <h1 className="text-2xl font-black text-foreground">¡Curso Finalizado!</h1>
                 <Sparkles className="h-5 w-5 text-amber-500" />
               </div>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Ya completaste exitosamente el curso
-              </p>
-              <p className="text-emerald-600 dark:text-emerald-400 font-bold text-lg mt-1">
-                {curso.titulo}
-              </p>
+              <p className="text-muted-foreground text-sm leading-relaxed">Ya completaste exitosamente el curso</p>
+              <p className="text-emerald-600 dark:text-emerald-400 font-bold text-lg mt-1">{curso.titulo}</p>
             </div>
           </div>
 
           <div className="p-8 text-center">
             <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
-              Tu certificado de finalización ya fue generado. Puedes descargarlo o revisitar el contenido del curso en modo de solo lectura.
+              Tu certificado de finalización ya fue generado. Puedes descargarlo o revisitar el contenido del curso en
+              modo de solo lectura.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -445,81 +477,89 @@ export default function CursoVisorPage() {
       )}
       {/* Top Navbar */}
       {!isQuizActive && (
-          <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50 h-16 flex items-center px-6 shrink-0">
-            <Link href="/dashboard/student/cursos" className="p-2 hover:bg-muted rounded-full transition-colors mr-4">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div className="flex-1 truncate font-bold text-lg">{curso.titulo}</div>
-          </header>
+        <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50 h-16 flex items-center px-6 shrink-0">
+          <Link href="/dashboard/student/cursos" className="p-2 hover:bg-muted rounded-full transition-colors mr-4">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div className="flex-1 truncate font-bold text-lg">{curso.titulo}</div>
+        </header>
       )}
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar — Module & Resource List */}
         {!isQuizActive && (
-            <div className="w-[320px] bg-card border-r border-border overflow-y-auto flex flex-col shrink-0">
-          <div className="p-4 border-b border-border">
-            <h2 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Temario del Curso</h2>
-          </div>
-          <div className="p-3 space-y-2 flex-1">
-            {modulos.map((mod: any, mi: number) => {
-              const unlocked = isModuloUnlocked(mi);
-              const recursos = mod.lecciones?.[0]?.recursos || [];
-              const allCompleted = recursos.length > 0 && recursos.every((r: any) => completados.includes(r.guid));
+          <div className="w-[320px] bg-card border-r border-border overflow-y-auto flex flex-col shrink-0">
+            <div className="p-4 border-b border-border">
+              <h2 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Temario del Curso</h2>
+            </div>
+            <div className="p-3 space-y-2 flex-1">
+              {modulos.map((mod: any, mi: number) => {
+                const unlocked = isModuloUnlocked(mi);
+                const recursos = mod.lecciones?.[0]?.recursos || [];
+                const allCompleted = recursos.length > 0 && recursos.every((r: any) => completados.includes(r.guid));
 
-              return (
-                <div key={mod.guid} className="rounded-xl border border-border/50 overflow-hidden">
-                  {/* Module header */}
-                  <div className={`flex items-center gap-2 p-3 text-sm font-bold ${!unlocked ? 'opacity-50' : allCompleted ? 'text-emerald-600' : ''}`}>
-                    {!unlocked ? (
-                      <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
-                    ) : allCompleted ? (
-                      <Trophy className="h-4 w-4 text-emerald-500 shrink-0" />
-                    ) : (
-                      <BookOpen className="h-4 w-4 text-primary shrink-0" />
-                    )}
-                    <span className="truncate flex-1">{mod.titulo}</span>
-                  </div>
-
-                  {/* Resources */}
-                  {unlocked && (
-                    <div className="border-t border-border/30 bg-background px-2 py-1 space-y-0.5">
-                      {recursos.map((r: any, ri: number) => {
-                        const rUnlocked = isRecursoUnlocked(mi, ri);
-                        const rCompleted = isRecursoCompleted(r.guid);
-                        const isSelected = selectedRecurso?.guid === r.guid;
-                        const displayTitle = r.titulo?.startsWith('[QUIZ]') ? r.titulo.replace('[QUIZ] ', '') : r.titulo;
-
-                        return (
-                          <div
-                            key={r.guid}
-                            onClick={() => handleSelectRecurso(r, mod.guid, mi, ri)}
-                            className={`flex items-center gap-2 p-2 rounded-lg text-sm transition-colors ${
-                              !rUnlocked
-                                ? 'opacity-40 cursor-not-allowed'
-                                : isSelected
-                                  ? 'bg-primary/10 text-primary font-bold cursor-pointer'
-                                  : 'hover:bg-muted cursor-pointer text-foreground'
-                            }`}
-                          >
-                            {getRecursoIcon(r, rCompleted, !rUnlocked)}
-                            <span className={`truncate flex-1 ${rCompleted && !isRecursoPendingGrading(r.guid) ? 'italic line-through text-muted-foreground' : ''}`}>
-                              {displayTitle}
-                            </span>
-                            {rCompleted && isRecursoPendingGrading(r.guid) ? (
-                              <span title="Pendiente de calificación"><Clock className="h-3 w-3 text-amber-500 shrink-0" /></span>
-                            ) : rCompleted ? (
-                              <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
-                            ) : null}
-                          </div>
-                        );
-                      })}
+                return (
+                  <div key={mod.guid} className="rounded-xl border border-border/50 overflow-hidden">
+                    {/* Module header */}
+                    <div
+                      className={`flex items-center gap-2 p-3 text-sm font-bold ${!unlocked ? 'opacity-50' : allCompleted ? 'text-emerald-600' : ''}`}
+                    >
+                      {!unlocked ? (
+                        <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
+                      ) : allCompleted ? (
+                        <Trophy className="h-4 w-4 text-emerald-500 shrink-0" />
+                      ) : (
+                        <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                      )}
+                      <span className="truncate flex-1">{mod.titulo}</span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+
+                    {/* Resources */}
+                    {unlocked && (
+                      <div className="border-t border-border/30 bg-background px-2 py-1 space-y-0.5">
+                        {recursos.map((r: any, ri: number) => {
+                          const rUnlocked = isRecursoUnlocked(mi, ri);
+                          const rCompleted = isRecursoCompleted(r.guid);
+                          const isSelected = selectedRecurso?.guid === r.guid;
+                          const displayTitle = r.titulo?.startsWith('[QUIZ]')
+                            ? r.titulo.replace('[QUIZ] ', '')
+                            : r.titulo;
+
+                          return (
+                            <div
+                              key={r.guid}
+                              onClick={() => handleSelectRecurso(r, mod.guid, mi, ri)}
+                              className={`flex items-center gap-2 p-2 rounded-lg text-sm transition-colors ${
+                                !rUnlocked
+                                  ? 'opacity-40 cursor-not-allowed'
+                                  : isSelected
+                                    ? 'bg-primary/10 text-primary font-bold cursor-pointer'
+                                    : 'hover:bg-muted cursor-pointer text-foreground'
+                              }`}
+                            >
+                              {getRecursoIcon(r, rCompleted, !rUnlocked)}
+                              <span
+                                className={`truncate flex-1 ${rCompleted && !isRecursoPendingGrading(r.guid) ? 'italic line-through text-muted-foreground' : ''}`}
+                              >
+                                {displayTitle}
+                              </span>
+                              {rCompleted && isRecursoPendingGrading(r.guid) ? (
+                                <span title="Pendiente de calificación">
+                                  <Clock className="h-3 w-3 text-amber-500 shrink-0" />
+                                </span>
+                              ) : rCompleted ? (
+                                <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
         )}
 
         {/* Main Content Panel */}
@@ -535,32 +575,55 @@ export default function CursoVisorPage() {
               {/* Resource Title */}
               <div className="mb-8 pb-6 border-b border-border">
                 <span className="text-primary font-bold tracking-widest uppercase text-xs mb-2 block">
-                  {selectedRecurso.tipo === 'TEXTO' ? 'LECTURA' : selectedRecurso.tipo === 'ENLACE' ? 'VIDEO' : selectedRecurso.tipo === 'TAREA' && selectedRecurso.titulo?.startsWith('[QUIZ]') ? 'CUESTIONARIO' : 'TAREA'}
+                  {selectedRecurso.tipo === 'TEXTO'
+                    ? 'LECTURA'
+                    : selectedRecurso.tipo === 'ENLACE'
+                      ? 'VIDEO'
+                      : selectedRecurso.tipo === 'TAREA' && selectedRecurso.titulo?.startsWith('[QUIZ]')
+                        ? 'CUESTIONARIO'
+                        : 'TAREA'}
                 </span>
                 <h2 className="text-2xl lg:text-3xl font-bold">
-                  {selectedRecurso.titulo?.startsWith('[QUIZ]') ? selectedRecurso.titulo.replace('[QUIZ] ', '') : selectedRecurso.titulo}
+                  {selectedRecurso.titulo?.startsWith('[QUIZ]')
+                    ? selectedRecurso.titulo.replace('[QUIZ] ', '')
+                    : selectedRecurso.titulo}
                 </h2>
               </div>
 
               {/* TEXTO */}
               {selectedRecurso.tipo === 'TEXTO' && (
                 <div className="space-y-6">
-                  <div className="prose prose-slate dark:prose-invert max-w-none bg-card rounded-2xl p-8 border border-border/50 shadow-sm" dangerouslySetInnerHTML={sanitizeHTML(selectedRecurso.contenido_html || '<p class="text-muted-foreground italic">Sin contenido.</p>')} />
+                  <div
+                    className="prose prose-slate dark:prose-invert max-w-none bg-card rounded-2xl p-8 border border-border/50 shadow-sm"
+                    dangerouslySetInnerHTML={sanitizeHTML(
+                      selectedRecurso.contenido_html || '<p class="text-muted-foreground italic">Sin contenido.</p>',
+                    )}
+                  />
                   {selectedRecurso.url_referencia && (
-                    <a href={ensureAbsoluteUrl(selectedRecurso.url_referencia)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl text-sm text-primary font-medium hover:bg-primary/10 transition-colors">
+                    <a
+                      href={ensureAbsoluteUrl(selectedRecurso.url_referencia)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl text-sm text-primary font-medium hover:bg-primary/10 transition-colors"
+                    >
                       <ExternalLink className="h-4 w-4" /> {selectedRecurso.url_referencia}
                     </a>
                   )}
                   {selectedRecurso.archivo_adjunto && (
-                    <a href={`${API_BASE_URL}/storage/download/${selectedRecurso.archivo_adjunto}?originalName=${encodeURIComponent(selectedRecurso.archivo_adjunto_nombre)}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 transition-colors">
+                    <a
+                      href={`${API_BASE_URL}/storage/download/${selectedRecurso.archivo_adjunto}?originalName=${encodeURIComponent(selectedRecurso.archivo_adjunto_nombre)}`}
+                      className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 transition-colors"
+                    >
                       <Paperclip className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-bold">{selectedRecurso.archivo_adjunto_nombre || 'Archivo adjunto'}</span>
+                      <span className="text-sm font-bold">
+                        {selectedRecurso.archivo_adjunto_nombre || 'Archivo adjunto'}
+                      </span>
                     </a>
                   )}
 
                   {!viewOnlyMode && !isRecursoCompleted(selectedRecurso.guid) && (
                     <div className="mt-8 pt-6 border-t border-border flex justify-center animate-in fade-in duration-500">
-                      <button 
+                      <button
                         onClick={() => marcarCompletado(selectedRecurso.guid)}
                         className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-3 text-lg"
                       >
@@ -577,13 +640,17 @@ export default function CursoVisorPage() {
                   {selectedRecurso.contenido_html?.includes('youtube.com/watch?v=') && (
                     <div className="w-full rounded-2xl overflow-hidden border border-border shadow-sm">
                       {/* @ts-ignore */}
-                      <lite-youtube videoid={new URL(selectedRecurso.contenido_html).searchParams.get('v')}></lite-youtube>
+                      <lite-youtube
+                        videoid={new URL(selectedRecurso.contenido_html).searchParams.get('v')}
+                      ></lite-youtube>
                     </div>
                   )}
                   {selectedRecurso.contenido_html?.includes('youtu.be/') && (
                     <div className="w-full rounded-2xl overflow-hidden border border-border shadow-sm">
                       {/* @ts-ignore */}
-                      <lite-youtube videoid={selectedRecurso.contenido_html.split('youtu.be/')[1].split('?')[0]}></lite-youtube>
+                      <lite-youtube
+                        videoid={selectedRecurso.contenido_html.split('youtu.be/')[1].split('?')[0]}
+                      ></lite-youtube>
                     </div>
                   )}
                   {!selectedRecurso.contenido_html && (
@@ -594,7 +661,7 @@ export default function CursoVisorPage() {
 
                   {!viewOnlyMode && !isRecursoCompleted(selectedRecurso.guid) && (
                     <div className="mt-8 pt-6 border-t border-border flex justify-center animate-in fade-in duration-500">
-                      <button 
+                      <button
                         onClick={() => marcarCompletado(selectedRecurso.guid)}
                         className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-3 text-lg"
                       >
@@ -606,8 +673,9 @@ export default function CursoVisorPage() {
               )}
 
               {/* TAREA */}
-              {selectedRecurso.tipo === 'TAREA' && !selectedRecurso.titulo?.startsWith('[QUIZ]') && (
-                viewOnlyMode ? (
+              {selectedRecurso.tipo === 'TAREA' &&
+                !selectedRecurso.titulo?.startsWith('[QUIZ]') &&
+                (viewOnlyMode ? (
                   <AssignmentPlayer
                     curso_id={curso_id as string}
                     recurso_guid={selectedRecurso.guid}
@@ -632,15 +700,18 @@ export default function CursoVisorPage() {
                     archivo_max_size_mb={selectedRecurso.archivo_max_size_mb ?? 5}
                     onFinish={() => fetchProgreso()}
                   />
-                )
-              )}
+                ))}
 
               {/* QUIZ */}
-              {selectedRecurso.tipo === 'TAREA' && selectedRecurso.titulo?.startsWith('[QUIZ]') && (
-                viewOnlyMode ? (
+              {selectedRecurso.tipo === 'TAREA' &&
+                selectedRecurso.titulo?.startsWith('[QUIZ]') &&
+                (viewOnlyMode ? (
                   <div className="space-y-4">
                     {selectedRecurso.contenido_html && (
-                      <div className="prose prose-slate dark:prose-invert max-w-none bg-card rounded-2xl p-6 border border-border/50 shadow-sm" dangerouslySetInnerHTML={sanitizeHTML(selectedRecurso.contenido_html)} />
+                      <div
+                        className="prose prose-slate dark:prose-invert max-w-none bg-card rounded-2xl p-6 border border-border/50 shadow-sm"
+                        dangerouslySetInnerHTML={sanitizeHTML(selectedRecurso.contenido_html)}
+                      />
                     )}
                     <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 flex items-center gap-3">
                       <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
@@ -663,7 +734,9 @@ export default function CursoVisorPage() {
                       await fetchProgreso();
                       if (success === false && curso && selectedRecurso) {
                         for (const m of curso.modulos) {
-                          if (m.lecciones.some((l: any) => l.recursos.some((r: any) => r.guid === selectedRecurso.guid))) {
+                          if (
+                            m.lecciones.some((l: any) => l.recursos.some((r: any) => r.guid === selectedRecurso.guid))
+                          ) {
                             const firstResource = m.lecciones[0]?.recursos[0];
                             if (firstResource) {
                               setSelectedRecurso(firstResource);
@@ -675,8 +748,7 @@ export default function CursoVisorPage() {
                     }}
                     onQuizStateChange={(active) => setIsQuizActive(active)}
                   />
-                )
-              )}
+                ))}
             </div>
           )}
         </div>
@@ -695,7 +767,14 @@ export default function CursoVisorPage() {
                   left: `${Math.random() * 100}%`,
                   top: `-5%`,
                   backgroundColor: [
-                    '#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316'
+                    '#4f46e5',
+                    '#10b981',
+                    '#f59e0b',
+                    '#ef4444',
+                    '#8b5cf6',
+                    '#06b6d4',
+                    '#ec4899',
+                    '#f97316',
                   ][i % 8],
                   animation: `confettiFall ${2 + Math.random() * 3}s ease-in-out ${Math.random() * 2}s infinite`,
                   opacity: 0.8,
@@ -713,9 +792,12 @@ export default function CursoVisorPage() {
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-amber-500 to-emerald-500" />
               <div className="absolute -top-12 -right-12 w-36 h-36 bg-primary/5 rounded-full" />
               <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-emerald-500/5 rounded-full" />
-              
+
               <div className="relative z-10">
-                <div className="w-24 h-24 bg-gradient-to-br from-primary/20 to-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-5 ring-4 ring-background shadow-xl" style={{ animation: 'bounce 2s infinite' }}>
+                <div
+                  className="w-24 h-24 bg-gradient-to-br from-primary/20 to-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-5 ring-4 ring-background shadow-xl"
+                  style={{ animation: 'bounce 2s infinite' }}
+                >
                   <Award className="h-12 w-12 text-primary" />
                 </div>
                 <div className="flex items-center justify-center gap-2 mb-3">
@@ -723,12 +805,8 @@ export default function CursoVisorPage() {
                   <h2 className="text-2xl font-black text-foreground">¡Felicidades!</h2>
                   <Sparkles className="h-5 w-5 text-amber-500" />
                 </div>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Has completado exitosamente el curso
-                </p>
-                <p className="text-primary font-bold text-lg mt-1">
-                  {celebrationData?.curso_titulo || curso?.titulo}
-                </p>
+                <p className="text-muted-foreground text-sm leading-relaxed">Has completado exitosamente el curso</p>
+                <p className="text-primary font-bold text-lg mt-1">{celebrationData?.curso_titulo || curso?.titulo}</p>
               </div>
             </div>
 
@@ -775,7 +853,7 @@ export default function CursoVisorPage() {
             <div className="relative bg-gradient-to-br from-amber-500/15 via-amber-500/5 to-orange-500/10 p-8 text-center overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500" />
               <div className="absolute -top-12 -right-12 w-36 h-36 bg-amber-500/5 rounded-full" />
-              
+
               <div className="relative z-10">
                 <div className="w-20 h-20 bg-amber-500/15 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-background shadow-xl">
                   <Clock className="h-10 w-10 text-amber-500" />
@@ -803,7 +881,9 @@ export default function CursoVisorPage() {
               </div>
 
               <p className="text-muted-foreground text-sm mb-6 leading-relaxed text-center">
-                Tu certificado se generará <strong className="text-foreground">automáticamente</strong> cuando el examinador califique todas las tareas pendientes. Puedes comunicarte con él a través de la sección de mensajes.
+                Tu certificado se generará <strong className="text-foreground">automáticamente</strong> cuando el
+                examinador califique todas las tareas pendientes. Puedes comunicarte con él a través de la sección de
+                mensajes.
               </p>
 
               <div className="flex items-center gap-3">

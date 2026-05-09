@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from 'react';
 import { getEnv } from '@/lib/env';
 
-type WebSocketEvent = 
+type WebSocketEvent =
   | 'session:revoked'
   | 'user:deleted'
   | 'user:created'
@@ -70,7 +70,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     // Use validated environment variable for API URL
     const apiBaseUrl = getEnv().apiUrl;
     const token = localStorage.getItem('lms_token');
-    
+
     let wsUrl = apiBaseUrl.replace(/^http/, 'ws').replace('/api', '') + '/ws';
     if (token) {
       wsUrl += '?token=' + token;
@@ -113,10 +113,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
         // Handle course editing lock events internally
         if (event === 'course:editing') {
-          setEditingCourses(prev => ({ ...prev, [data.curso_guid]: data.editor }));
+          setEditingCourses((prev) => ({ ...prev, [data.curso_guid]: data.editor }));
         }
         if (event === 'course:editing-released') {
-          setEditingCourses(prev => {
+          setEditingCourses((prev) => {
             const next = { ...prev };
             delete next[data.curso_guid];
             return next;
@@ -129,11 +129,11 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
         // Handle course maintenance events
         if (event === 'course:maintenance') {
-          setMaintenanceCourses(prev => ({ ...prev, [data.curso_guid]: data.titulo }));
+          setMaintenanceCourses((prev) => ({ ...prev, [data.curso_guid]: data.titulo }));
         }
         // Clear maintenance when course is republished
         if (event === 'course:updated' && data.estado === 'PUBLICADO') {
-          setMaintenanceCourses(prev => {
+          setMaintenanceCourses((prev) => {
             const next = { ...prev };
             delete next[data.guid];
             return next;
@@ -154,7 +154,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             debounceTimersRef.current.delete(targetEvent);
             const currentListeners = listenersRef.current.get(targetEvent);
             if (currentListeners) {
-              currentListeners.forEach(cb => cb(eventData));
+              currentListeners.forEach((cb) => cb(eventData));
             }
           }, 300);
           debounceTimersRef.current.set(targetEvent, timer);
@@ -169,7 +169,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     ws.onclose = (event) => {
       setIsConnected(false);
       wsRef.current = null;
-      
+
       // If code is 4004 (session revoked), do not reconnect automatically as guest immediately,
       // wait until login redirect happens to avoid loop.
       if (event.code === 4004) return;
@@ -177,8 +177,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       // Exponential backoff for reconnection
       const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000);
       retryCountRef.current += 1;
-      
-      console.log(`🔌 WS Desconectado. Reconectando en ${delay/1000}s...`);
+
+      console.log(`🔌 WS Desconectado. Reconectando en ${delay / 1000}s...`);
       reconnectTimeoutRef.current = setTimeout(connect, delay);
     };
 
@@ -204,7 +204,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     };
 
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Explicitly close connection if user closes tab/browser
     const handleBeforeUnload = () => {
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -236,10 +236,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     if (!listenersRef.current.has(event)) {
       listenersRef.current.set(event, new Set());
     }
-    
+
     const listeners = listenersRef.current.get(event)!;
     listeners.add(callback);
-    
+
     // Return unsubscribe function
     return () => {
       const currentListeners = listenersRef.current.get(event);
@@ -256,7 +256,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <WebSocketContext.Provider value={{ isConnected, subscribe, send, onlineUsers, editingCourses, maintenanceCourses }}>
+    <WebSocketContext.Provider
+      value={{ isConnected, subscribe, send, onlineUsers, editingCourses, maintenanceCourses }}
+    >
       {children}
     </WebSocketContext.Provider>
   );

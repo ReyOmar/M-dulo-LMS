@@ -1,14 +1,28 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useCallback } from "react";
-import { Award, Download, Eye, Calendar, Clock, Star, Loader2, GraduationCap, Sparkles, X, ExternalLink, AlertTriangle, BookOpen } from "lucide-react";
-import { PageLoader } from "@/components/ui/PageLoader";
-import { useRole } from "@/contexts/RoleContext";
-import { useWS } from "@/contexts/WebSocketContext";
-import { useAlert } from "@/contexts/AlertContext";
-import { useSearchParams } from "next/navigation";
-import { useRouter } from "next/navigation";
-import api, { API_BASE_URL } from "@/lib/api";
+import { useEffect, useState, useCallback } from 'react';
+import {
+  Award,
+  Download,
+  Eye,
+  Calendar,
+  Clock,
+  Star,
+  Loader2,
+  GraduationCap,
+  Sparkles,
+  X,
+  ExternalLink,
+  AlertTriangle,
+  BookOpen,
+} from 'lucide-react';
+import { PageLoader } from '@/components/ui/PageLoader';
+import { useRole } from '@/contexts/RoleContext';
+import { useWS } from '@/contexts/WebSocketContext';
+import { useAlert } from '@/contexts/AlertContext';
+import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import api, { API_BASE_URL } from '@/lib/api';
 
 interface Certificate {
   guid: string;
@@ -35,7 +49,9 @@ export default function CertificadosPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCert, setSelectedCert] = useState<Certificate | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
-  const [cursosPendientes, setCursosPendientes] = useState<{ curso_titulo: string; tareas_pendientes: { titulo: string }[] }[]>([]);
+  const [cursosPendientes, setCursosPendientes] = useState<
+    { curso_titulo: string; tareas_pendientes: { titulo: string }[] }[]
+  >([]);
 
   const fetchCertificados = useCallback(async () => {
     try {
@@ -43,7 +59,10 @@ export default function CertificadosPage() {
       setCertificados(Array.isArray(res.data) ? res.data : []);
     } catch (err: any) {
       console.error('Error loading certificates:', err);
-      showAlert.error('Error al cargar certificados', 'No se pudieron obtener tus certificados. Intenta de nuevo más tarde.');
+      showAlert.error(
+        'Error al cargar certificados',
+        'No se pudieron obtener tus certificados. Intenta de nuevo más tarde.',
+      );
     } finally {
       setLoading(false);
     }
@@ -55,7 +74,9 @@ export default function CertificadosPage() {
       const pending: { curso_titulo: string; tareas_pendientes: { titulo: string }[] }[] = [];
       for (const curso of cursos) {
         try {
-          const verif = await api.get(`/estudiantes/student/certificados/verificar/${curso.guid}?usuario_guid=${user?.guid}`);
+          const verif = await api.get(
+            `/estudiantes/student/certificados/verificar/${curso.guid}?usuario_guid=${user?.guid}`,
+          );
           const data = verif.data;
           if (data.completo && !data.puede_generar_certificado && data.tareas_pendientes?.length > 0) {
             pending.push({
@@ -76,14 +97,18 @@ export default function CertificadosPage() {
     const unsub1 = subscribe('certificate:new', fetchCertificados);
     const unsub2 = subscribe('dashboard:refresh', fetchCertificados);
     const unsub3 = subscribe('submission:graded', fetchCertificados);
-    return () => { unsub1(); unsub2(); unsub3(); };
+    return () => {
+      unsub1();
+      unsub2();
+      unsub3();
+    };
   }, [user?.guid, subscribe, fetchCertificados]);
 
   // Auto-open certificate from query param
   useEffect(() => {
     const openGuid = searchParams.get('open');
     if (openGuid && certificados.length > 0 && !selectedCert) {
-      const cert = certificados.find(c => c.guid === openGuid);
+      const cert = certificados.find((c) => c.guid === openGuid);
       if (cert) setSelectedCert(cert);
     }
   }, [searchParams, certificados, selectedCert]);
@@ -168,10 +193,12 @@ export default function CertificadosPage() {
               </div>
               <div>
                 <p className="text-2xl font-black text-foreground">
-                  {certificados.filter(c => c.nota_promedio).length > 0
-                    ? (certificados.reduce((sum, c) => sum + Number(c.nota_promedio || 0), 0) / certificados.filter(c => c.nota_promedio).length).toFixed(1)
-                    : '—'
-                  }
+                  {certificados.filter((c) => c.nota_promedio).length > 0
+                    ? (
+                        certificados.reduce((sum, c) => sum + Number(c.nota_promedio || 0), 0) /
+                        certificados.filter((c) => c.nota_promedio).length
+                      ).toFixed(1)
+                    : '—'}
                 </p>
                 <p className="text-xs text-muted-foreground font-medium">Promedio General</p>
               </div>
@@ -190,15 +217,17 @@ export default function CertificadosPage() {
                   <Clock className="h-5 w-5 text-amber-500" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-sm text-foreground mb-1">
-                    {cp.curso_titulo} — Esperando calificación
-                  </h3>
+                  <h3 className="font-bold text-sm text-foreground mb-1">{cp.curso_titulo} — Esperando calificación</h3>
                   <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
-                    Has completado todos los recursos de este curso, pero tu certificado se generará automáticamente cuando el examinador califique las siguientes tareas:
+                    Has completado todos los recursos de este curso, pero tu certificado se generará automáticamente
+                    cuando el examinador califique las siguientes tareas:
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {cp.tareas_pendientes.map((t, ti) => (
-                      <span key={ti} className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-medium px-2.5 py-1 rounded-lg">
+                      <span
+                        key={ti}
+                        className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-medium px-2.5 py-1 rounded-lg"
+                      >
                         <Clock className="h-3 w-3" /> {t.titulo}
                       </span>
                     ))}
@@ -241,7 +270,7 @@ export default function CertificadosPage() {
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-primary/60 to-secondary" />
                 <div className="absolute -top-12 -right-12 w-32 h-32 bg-primary/5 rounded-full" />
                 <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-secondary/5 rounded-full" />
-                
+
                 <div className="text-center z-10 px-6">
                   <div className="w-14 h-14 bg-primary/15 rounded-full flex items-center justify-center mx-auto mb-3 ring-4 ring-background shadow-lg group-hover:scale-110 transition-transform duration-300">
                     <Award className="h-7 w-7 text-primary" />
@@ -267,7 +296,10 @@ export default function CertificadosPage() {
                   {cert.nota_promedio && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Star className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                      <span>Calificación promedio: <strong className="text-foreground">{Number(cert.nota_promedio).toFixed(1)}/5.0</strong></span>
+                      <span>
+                        Calificación promedio:{' '}
+                        <strong className="text-foreground">{Number(cert.nota_promedio).toFixed(1)}/5.0</strong>
+                      </span>
                     </div>
                   )}
                 </div>
@@ -307,7 +339,7 @@ export default function CertificadosPage() {
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-primary/60 to-secondary" />
               <div className="absolute -top-16 -right-16 w-40 h-40 bg-primary/5 rounded-full" />
               <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-secondary/5 rounded-full" />
-              
+
               <button
                 onClick={() => setSelectedCert(null)}
                 className="absolute top-4 right-4 p-2 rounded-full bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground transition-colors z-10"
@@ -342,7 +374,9 @@ export default function CertificadosPage() {
                 </div>
                 <div className="bg-muted/30 rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-0.5">Duración</p>
-                  <p className="text-sm font-bold text-foreground">{Number(selectedCert.tiempo_total_horas).toFixed(0)} horas</p>
+                  <p className="text-sm font-bold text-foreground">
+                    {Number(selectedCert.tiempo_total_horas).toFixed(0)} horas
+                  </p>
                 </div>
                 <div className="bg-muted/30 rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-0.5">Calificación promedio</p>
@@ -354,7 +388,9 @@ export default function CertificadosPage() {
 
               <div className="bg-primary/5 border border-primary/10 rounded-xl p-3">
                 <p className="text-xs text-muted-foreground mb-0.5">Código de verificación</p>
-                <p className="text-sm font-mono font-bold text-primary tracking-wide">{selectedCert.codigo_verificacion}</p>
+                <p className="text-sm font-mono font-bold text-primary tracking-wide">
+                  {selectedCert.codigo_verificacion}
+                </p>
               </div>
             </div>
 
@@ -371,7 +407,10 @@ export default function CertificadosPage() {
                 <BookOpen className="h-4 w-4" /> Ir al Curso
               </button>
               <button
-                onClick={() => { handleDownload(selectedCert); setSelectedCert(null); }}
+                onClick={() => {
+                  handleDownload(selectedCert);
+                  setSelectedCert(null);
+                }}
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2"
               >
                 <Download className="h-4 w-4" /> Descargar PDF

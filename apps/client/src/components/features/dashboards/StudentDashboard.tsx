@@ -1,14 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Play, BookOpen, Clock, GraduationCap, ChevronLeft, ChevronRight, AlertTriangle, TrendingUp } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useRole } from "@/contexts/RoleContext";
-import { useWS } from "@/contexts/WebSocketContext";
-import { PageLoader } from "@/components/ui/PageLoader";
-import { StatCard } from "@/components/ui/StatCard";
-import { ProgressBar } from "@/components/ui/ProgressBar";
-import api from "@/lib/api";
+import {
+  Play,
+  BookOpen,
+  Clock,
+  GraduationCap,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  TrendingUp,
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useRole } from '@/contexts/RoleContext';
+import { useWS } from '@/contexts/WebSocketContext';
+import { PageLoader } from '@/components/ui/PageLoader';
+import { StatCard } from '@/components/ui/StatCard';
+import { ProgressBar } from '@/components/ui/ProgressBar';
+import api from '@/lib/api';
 
 export function StudentDashboard() {
   const { user } = useRole();
@@ -18,14 +27,12 @@ export function StudentDashboard() {
   const [cursos, setCursos] = useState<any[]>([]);
   const [metricas, setMetricas] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [progreso, setProgreso] = useState<{completados: number, total: number}>({completados: 0, total: 0});
+  const [progreso, setProgreso] = useState<{ completados: number; total: number }>({ completados: 0, total: 0 });
   const [completedCourseGuids, setCompletedCourseGuids] = useState<Set<string>>(new Set());
 
   // Calendar state
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [activeDays, setActiveDays] = useState<number[]>([]);
-
-
 
   useEffect(() => {
     if (user?.guid) {
@@ -35,7 +42,7 @@ export function StudentDashboard() {
 
   useEffect(() => {
     if (!user?.guid) return;
-    
+
     // Subscribe to events that should refresh the student dashboard
     const unsub1 = subscribe('course:updated', fetchData);
     const unsub2 = subscribe('submission:graded', fetchData);
@@ -43,7 +50,7 @@ export function StudentDashboard() {
     const unsub4 = subscribe('dashboard:refresh', fetchData);
     // Re-fetch when a course enters maintenance so the widget updates immediately
     const unsub5 = subscribe('course:maintenance', fetchData);
-    
+
     return () => {
       unsub1();
       unsub2();
@@ -75,15 +82,17 @@ export function StudentDashboard() {
 
       // Fetch progress for the first non-completed course
       const certsGuids = certs.map((c: any) => c.curso_guid);
-      const firstActiveCurso = cursosArr.find(c => c.estado === 'PUBLICADO' && !certsGuids.includes(c.curso_guid));
+      const firstActiveCurso = cursosArr.find((c) => c.estado === 'PUBLICADO' && !certsGuids.includes(c.curso_guid));
       const progCurso = firstActiveCurso || cursosArr[0];
       if (progCurso) {
         try {
-          const progRes = await api.get(`/estudiantes/student/progreso?usuario_guid=${user.guid}&curso_guid=${progCurso.guid}`);
+          const progRes = await api.get(
+            `/estudiantes/student/progreso?usuario_guid=${user.guid}&curso_guid=${progCurso.guid}`,
+          );
           const progData = await progRes.data;
           setProgreso({
             completados: progData.completados?.length || 0,
-            total: progData.total_recursos || 0
+            total: progData.total_recursos || 0,
           });
         } catch {}
       }
@@ -95,16 +104,18 @@ export function StudentDashboard() {
   };
 
   // Pick next active (non-completed, non-maintenance) course
-  const activeCursos = cursos.filter(c => c.estado === 'PUBLICADO' && !maintenanceCourses[c.guid] && !completedCourseGuids.has(c.guid));
-  
-  // Courses assigned but in maintenance (BORRADOR or WS-flagged maintenance) and NOT completed
-  const cursosEnMantenimiento = cursos.filter(c => 
-    (c.estado === 'BORRADOR' || maintenanceCourses[c.guid]) && !completedCourseGuids.has(c.guid)
+  const activeCursos = cursos.filter(
+    (c) => c.estado === 'PUBLICADO' && !maintenanceCourses[c.guid] && !completedCourseGuids.has(c.guid),
   );
-  
+
+  // Courses assigned but in maintenance (BORRADOR or WS-flagged maintenance) and NOT completed
+  const cursosEnMantenimiento = cursos.filter(
+    (c) => (c.estado === 'BORRADOR' || maintenanceCourses[c.guid]) && !completedCourseGuids.has(c.guid),
+  );
+
   // All courses that the student hasn't completed yet (regardless of state)
-  const cursosNoCompletados = cursos.filter(c => !completedCourseGuids.has(c.guid));
-  
+  const cursosNoCompletados = cursos.filter((c) => !completedCourseGuids.has(c.guid));
+
   const lastCurso = activeCursos.length > 0 ? activeCursos[0] : null;
   const hayMantenimiento = cursosEnMantenimiento.length > 0;
   const allCoursesCompleted = cursos.length > 0 && cursosNoCompletados.length === 0;
@@ -115,7 +126,20 @@ export function StudentDashboard() {
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
   const today = new Date();
-  const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const monthNames = [
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
+  ];
   const dayNames = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
 
   const prevMonth = () => setCalendarDate(new Date(calYear, calMonth - 1, 1));
@@ -124,9 +148,10 @@ export function StudentDashboard() {
   // Fetch active days when calendar month changes
   useEffect(() => {
     if (user?.guid) {
-      api.get(`/estudiantes/student/dias-activos?usuario_guid=${user.guid}&year=${calYear}&month=${calMonth}`)
-        .then(r => r.data)
-        .then(data => setActiveDays(Array.isArray(data.dias) ? data.dias : []))
+      api
+        .get(`/estudiantes/student/dias-activos?usuario_guid=${user.guid}&year=${calYear}&month=${calMonth}`)
+        .then((r) => r.data)
+        .then((data) => setActiveDays(Array.isArray(data.dias) ? data.dias : []))
         .catch(() => setActiveDays([]));
     }
   }, [user?.guid, calYear, calMonth]);
@@ -147,14 +172,18 @@ export function StudentDashboard() {
           <div className="rounded-2xl border border-border/50 p-6">
             <div className="h-5 w-24 rounded bg-muted animate-shimmer mb-4" />
             <div className="grid grid-cols-7 gap-1">
-              {Array.from({length: 35}).map((_,i) => (
-                <div key={i} className="h-8 rounded bg-muted/40 animate-shimmer" style={{animationDelay:`${i*20}ms`}} />
+              {Array.from({ length: 35 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-8 rounded bg-muted/40 animate-shimmer"
+                  style={{ animationDelay: `${i * 20}ms` }}
+                />
               ))}
             </div>
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => (
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="rounded-2xl border border-border/50 p-5 space-y-3">
               <div className="h-10 w-10 rounded-xl bg-muted animate-shimmer" />
               <div className="h-7 w-16 rounded bg-muted animate-shimmer" />
@@ -171,12 +200,8 @@ export function StudentDashboard() {
       {/* Header */}
       <header className="mb-8">
         <p className="text-sm font-medium text-muted-foreground mb-1">Bienvenido de vuelta,</p>
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          {user?.nombre || 'Estudiante'} 👋
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Tu espacio de capacitación y formación.
-        </p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">{user?.nombre || 'Estudiante'} 👋</h1>
+        <p className="text-muted-foreground text-sm mt-1">Tu espacio de capacitación y formación.</p>
       </header>
 
       {/* Main Grid: Continue Learning + Calendar */}
@@ -193,7 +218,8 @@ export function StudentDashboard() {
               <>
                 <h2 className="text-2xl md:text-3xl font-bold mb-2 leading-tight">{lastCurso.titulo}</h2>
                 <p className="text-primary-foreground/70 mb-6">
-                  {lastCurso.modulos?.length || 0} módulos · {progreso.completados}/{progreso.total} recursos completados
+                  {lastCurso.modulos?.length || 0} módulos · {progreso.completados}/{progreso.total} recursos
+                  completados
                 </p>
                 <button
                   onClick={() => router.push(`/cursos/${lastCurso.guid}`)}
@@ -210,8 +236,7 @@ export function StudentDashboard() {
                 <p className="text-primary-foreground/70 mb-4">
                   {cursosEnMantenimiento.length === 1
                     ? 'Tu curso activo está temporalmente en mantenimiento. Pronto tendrás acceso nuevamente.'
-                    : `Tus ${cursosEnMantenimiento.length} cursos activos están temporalmente en mantenimiento. Pronto tendrás acceso nuevamente.`
-                  }
+                    : `Tus ${cursosEnMantenimiento.length} cursos activos están temporalmente en mantenimiento. Pronto tendrás acceso nuevamente.`}
                 </p>
                 <div className="flex items-center gap-2 bg-primary-foreground/10 border border-primary-foreground/20 px-4 py-2.5 rounded-xl text-sm font-bold text-primary-foreground/80">
                   <Clock className="h-4 w-4" /> Volverán a estar disponibles pronto
@@ -220,7 +245,9 @@ export function StudentDashboard() {
             ) : allCoursesCompleted ? (
               <>
                 <h2 className="text-2xl font-bold mb-2">🎉 ¡Todos tus cursos completados!</h2>
-                <p className="text-primary-foreground/70 mb-4">Has finalizado todos los cursos asignados. Pronto tendrás nuevos cursos disponibles.</p>
+                <p className="text-primary-foreground/70 mb-4">
+                  Has finalizado todos los cursos asignados. Pronto tendrás nuevos cursos disponibles.
+                </p>
                 <button
                   onClick={() => router.push('/dashboard/student/certificados')}
                   className="flex items-center gap-2 bg-white text-primary px-6 py-3 rounded-xl font-bold hover:scale-105 transition-transform shadow-md"
@@ -241,10 +268,23 @@ export function StudentDashboard() {
             <div className="relative w-28 h-28 shrink-0 z-10 flex items-center justify-center">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="40" className="stroke-primary-foreground/20" strokeWidth="8" fill="none" />
-                <circle cx="50" cy="50" r="40" className="stroke-white" strokeWidth="8" fill="none" strokeDasharray="251.2" strokeDashoffset={251.2 * (1 - (progreso.total > 0 ? progreso.completados / progreso.total : 0))} strokeLinecap="round" style={{transition: 'stroke-dashoffset 0.8s ease'}} />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  className="stroke-white"
+                  strokeWidth="8"
+                  fill="none"
+                  strokeDasharray="251.2"
+                  strokeDashoffset={251.2 * (1 - (progreso.total > 0 ? progreso.completados / progreso.total : 0))}
+                  strokeLinecap="round"
+                  style={{ transition: 'stroke-dashoffset 0.8s ease' }}
+                />
               </svg>
               <div className="absolute flex flex-col items-center justify-center text-white">
-                <span className="text-xl font-bold">{progreso.total > 0 ? Math.round((progreso.completados / progreso.total) * 100) : 0}%</span>
+                <span className="text-xl font-bold">
+                  {progreso.total > 0 ? Math.round((progreso.completados / progreso.total) * 100) : 0}%
+                </span>
               </div>
             </div>
           )}
@@ -256,21 +296,26 @@ export function StudentDashboard() {
             <button onClick={prevMonth} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
               <ChevronLeft className="h-4 w-4 text-muted-foreground" />
             </button>
-            <h3 className="font-bold text-sm">{monthNames[calMonth]} {calYear}</h3>
+            <h3 className="font-bold text-sm">
+              {monthNames[calMonth]} {calYear}
+            </h3>
             <button onClick={nextMonth} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
           </div>
           <div className="grid grid-cols-7 gap-1 text-center">
-            {dayNames.map(d => (
-              <div key={d} className="text-[10px] font-bold text-muted-foreground uppercase py-1">{d}</div>
+            {dayNames.map((d) => (
+              <div key={d} className="text-[10px] font-bold text-muted-foreground uppercase py-1">
+                {d}
+              </div>
             ))}
             {Array.from({ length: firstDayOfWeek }).map((_, i) => (
               <div key={`empty-${i}`} />
             ))}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
-              const isToday = calYear === today.getFullYear() && calMonth === today.getMonth() && day === today.getDate();
+              const isToday =
+                calYear === today.getFullYear() && calMonth === today.getMonth() && day === today.getDate();
               const isActive = activeDays.includes(day);
               return (
                 <div
@@ -286,7 +331,9 @@ export function StudentDashboard() {
                 >
                   {day}
                   {isActive && (
-                    <span className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full ${isToday ? 'bg-primary-foreground' : 'bg-emerald-500'}`} />
+                    <span
+                      className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full ${isToday ? 'bg-primary-foreground' : 'bg-emerald-500'}`}
+                    />
                   )}
                 </div>
               );

@@ -1,159 +1,162 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Lock, Mail, ArrowRight, GraduationCap, ShieldCheck, User, Info, Eye, EyeOff, ShieldAlert } from "lucide-react";
-import { PageLoader } from "@/components/ui/PageLoader";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useRole } from "@/contexts/RoleContext";
-import { useConfig, resolveFileUrl } from "@/contexts/ConfigContext";
-import api from "@/lib/api";
-import { useAlert } from "@/contexts/AlertContext";
-import { useEffect } from "react";
+import { useState } from 'react';
+import { Lock, Mail, ArrowRight, GraduationCap, ShieldCheck, User, Info, Eye, EyeOff, ShieldAlert } from 'lucide-react';
+import { PageLoader } from '@/components/ui/PageLoader';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useRole } from '@/contexts/RoleContext';
+import { useConfig, resolveFileUrl } from '@/contexts/ConfigContext';
+import api from '@/lib/api';
+import { useAlert } from '@/contexts/AlertContext';
+import { useEffect } from 'react';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { syncSession } = useRole();
   const { config } = useConfig();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
+  const [newPassword, setNewPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
-  const [nombre, setNombre] = useState("");
-  const [apellido, setApellido] = useState("");
-  const [rolPedido, setRolPedido] = useState("ESTUDIANTE");
+  const [nombre, setNombre] = useState('');
+  const [apellido, setApellido] = useState('');
+  const [rolPedido, setRolPedido] = useState('ESTUDIANTE');
 
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
-  const [view, setView] = useState<"LOGIN" | "SETUP_PASSWORD" | "REQUEST_ACCESS" | "REQUEST_SUCCESS" | "REVOKED">("LOGIN");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [view, setView] = useState<'LOGIN' | 'SETUP_PASSWORD' | 'REQUEST_ACCESS' | 'REQUEST_SUCCESS' | 'REVOKED'>(
+    'LOGIN',
+  );
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const { showAlert, showToast } = useAlert();
 
   useEffect(() => {
-    if (searchParams?.get("revoked") === "true") {
-      setView("REVOKED");
+    if (searchParams?.get('revoked') === 'true') {
+      setView('REVOKED');
       // Clean up the URL without triggering a full reload
-      router.replace("/login");
+      router.replace('/login');
     }
   }, [searchParams, router]);
 
   const handleGoToLogin = () => {
-    setEmail("");
-    setPassword("");
-    setNewPassword("");
-    setNombre("");
-    setApellido("");
-    setErrorMsg("");
-    setSuccessMsg("");
+    setEmail('');
+    setPassword('');
+    setNewPassword('');
+    setNombre('');
+    setApellido('');
+    setErrorMsg('');
+    setSuccessMsg('');
     setRateLimited(false);
-    setView("LOGIN");
+    setView('LOGIN');
   };
 
   const handleGoToRequest = () => {
-    setEmail("");
-    setPassword("");
-    setNewPassword("");
-    setNombre("");
-    setApellido("");
-    setErrorMsg("");
-    setSuccessMsg("");
+    setEmail('');
+    setPassword('');
+    setNewPassword('');
+    setNombre('');
+    setApellido('');
+    setErrorMsg('');
+    setSuccessMsg('');
     setRateLimited(false);
-    setView("REQUEST_ACCESS");
+    setView('REQUEST_ACCESS');
   };
 
   const handleLogin = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setLoading(true);
-      setErrorMsg("");
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg('');
 
-      try {
-        const { data } = await api.post("/auth/login", { email, contrasena: password });
-        
-        if (data.requireSetup) {
-            setSuccessMsg(data.message);
-            setView("SETUP_PASSWORD");
-            return;
-        }
+    try {
+      const { data } = await api.post('/auth/login', { email, contrasena: password });
 
-        // Sync context and redirect
-        syncSession(data.token, data.user);
-        setRedirecting(true);
-        router.push("/dashboard");
-
-      } catch (err: any) {
-          if (err.response?.status === 429) {
-              setErrorMsg("Demasiadas peticiones. Por favor, intenta más tarde.");
-              setRateLimited(true);
-              setTimeout(() => setRateLimited(false), 30000);
-          } else {
-              setErrorMsg(err.response?.data?.message || err.message);
-          }
-      } finally {
-          setLoading(false);
+      if (data.requireSetup) {
+        setSuccessMsg(data.message);
+        setView('SETUP_PASSWORD');
+        return;
       }
+
+      // Sync context and redirect
+      syncSession(data.token, data.user);
+      setRedirecting(true);
+      router.push('/dashboard');
+    } catch (err: any) {
+      if (err.response?.status === 429) {
+        setErrorMsg('Demasiadas peticiones. Por favor, intenta más tarde.');
+        setRateLimited(true);
+        setTimeout(() => setRateLimited(false), 30000);
+      } else {
+        setErrorMsg(err.response?.data?.message || err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSetupPassword = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setLoading(true);
-      setErrorMsg("");
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg('');
 
-      try {
-        // Backend now returns token + user directly from setup (auto-login)
-        const { data } = await api.post("/auth/establecer-password", { email, contrasenaTemporal: password, nuevaContrasena: newPassword });
-        
-        if (data.token && data.user) {
-          syncSession(data.token, data.user);
-          showToast.success("Tu contraseña ha sido configurada exitosamente.");
-          setRedirecting(true);
-          router.push("/dashboard");
-        } else {
-          showToast.success(data.message || "Ahora puedes iniciar sesión con tu nueva contraseña.");
-          handleGoToLogin();
-        }
+    try {
+      // Backend now returns token + user directly from setup (auto-login)
+      const { data } = await api.post('/auth/establecer-password', {
+        email,
+        contrasenaTemporal: password,
+        nuevaContrasena: newPassword,
+      });
 
-      } catch (err: any) {
-          if (err.response?.status === 429) {
-              setErrorMsg("Demasiadas peticiones. Por favor, intenta más tarde.");
-              setRateLimited(true);
-              setTimeout(() => setRateLimited(false), 30000);
-          } else {
-              setErrorMsg(err.response?.data?.message || err.message);
-          }
-      } finally {
-          setLoading(false);
+      if (data.token && data.user) {
+        syncSession(data.token, data.user);
+        showToast.success('Tu contraseña ha sido configurada exitosamente.');
+        setRedirecting(true);
+        router.push('/dashboard');
+      } else {
+        showToast.success(data.message || 'Ahora puedes iniciar sesión con tu nueva contraseña.');
+        handleGoToLogin();
       }
+    } catch (err: any) {
+      if (err.response?.status === 429) {
+        setErrorMsg('Demasiadas peticiones. Por favor, intenta más tarde.');
+        setRateLimited(true);
+        setTimeout(() => setRateLimited(false), 30000);
+      } else {
+        setErrorMsg(err.response?.data?.message || err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRequestAccess = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setLoading(true);
-      setErrorMsg("");
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg('');
 
-      try {
-        await api.post("/auth/solicitar", { email, nombre, apellido, rol_pedido: rolPedido });
-        setView("REQUEST_SUCCESS");
-
-      } catch (err: any) {
-          if (err.response?.status === 429) {
-              setErrorMsg("Demasiadas peticiones. Por favor, intenta más tarde.");
-              setRateLimited(true);
-              setTimeout(() => setRateLimited(false), 30000);
-          } else {
-              const msg = err.response?.data?.message || err.message;
-              if (msg.toLowerCase().includes("ya existe")) {
-                  showToast.info("El correo proporcionado ya se encuentra en el sistema. Inicia sesión.");
-                  handleGoToLogin();
-              } else {
-                  setErrorMsg(msg);
-              }
-          }
-      } finally {
-          setLoading(false);
+    try {
+      await api.post('/auth/solicitar', { email, nombre, apellido, rol_pedido: rolPedido });
+      setView('REQUEST_SUCCESS');
+    } catch (err: any) {
+      if (err.response?.status === 429) {
+        setErrorMsg('Demasiadas peticiones. Por favor, intenta más tarde.');
+        setRateLimited(true);
+        setTimeout(() => setRateLimited(false), 30000);
+      } else {
+        const msg = err.response?.data?.message || err.message;
+        if (msg.toLowerCase().includes('ya existe')) {
+          showToast.info('El correo proporcionado ya se encuentra en el sistema. Inicia sesión.');
+          handleGoToLogin();
+        } else {
+          setErrorMsg(msg);
+        }
       }
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (redirecting) {
@@ -166,211 +169,278 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4 transition-colors relative overflow-hidden">
-        {/* Dynamic Background - custom image or abstract blobs */}
-        {config?.login_fondo_url ? (
-          <img src={config.login_fondo_url} alt="" className="absolute inset-0 w-full h-full object-cover z-0 opacity-100" />
-        ) : (
-          <>
-            <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-primary/20 blur-[100px] z-0" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-secondary/30 blur-[100px] z-0" />
-          </>
-        )}
+      {/* Dynamic Background - custom image or abstract blobs */}
+      {config?.login_fondo_url ? (
+        <img
+          src={config.login_fondo_url}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover z-0 opacity-100"
+        />
+      ) : (
+        <>
+          <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-primary/20 blur-[100px] z-0" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-secondary/30 blur-[100px] z-0" />
+        </>
+      )}
 
       <div className="w-full max-w-md bg-card border border-border/50 rounded-3xl shadow-xl p-8 relative z-10 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-8 duration-700">
-        
         <div className="flex flex-col items-center text-center space-y-4 mb-8">
-          {config?.logo_url && view === "LOGIN" ? (
+          {config?.logo_url && view === 'LOGIN' ? (
             <div className="flex items-center justify-center mb-2">
-              <img src={resolveFileUrl(config.logo_url) || ''} alt="Logo" className="max-h-24 max-w-[200px] object-contain" />
+              <img
+                src={resolveFileUrl(config.logo_url) || ''}
+                alt="Logo"
+                className="max-h-24 max-w-[200px] object-contain"
+              />
             </div>
           ) : (
             <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-2 ring-1 ring-primary/20">
-              {view === "SETUP_PASSWORD" ? <ShieldCheck className="h-7 w-7 text-emerald-500" /> : <GraduationCap className="h-7 w-7 text-primary" />}
+              {view === 'SETUP_PASSWORD' ? (
+                <ShieldCheck className="h-7 w-7 text-emerald-500" />
+              ) : (
+                <GraduationCap className="h-7 w-7 text-primary" />
+              )}
             </div>
           )}
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
-                {view === "LOGIN" && (config?.mensaje_bienvenida || "Bienvenido a PESV Education")}
-                {view === "SETUP_PASSWORD" && "Aprobado: Setup Guardián"}
-                {view === "REQUEST_ACCESS" && "Solicitar Acceso Privado"}
-                {view === "REQUEST_SUCCESS" && "Petición en Tránsito"}
+              {view === 'LOGIN' && (config?.mensaje_bienvenida || 'Bienvenido a PESV Education')}
+              {view === 'SETUP_PASSWORD' && 'Aprobado: Setup Guardián'}
+              {view === 'REQUEST_ACCESS' && 'Solicitar Acceso Privado'}
+              {view === 'REQUEST_SUCCESS' && 'Petición en Tránsito'}
             </h1>
             <p className="text-sm text-muted-foreground mt-2">
-                {view === "LOGIN" && "Ingresa tus credenciales para ser validado en base de datos."}
-                {view === "SETUP_PASSWORD" && "Tu cuenta fue dada de alta por la Administración. Ingresa una contraseña personal y secreta solo para ti."}
-                {view === "REQUEST_ACCESS" && "Registro cerrado. Envía tu información para que la administración determine tu pase."}
-                {view === "REQUEST_SUCCESS" && "Tu petición se ha registrado y está en espera de aprobación, contacta al administrador."}
-                {view === "REVOKED" && "No tienes autorización para acceder al sistema."}
+              {view === 'LOGIN' && 'Ingresa tus credenciales para ser validado en base de datos.'}
+              {view === 'SETUP_PASSWORD' &&
+                'Tu cuenta fue dada de alta por la Administración. Ingresa una contraseña personal y secreta solo para ti.'}
+              {view === 'REQUEST_ACCESS' &&
+                'Registro cerrado. Envía tu información para que la administración determine tu pase.'}
+              {view === 'REQUEST_SUCCESS' &&
+                'Tu petición se ha registrado y está en espera de aprobación, contacta al administrador.'}
+              {view === 'REVOKED' && 'No tienes autorización para acceder al sistema.'}
             </p>
           </div>
         </div>
 
         {errorMsg && (
-            <div className="mb-6 p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-sm font-semibold max-w-full text-center">
-                {errorMsg}
-            </div>
+          <div className="mb-6 p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-sm font-semibold max-w-full text-center">
+            {errorMsg}
+          </div>
         )}
-        
-        {successMsg && view === "SETUP_PASSWORD" && (
-            <div className="mb-6 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-600 text-sm font-semibold max-w-full text-center">
-                {successMsg}
-            </div>
+
+        {successMsg && view === 'SETUP_PASSWORD' && (
+          <div className="mb-6 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-600 text-sm font-semibold max-w-full text-center">
+            {successMsg}
+          </div>
         )}
 
         {/* ===================== VIEW: LOGIN ===================== */}
-        {view === "LOGIN" && (
-            <form onSubmit={handleLogin} className="space-y-6">
+        {view === 'LOGIN' && (
+          <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-4">
-                <div className="space-y-2">
-                    <label className="text-sm font-medium leading-none">Correo Módulo PESV</label>
-                    <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-                    <input
-                        type="email"
-                        placeholder="Correo"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="flex h-11 w-full rounded-xl border border-input bg-background/50 pl-11 pr-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    />
-                    </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium leading-none">Correo Módulo PESV</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                  <input
+                    type="email"
+                    placeholder="Correo"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="flex h-11 w-full rounded-xl border border-input bg-background/50 pl-11 pr-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  />
                 </div>
-                
-                <div className="space-y-2">
-                    <label className="text-sm font-medium leading-none">Contraseña</label>
-                    <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-                    <input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Contraseña"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="flex h-11 w-full rounded-xl border border-input bg-background/50 pl-11 pr-11 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    />
-                    <button 
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
-                    >
-                        {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
-                    </button>
-                    </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium leading-none">Contraseña</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Contraseña"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="flex h-11 w-full rounded-xl border border-input bg-background/50 pl-11 pr-11 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+                  >
+                    {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                  </button>
                 </div>
+              </div>
             </div>
 
-            <button type="submit" disabled={loading || rateLimited} className="group relative inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-all hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-70">
-                {loading ? "Validando..." : rateLimited ? "Bloqueado Temporalmente" : "Ingresar Seguro"}
+            <button
+              type="submit"
+              disabled={loading || rateLimited}
+              className="group relative inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-all hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-70"
+            >
+              {loading ? 'Validando...' : rateLimited ? 'Bloqueado Temporalmente' : 'Ingresar Seguro'}
             </button>
-            </form>
+          </form>
         )}
 
         {/* ===================== VIEW: SETUP INITIAL PASSWORD ===================== */}
-        {view === "SETUP_PASSWORD" && (
-            <form onSubmit={handleSetupPassword} className="space-y-6 animate-in slide-in-from-bottom-4">
+        {view === 'SETUP_PASSWORD' && (
+          <form onSubmit={handleSetupPassword} className="space-y-6 animate-in slide-in-from-bottom-4">
             <div className="space-y-2">
-                <label className="text-sm font-medium leading-none">Nueva Contraseña Secreta</label>
-                <div className="relative">
+              <label className="text-sm font-medium leading-none">Nueva Contraseña Secreta</label>
+              <div className="relative">
                 <Lock className="absolute left-3 top-3 h-5 w-5 text-emerald-500" />
                 <input
-                    type={showNewPassword ? "text" : "password"}
-                    placeholder="Minimo 6 caracteres"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    className="flex h-11 w-full rounded-xl border border-emerald-500/30 bg-emerald-500/5 pl-11 pr-11 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  type={showNewPassword ? 'text' : 'password'}
+                  placeholder="Minimo 6 caracteres"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="flex h-11 w-full rounded-xl border border-emerald-500/30 bg-emerald-500/5 pl-11 pr-11 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 />
-                <button 
-                    type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-3 text-emerald-500/70 hover:text-emerald-500 transition-colors focus:outline-none"
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-3 text-emerald-500/70 hover:text-emerald-500 transition-colors focus:outline-none"
                 >
-                    {showNewPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                  {showNewPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
                 </button>
-                </div>
+              </div>
             </div>
-            
-            <button type="submit" disabled={loading || rateLimited} className="w-full h-11 rounded-xl bg-emerald-600 px-8 text-sm font-bold text-white shadow hover:bg-emerald-700 disabled:opacity-70">
-                {loading ? "Encriptando..." : rateLimited ? "Bloqueado Temporalmente" : "Firmar e Ingresar"}
+
+            <button
+              type="submit"
+              disabled={loading || rateLimited}
+              className="w-full h-11 rounded-xl bg-emerald-600 px-8 text-sm font-bold text-white shadow hover:bg-emerald-700 disabled:opacity-70"
+            >
+              {loading ? 'Encriptando...' : rateLimited ? 'Bloqueado Temporalmente' : 'Firmar e Ingresar'}
             </button>
-            </form>
+          </form>
         )}
 
         {/* ===================== VIEW: REQUEST ACCESS ===================== */}
-        {view === "REQUEST_ACCESS" && (
-            <form onSubmit={handleRequestAccess} className="space-y-4 animate-in fade-in">
+        {view === 'REQUEST_ACCESS' && (
+          <form onSubmit={handleRequestAccess} className="space-y-4 animate-in fade-in">
             <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-muted-foreground">Nombre</label>
-                    <input type="text" value={nombre} onChange={e=>setNombre(e.target.value)} required className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary" />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-muted-foreground">Apellido</label>
-                    <input type="text" value={apellido} onChange={e=>setApellido(e.target.value)} required className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary" />
-                </div>
-            </div>
-            
-            <div className="space-y-1">
-                <label className="text-xs font-bold text-muted-foreground">Correo Electrónico a Validar</label>
-                <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary" />
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-muted-foreground">Nombre</label>
+                <input
+                  type="text"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  required
+                  className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-muted-foreground">Apellido</label>
+                <input
+                  type="text"
+                  value={apellido}
+                  onChange={(e) => setApellido(e.target.value)}
+                  required
+                  className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary"
+                />
+              </div>
             </div>
 
             <div className="space-y-1">
-                <label className="text-xs font-bold text-muted-foreground">Cargo Pedido (Para Asignaciones)</label>
-                <select value={rolPedido} onChange={e=>setRolPedido(e.target.value)} className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary bg-background">
-                    <option value="ESTUDIANTE">Capacitante</option>
-                    <option value="PROFESOR">Examinador</option>
-                    <option value="ADMINISTRADOR">Administrador</option>
-                </select>
+              <label className="text-xs font-bold text-muted-foreground">Correo Electrónico a Validar</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary"
+              />
             </div>
-            
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-muted-foreground">Cargo Pedido (Para Asignaciones)</label>
+              <select
+                value={rolPedido}
+                onChange={(e) => setRolPedido(e.target.value)}
+                className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary bg-background"
+              >
+                <option value="ESTUDIANTE">Capacitante</option>
+                <option value="PROFESOR">Examinador</option>
+                <option value="ADMINISTRADOR">Administrador</option>
+              </select>
+            </div>
+
             <div className="flex gap-2 mt-6">
-                <button type="button" onClick={handleGoToLogin} className="h-10 px-4 text-xs font-bold text-muted-foreground rounded-lg border border-border hover:bg-muted">Cerrar</button>
-                <button type="submit" disabled={loading || rateLimited} className="flex-1 h-10 rounded-lg bg-primary text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-70">
-                    {loading ? "Elevando Petición..." : rateLimited ? "Bloqueado Temporalmente" : "Solicitar a Prevención"}
-                </button>
+              <button
+                type="button"
+                onClick={handleGoToLogin}
+                className="h-10 px-4 text-xs font-bold text-muted-foreground rounded-lg border border-border hover:bg-muted"
+              >
+                Cerrar
+              </button>
+              <button
+                type="submit"
+                disabled={loading || rateLimited}
+                className="flex-1 h-10 rounded-lg bg-primary text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-70"
+              >
+                {loading ? 'Elevando Petición...' : rateLimited ? 'Bloqueado Temporalmente' : 'Solicitar a Prevención'}
+              </button>
             </div>
-            </form>
+          </form>
         )}
 
         {/* ===================== VIEW: SUCCESS REQUEST ===================== */}
-        {view === "REQUEST_SUCCESS" && (
-            <div className="flex flex-col items-center text-center animate-in zoom-in-95">
-                <div className="text-emerald-500 font-bold bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20 mb-6">
-                    Tu petición se ha registrado y está en espera de aprobación, contacta al administrador.
-                </div>
-                <button onClick={handleGoToLogin} className="h-11 w-full rounded-xl bg-card border border-border hover:bg-muted font-bold text-sm shadow-sm transition-colors">
-                    Volver al Inicio
-                </button>
+        {view === 'REQUEST_SUCCESS' && (
+          <div className="flex flex-col items-center text-center animate-in zoom-in-95">
+            <div className="text-emerald-500 font-bold bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20 mb-6">
+              Tu petición se ha registrado y está en espera de aprobación, contacta al administrador.
             </div>
+            <button
+              onClick={handleGoToLogin}
+              className="h-11 w-full rounded-xl bg-card border border-border hover:bg-muted font-bold text-sm shadow-sm transition-colors"
+            >
+              Volver al Inicio
+            </button>
+          </div>
         )}
 
         {/* ===================== VIEW: REVOKED ===================== */}
-        {view === "REVOKED" && (
-            <div className="flex flex-col items-center text-center animate-in zoom-in-95">
-                <div className="h-16 w-16 rounded-3xl bg-red-500/10 flex items-center justify-center mb-6 ring-1 ring-red-500/20">
-                  <ShieldAlert className="h-8 w-8 text-red-500" />
-                </div>
-                <div className="text-muted-foreground p-2 mb-6">
-                    Tu sesión ha sido cerrada por un administrador o tu cuenta ha sido <span className="font-bold text-foreground">eliminada del sistema</span> de forma permanente.
-                </div>
-                <button onClick={handleGoToLogin} className="h-11 w-full rounded-xl bg-red-600 text-white hover:bg-red-700 font-bold text-sm shadow-sm transition-colors">
-                    Volver al Inicio Seguro
-                </button>
+        {view === 'REVOKED' && (
+          <div className="flex flex-col items-center text-center animate-in zoom-in-95">
+            <div className="h-16 w-16 rounded-3xl bg-red-500/10 flex items-center justify-center mb-6 ring-1 ring-red-500/20">
+              <ShieldAlert className="h-8 w-8 text-red-500" />
             </div>
+            <div className="text-muted-foreground p-2 mb-6">
+              Tu sesión ha sido cerrada por un administrador o tu cuenta ha sido{' '}
+              <span className="font-bold text-foreground">eliminada del sistema</span> de forma permanente.
+            </div>
+            <button
+              onClick={handleGoToLogin}
+              className="h-11 w-full rounded-xl bg-red-600 text-white hover:bg-red-700 font-bold text-sm shadow-sm transition-colors"
+            >
+              Volver al Inicio Seguro
+            </button>
+          </div>
         )}
 
         {/* Footer Toggle */}
-        {(view === "LOGIN") && (
-            <div className="mt-8 pt-6 border-t border-border flex flex-col items-center gap-3">
-            <a href="/recuperar-contrasena" className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5">
-                <Lock className="h-3.5 w-3.5" /> ¿Olvidaste tu contraseña?
+        {view === 'LOGIN' && (
+          <div className="mt-8 pt-6 border-t border-border flex flex-col items-center gap-3">
+            <a
+              href="/recuperar-contrasena"
+              className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5"
+            >
+              <Lock className="h-3.5 w-3.5" /> ¿Olvidaste tu contraseña?
             </a>
-            <button onClick={handleGoToRequest} className="text-xs font-bold text-primary hover:underline flex items-center gap-2">
-                <User className="h-4 w-4" /> Registrar Petición de Monitoreo
+            <button
+              onClick={handleGoToRequest}
+              className="text-xs font-bold text-primary hover:underline flex items-center gap-2"
+            >
+              <User className="h-4 w-4" /> Registrar Petición de Monitoreo
             </button>
-            </div>
+          </div>
         )}
       </div>
     </div>

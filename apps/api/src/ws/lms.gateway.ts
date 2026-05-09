@@ -20,10 +20,10 @@ interface ConnectedClient {
 
 /**
  * Central WebSocket gateway for real-time LMS communication.
- * 
+ *
  * Authenticates connections via JWT token in query string.
  * Provides methods for broadcasting events to all or specific users.
- * 
+ *
  * Events emitted:
  * - session:revoked — Force logout (user deleted/deactivated)
  * - user:deleted — User was removed from the system
@@ -57,7 +57,7 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
   onModuleInit() {
     // Check for ghost connections every 15 seconds (reduced from 30s for faster detection)
     setInterval(() => {
-      this.clients.forEach(c => {
+      this.clients.forEach((c) => {
         if ((c.socket as any).isAlive === false) {
           // Client hasn't responded to the last ping, terminate
           return c.socket.terminate();
@@ -102,17 +102,21 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
       };
 
       // ── Enforce single session: revoke all previous connections for this user ──
-      const existingConnections = this.clients.filter(c => c.guid === payload.sub);
+      const existingConnections = this.clients.filter((c) => c.guid === payload.sub);
       for (const existing of existingConnections) {
         const revokeMsg = JSON.stringify({
           event: 'session:revoked',
           data: { reason: 'new_session' },
           timestamp: Date.now(),
         });
-        try { existing.socket.send(revokeMsg); } catch {}
-        try { existing.socket.close(4004, 'Nueva sesión iniciada'); } catch {}
+        try {
+          existing.socket.send(revokeMsg);
+        } catch {}
+        try {
+          existing.socket.close(4004, 'Nueva sesión iniciada');
+        } catch {}
       }
-      this.clients = this.clients.filter(c => c.guid !== payload.sub);
+      this.clients = this.clients.filter((c) => c.guid !== payload.sub);
 
       this.clients.push(connectedClient);
       this.broadcast('presence:update', {
@@ -128,7 +132,9 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
           editingState[cursoGuid] = editor;
         });
         const syncMsg = JSON.stringify({ event: 'course:editing-sync', data: editingState, timestamp: Date.now() });
-        try { client.send(syncMsg); } catch {}
+        try {
+          client.send(syncMsg);
+        } catch {}
       }
 
       // Send full online users list to the newly connected client (presence sync)
@@ -137,7 +143,9 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
         data: { onlineUsers: this.getOnlineUserGuids() },
         timestamp: Date.now(),
       });
-      try { client.send(presenceSync); } catch {}
+      try {
+        client.send(presenceSync);
+      } catch {}
 
       // Listen for incoming messages from this client (course:lock / course:unlock)
       client.on('message', async (raw: WebSocket.Data) => {
@@ -147,7 +155,10 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
             // Look up user name
             let nombre = 'Usuario';
             try {
-              const u = await this.prisma.usuarios.findUnique({ where: { guid: connectedClient.guid }, select: { nombre: true, apellido: true } });
+              const u = await this.prisma.usuarios.findUnique({
+                where: { guid: connectedClient.guid },
+                select: { nombre: true, apellido: true },
+              });
               if (u) nombre = `${u.nombre} ${u.apellido}`;
             } catch {}
             const rolLabel = connectedClient.role === 'ADMINISTRADOR' ? 'Administrador' : 'Examinador';
@@ -164,32 +175,31 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
           }
         } catch {}
       });
-
     } catch {
       client.close(4003, 'Autenticación fallida');
     }
   }
 
   async handleDisconnect(client: WebSocket): Promise<void> {
-    const index = this.clients.findIndex(c => c.socket === client);
+    const index = this.clients.findIndex((c) => c.socket === client);
     if (index !== -1) {
       const disconnectedGuid = this.clients[index].guid;
       this.clients.splice(index, 1);
 
       // Clean stale/closed sockets BEFORE checking stillConnected to avoid false positives
-      this.clients = this.clients.filter(c => c.socket.readyState === WebSocket.OPEN);
+      this.clients = this.clients.filter((c) => c.socket.readyState === WebSocket.OPEN);
 
       // Only process presence for authenticated users (non-empty guid)
       if (disconnectedGuid) {
         // Check if user has other active connections
-        const stillConnected = this.clients.some(c => c.guid === disconnectedGuid);
+        const stillConnected = this.clients.some((c) => c.guid === disconnectedGuid);
         if (!stillConnected) {
           // Update database ultimo_acceso BEFORE broadcasting so the frontend fetches the new date
           if (this.prisma) {
             try {
               await this.prisma.usuarios.update({
                 where: { guid: disconnectedGuid },
-                data: { ultimo_acceso: new Date() }
+                data: { ultimo_acceso: new Date() },
               });
             } catch (e) {
               this.logger.error('Error updating ultimo_acceso on disconnect', e);
@@ -222,11 +232,9 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
    * Get list of unique online user GUIDs (authenticated users only)
    */
   getOnlineUserGuids(): string[] {
-    return [...new Set(
-      this.clients
-        .filter(c => c.guid && c.socket.readyState === WebSocket.OPEN)
-        .map(c => c.guid)
-    )];
+    return [
+      ...new Set(this.clients.filter((c) => c.guid && c.socket.readyState === WebSocket.OPEN).map((c) => c.guid)),
+    ];
   }
 
   /**
@@ -271,7 +279,7 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
    * Sends a session:revoked event before closing.
    */
   forceDisconnect(guid: string, reason: string = 'account_deleted'): void {
-    const userClients = this.clients.filter(c => c.guid === guid);
+    const userClients = this.clients.filter((c) => c.guid === guid);
     for (const client of userClients) {
       try {
         const msg = JSON.stringify({
@@ -285,7 +293,7 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
         // Socket already closed
       }
     }
-    this.clients = this.clients.filter(c => c.guid !== guid);
+    this.clients = this.clients.filter((c) => c.guid !== guid);
   }
 
   /**

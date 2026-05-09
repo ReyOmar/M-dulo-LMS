@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useRef } from "react";
-import { FileSignature, Save, Loader2, Upload, Trash2, Eye, Download, Award } from "lucide-react";
-import { useRole } from "@/contexts/RoleContext";
-import { useAlert } from "@/contexts/AlertContext";
-import api, { API_BASE_URL } from "@/lib/api";
+import { useEffect, useState, useRef } from 'react';
+import { FileSignature, Save, Loader2, Upload, Trash2, Eye, Download, Award } from 'lucide-react';
+import { useRole } from '@/contexts/RoleContext';
+import { useAlert } from '@/contexts/AlertContext';
+import api, { API_BASE_URL } from '@/lib/api';
 
 export default function ExaminerFirmaPage() {
   const { user } = useRole();
@@ -13,9 +13,9 @@ export default function ExaminerFirmaPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [firmaUrl, setFirmaUrl] = useState<string | null>(null);
-  const [firmaNombre, setFirmaNombre] = useState("");
-  const [firmaCargo, setFirmaCargo] = useState("");
-  const [nombreCompleto, setNombreCompleto] = useState("");
+  const [firmaNombre, setFirmaNombre] = useState('');
+  const [firmaCargo, setFirmaCargo] = useState('');
+  const [nombreCompleto, setNombreCompleto] = useState('');
   const firmaInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -28,11 +28,11 @@ export default function ExaminerFirmaPage() {
       const res = await api.get(`/configuracion/firma?usuario_guid=${user?.guid}`);
       const data = res.data;
       setFirmaUrl(data.firma_url || null);
-      setFirmaNombre(data.firma_nombre || "");
-      setFirmaCargo(data.firma_cargo || "");
+      setFirmaNombre(data.firma_nombre || '');
+      setFirmaCargo(data.firma_cargo || '');
       setNombreCompleto(`${data.nombre} ${data.apellido}`);
     } catch {
-      showAlert.error("Error", "No se pudieron cargar los datos de firma.");
+      showAlert.error('Error', 'No se pudieron cargar los datos de firma.');
     } finally {
       setLoading(false);
     }
@@ -45,9 +45,9 @@ export default function ExaminerFirmaPage() {
         firma_nombre: firmaNombre || null,
         firma_cargo: firmaCargo || null,
       });
-      showToast.success("Tu información de firma se actualizó correctamente.");
+      showToast.success('Tu información de firma se actualizó correctamente.');
     } catch {
-      showAlert.error("Error", "No se pudieron guardar los cambios.");
+      showAlert.error('Error', 'No se pudieron guardar los cambios.');
     } finally {
       setSaving(false);
     }
@@ -56,22 +56,22 @@ export default function ExaminerFirmaPage() {
   const handleUploadFirma = async (file: File) => {
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      showAlert.warning("Archivo muy grande", "La imagen no puede superar 2 MB.");
+      showAlert.warning('Archivo muy grande', 'La imagen no puede superar 2 MB.');
       return;
     }
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append("file", file);
-      const res = await api.post("/storage/upload?folder=firmas", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      formData.append('file', file);
+      const res = await api.post('/storage/upload?folder=firmas', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       const filename = res.data.filename || res.data.url;
       await api.post(`/configuracion/firma?usuario_guid=${user?.guid}`, { firma_url: filename });
       setFirmaUrl(filename);
-      showToast.success("Tu imagen de firma se cargó correctamente.");
+      showToast.success('Tu imagen de firma se cargó correctamente.');
     } catch {
-      showAlert.error("Error", "No se pudo subir la imagen.");
+      showAlert.error('Error', 'No se pudo subir la imagen.');
     } finally {
       setUploading(false);
     }
@@ -81,9 +81,9 @@ export default function ExaminerFirmaPage() {
     try {
       await api.post(`/configuracion/firma?usuario_guid=${user?.guid}`, { firma_url: null });
       setFirmaUrl(null);
-      showToast.info("La imagen de firma fue eliminada.");
+      showToast.info('La imagen de firma fue eliminada.');
     } catch {
-      showAlert.error("Error", "No se pudo eliminar la firma.");
+      showAlert.error('Error', 'No se pudo eliminar la firma.');
     }
   };
 
@@ -116,7 +116,7 @@ export default function ExaminerFirmaPage() {
           className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-95 disabled:opacity-60 flex items-center gap-2 shrink-0"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {saving ? "Guardando..." : "Guardar"}
+          {saving ? 'Guardando...' : 'Guardar'}
         </button>
       </div>
 
@@ -144,12 +144,16 @@ export default function ExaminerFirmaPage() {
                   src={`${API_BASE_URL}/storage/download/${firmaUrl}`}
                   alt="Firma"
                   className="max-h-full max-w-full object-contain"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
                 />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-bold text-foreground">Firma cargada</p>
-                <p className="text-xs text-muted-foreground">Esta imagen aparecerá sobre la línea de firma en los certificados que emitas.</p>
+                <p className="text-xs text-muted-foreground">
+                  Esta imagen aparecerá sobre la línea de firma en los certificados que emitas.
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -179,7 +183,9 @@ export default function ExaminerFirmaPage() {
                 <Upload className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
               )}
               <div className="text-center">
-                <p className="text-sm font-bold text-foreground">{uploading ? "Subiendo..." : "Subir imagen de firma"}</p>
+                <p className="text-sm font-bold text-foreground">
+                  {uploading ? 'Subiendo...' : 'Subir imagen de firma'}
+                </p>
                 <p className="text-xs text-muted-foreground">PNG, JPG o WebP — Máximo 2 MB</p>
               </div>
             </button>
@@ -203,7 +209,9 @@ export default function ExaminerFirmaPage() {
               placeholder={nombreCompleto}
               className="w-full px-4 py-3 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
             />
-            <p className="text-xs text-muted-foreground mt-1">Si lo dejas vacío, se usará tu nombre registrado: <strong>{nombreCompleto}</strong></p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Si lo dejas vacío, se usará tu nombre registrado: <strong>{nombreCompleto}</strong>
+            </p>
           </div>
           <div>
             <label className="block text-sm font-bold text-foreground mb-1.5">Cargo / Título Profesional</label>
@@ -240,7 +248,7 @@ export default function ExaminerFirmaPage() {
             {/* Signature line */}
             <div className="w-48 h-[1px] bg-slate-300" />
             <p className="text-sm font-bold text-slate-800 mt-2">{firmaNombre || nombreCompleto}</p>
-            <p className="text-xs text-slate-500">{firmaCargo || "Instructor / Examinador del Curso"}</p>
+            <p className="text-xs text-slate-500">{firmaCargo || 'Instructor / Examinador del Curso'}</p>
           </div>
           <p className="text-xs text-muted-foreground text-center mt-3">
             Así se verá tu firma en los certificados de los cursos que examinas.

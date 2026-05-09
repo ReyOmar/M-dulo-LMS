@@ -19,35 +19,35 @@ export class CursosService {
   async getCursosActivosParaEstudiante() {
     return this.prisma.lms_cursos.findMany({
       where: { estado: 'PUBLICADO' },
-      orderBy: { created_at: 'desc' }
+      orderBy: { created_at: 'desc' },
     });
   }
 
   async getAllCursosParaAdmin() {
     return this.prisma.lms_cursos.findMany({
       orderBy: { created_at: 'desc' },
-      take: 500
+      take: 500,
     });
   }
 
   async getProfesores() {
     return this.prisma.usuarios.findMany({
-        where: { rol: 'PROFESOR' },
-        select: { guid: true, nombre: true, apellido: true, email: true }
+      where: { rol: 'PROFESOR' },
+      select: { guid: true, nombre: true, apellido: true, email: true },
     });
   }
 
   async getEstudiantes() {
     return this.prisma.usuarios.findMany({
-        where: { rol: 'ESTUDIANTE' },
-        select: { guid: true, nombre: true, apellido: true, email: true }
+      where: { rol: 'ESTUDIANTE' },
+      select: { guid: true, nombre: true, apellido: true, email: true },
     });
   }
 
   async asignarCurso(curso_guid: string, profesor_guid: string) {
     const updated = await this.prisma.lms_cursos.update({
-        where: { guid: curso_guid },
-        data: { profesor_guid }
+      where: { guid: curso_guid },
+      data: { profesor_guid },
     });
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_assigned' });
     return updated;
@@ -55,8 +55,8 @@ export class CursosService {
 
   async desasignarCurso(curso_guid: string, admin_guid: string) {
     const updated = await this.prisma.lms_cursos.update({
-        where: { guid: curso_guid },
-        data: { profesor_guid: admin_guid }
+      where: { guid: curso_guid },
+      data: { profesor_guid: admin_guid },
     });
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_unassigned' });
     return updated;
@@ -64,8 +64,8 @@ export class CursosService {
 
   async getCursosDeProfesor(profesor_guid: string) {
     return this.prisma.lms_cursos.findMany({
-        where: { profesor_guid },
-        orderBy: { created_at: 'desc' }
+      where: { profesor_guid },
+      orderBy: { created_at: 'desc' },
     });
   }
 
@@ -73,16 +73,16 @@ export class CursosService {
     const matriculas = await this.prisma.lms_matriculas.findMany({
       where: { usuario_guid: estudiante_guid },
       include: { curso: true },
-      orderBy: { fecha_matricula: 'desc' }
+      orderBy: { fecha_matricula: 'desc' },
     });
     return matriculas.map((m: any) => ({ ...m.curso, fecha_asignacion: m.fecha_matricula }));
   }
 
   async getCursosDeProfesorConFecha(profesor_guid: string) {
     return this.prisma.lms_cursos.findMany({
-        where: { profesor_guid },
-        orderBy: { updated_at: 'desc' },
-        select: { guid: true, titulo: true, estado: true, created_at: true, updated_at: true }
+      where: { profesor_guid },
+      orderBy: { updated_at: 'desc' },
+      select: { guid: true, titulo: true, estado: true, created_at: true, updated_at: true },
     });
   }
 
@@ -90,7 +90,7 @@ export class CursosService {
     const matriculas = await this.prisma.lms_matriculas.findMany({
       where: { usuario_guid: estudiante_guid },
       include: { curso: { select: { guid: true, titulo: true, estado: true } } },
-      orderBy: { fecha_matricula: 'desc' }
+      orderBy: { fecha_matricula: 'desc' },
     });
     return matriculas.map((m: any) => ({ ...m.curso, fecha_asignacion: m.fecha_matricula }));
   }
@@ -106,13 +106,13 @@ export class CursosService {
               orderBy: { orden: 'asc' },
               include: {
                 recursos: {
-                  orderBy: { orden: 'asc' }
-                }
-              }
-            }
-          }
-        }
-      }
+                  orderBy: { orden: 'asc' },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!curso) throw new NotFoundException('Curso no encontrado');
@@ -121,13 +121,13 @@ export class CursosService {
 
   async createCurso(data: { titulo: string; profesor_guid?: string }) {
     let guidFinal = data.profesor_guid;
-    
+
     if (!guidFinal) {
-        const fallBackAdmin = await this.prisma.usuarios.findFirst({
-            where: { rol: { in: ['ADMINISTRADOR', 'PROFESOR'] } }
-        });
-        if (fallBackAdmin) guidFinal = fallBackAdmin.guid;
-        else throw new BadRequestException('No hay profesores ni administradores disponibles para asignar el curso.');
+      const fallBackAdmin = await this.prisma.usuarios.findFirst({
+        where: { rol: { in: ['ADMINISTRADOR', 'PROFESOR'] } },
+      });
+      if (fallBackAdmin) guidFinal = fallBackAdmin.guid;
+      else throw new BadRequestException('No hay profesores ni administradores disponibles para asignar el curso.');
     }
 
     const curso = await this.prisma.lms_cursos.create({
@@ -135,7 +135,7 @@ export class CursosService {
         titulo: data.titulo,
         estado: 'BORRADOR',
         profesor_guid: guidFinal,
-      }
+      },
     });
 
     this.lmsGateway.broadcast('course:created', { guid: curso.guid, titulo: curso.titulo });
@@ -143,12 +143,16 @@ export class CursosService {
     return curso;
   }
 
-  async updateCurso(curso_guid: string, data: { titulo?: string; estado?: string; imagen_portada?: string }, requestUser?: any) {
+  async updateCurso(
+    curso_guid: string,
+    data: { titulo?: string; estado?: string; imagen_portada?: string },
+    requestUser?: any,
+  ) {
     // GUARD: Professors can only edit their own assigned courses
     if (requestUser?.role === 'PROFESOR') {
       const cursoOwnership = await this.prisma.lms_cursos.findUnique({
         where: { guid: curso_guid },
-        select: { profesor_guid: true }
+        select: { profesor_guid: true },
       });
       if (!cursoOwnership) throw new NotFoundException('Curso no encontrado');
       if (cursoOwnership.profesor_guid !== requestUser.sub) {
@@ -164,36 +168,40 @@ export class CursosService {
           where: {
             tipo: 'TAREA',
             titulo: { startsWith: '[QUIZ]' },
-            leccion: { modulo: { curso_guid } }
+            leccion: { modulo: { curso_guid } },
           },
-          select: { guid: true }
+          select: { guid: true },
         });
 
         if (quizResources.length > 0) {
-          const quizGuids = quizResources.map(r => r.guid);
+          const quizGuids = quizResources.map((r) => r.guid);
           const activeQuizAttempts = await this.prisma.lms_entregas.findMany({
             where: { tarea_guid: { in: quizGuids }, estado: 'BORRADOR' },
-            select: { usuario_guid: true }
+            select: { usuario_guid: true },
           });
 
           if (activeQuizAttempts.length > 0) {
             throw new BadRequestException(
-              `No se puede pasar a Borrador: hay ${activeQuizAttempts.length} estudiante(s) realizando un quiz actualmente. Espera a que terminen.`
+              `No se puede pasar a Borrador: hay ${activeQuizAttempts.length} estudiante(s) realizando un quiz actualmente. Espera a que terminen.`,
             );
           }
         }
 
         const matriculas = await this.prisma.lms_matriculas.findMany({
           where: { curso_guid },
-          select: { usuario_guid: true }
+          select: { usuario_guid: true },
         });
-        const enrolledGuids = matriculas.map(m => m.usuario_guid);
+        const enrolledGuids = matriculas.map((m) => m.usuario_guid);
 
         if (enrolledGuids.length > 0) {
-          this.lmsGateway.broadcast('course:maintenance', {
-            curso_guid,
-            titulo: curso.titulo
-          }, enrolledGuids);
+          this.lmsGateway.broadcast(
+            'course:maintenance',
+            {
+              curso_guid,
+              titulo: curso.titulo,
+            },
+            enrolledGuids,
+          );
         }
       }
     }
@@ -203,12 +211,12 @@ export class CursosService {
     }
 
     const updated = await this.prisma.lms_cursos.update({
-        where: { guid: curso_guid },
-        data: {
-            ...(data.titulo !== undefined && { titulo: data.titulo }),
-            ...(data.estado !== undefined && { estado: data.estado as lms_estado_curso }),
-            ...(data.imagen_portada !== undefined && { imagen_portada: data.imagen_portada }),
-        }
+      where: { guid: curso_guid },
+      data: {
+        ...(data.titulo !== undefined && { titulo: data.titulo }),
+        ...(data.estado !== undefined && { estado: data.estado as lms_estado_curso }),
+        ...(data.imagen_portada !== undefined && { imagen_portada: data.imagen_portada }),
+      },
     });
 
     this.lmsGateway.broadcast('course:updated', { guid: curso_guid, ...data });

@@ -1,13 +1,29 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useCallback } from "react";
-import { Users, ShieldAlert, Key, UserCheck, UserX, Clock, Mail, BookOpen, X, GraduationCap, Shield, Presentation, Search, Trash2, AlertTriangle } from "lucide-react";
-import { PageLoader } from "@/components/ui/PageLoader";
-import { useRole } from "@/contexts/RoleContext";
-import Link from "next/link";
-import api from "@/lib/api";
-import { useAlert } from "@/contexts/AlertContext";
-import { useWS } from "@/contexts/WebSocketContext";
+import { useEffect, useState, useCallback } from 'react';
+import {
+  Users,
+  ShieldAlert,
+  Key,
+  UserCheck,
+  UserX,
+  Clock,
+  Mail,
+  BookOpen,
+  X,
+  GraduationCap,
+  Shield,
+  Presentation,
+  Search,
+  Trash2,
+  AlertTriangle,
+} from 'lucide-react';
+import { PageLoader } from '@/components/ui/PageLoader';
+import { useRole } from '@/contexts/RoleContext';
+import Link from 'next/link';
+import api from '@/lib/api';
+import { useAlert } from '@/contexts/AlertContext';
+import { useWS } from '@/contexts/WebSocketContext';
 
 interface Usuario {
   guid: string;
@@ -41,19 +57,19 @@ export default function BaseUsuarios() {
   const [loadingCursos, setLoadingCursos] = useState(false);
   const [adminStats, setAdminStats] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<TabType>('PROFESOR');
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const { showAlert, showConfirm, showToast } = useAlert();
   const { subscribe, onlineUsers } = useWS();
 
   useEffect(() => {
-    if (realRole === "admin") {
+    if (realRole === 'admin') {
       fetchUsuarios();
     }
   }, [realRole]);
 
   useEffect(() => {
-    if (realRole !== "admin") return;
-    
+    if (realRole !== 'admin') return;
+
     // Auto-refresh user list when new users are created or deleted via WS
     const unsub1 = subscribe('user:created', fetchUsuarios);
     const unsub2 = subscribe('user:deleted', fetchUsuarios);
@@ -67,17 +83,21 @@ export default function BaseUsuarios() {
     const unsub4 = subscribe('dashboard:refresh', () => {
       fetchUsuarios();
       if (selectedUser) {
-        api.get(`/cursos/usuario-cursos?usuario_guid=${selectedUser.guid}&rol=${selectedUser.rol}`)
-          .then(res => setUserCourses(Array.isArray(res.data) ? res.data : []))
+        api
+          .get(`/cursos/usuario-cursos?usuario_guid=${selectedUser.guid}&rol=${selectedUser.rol}`)
+          .then((res) => setUserCourses(Array.isArray(res.data) ? res.data : []))
           .catch(console.error);
         if (selectedUser.rol === 'ADMINISTRADOR') {
-          api.get('/auth/admin-stats').then(res => setAdminStats(res.data)).catch(console.error);
+          api
+            .get('/auth/admin-stats')
+            .then((res) => setAdminStats(res.data))
+            .catch(console.error);
         }
       }
     });
     // Re-fetch users when presence changes so ultimo_acceso is fresh from the DB
     const unsub_presence = subscribe('presence:update', fetchUsuarios);
-    
+
     return () => {
       unsub1();
       unsub2();
@@ -90,13 +110,13 @@ export default function BaseUsuarios() {
   // Tick every 60s to re-render relative time labels ("Hace X min")
   const [, setTick] = useState(0);
   useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 60000);
+    const interval = setInterval(() => setTick((t) => t + 1), 60000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchUsuarios = async () => {
     try {
-      const res = await api.get("/auth/usuarios");
+      const res = await api.get('/auth/usuarios');
       const data = res.data;
       setUsuarios(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -130,7 +150,7 @@ export default function BaseUsuarios() {
 
   const renderUltimoAcceso = (guid: string, d: string | null | undefined) => {
     const isOnline = onlineUsers.includes(guid);
-    
+
     if (isOnline) {
       return (
         <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold bg-emerald-500/10 px-2 py-1 rounded-full w-fit">
@@ -143,7 +163,12 @@ export default function BaseUsuarios() {
       );
     }
 
-    if (!d) return <span className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Sin acceso</span>;
+    if (!d)
+      return (
+        <span className="text-muted-foreground flex items-center gap-1">
+          <Clock className="h-3 w-3" /> Sin acceso
+        </span>
+      );
     const lastAccess = new Date(d);
     const diffMs = Date.now() - lastAccess.getTime();
     const diffMin = Math.floor(diffMs / 60000);
@@ -155,13 +180,20 @@ export default function BaseUsuarios() {
     else if (diffMin < 60) relativeTime = `Hace ${diffMin} min`;
     else if (diffHrs < 24) relativeTime = `Hace ${diffHrs}h`;
     else if (diffDays < 7) relativeTime = `Hace ${diffDays}d`;
-    else relativeTime = lastAccess.toLocaleString("es-ES", {
-      day: "2-digit", month: "2-digit", year: "numeric",
-      hour: "2-digit", minute: "2-digit"
-    });
+    else
+      relativeTime = lastAccess.toLocaleString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
 
     return (
-      <span className="flex items-center gap-1.5 text-xs text-muted-foreground" title={lastAccess.toLocaleString("es-ES")}>
+      <span
+        className="flex items-center gap-1.5 text-xs text-muted-foreground"
+        title={lastAccess.toLocaleString('es-ES')}
+      >
         <Clock className="h-3 w-3" />
         {relativeTime}
       </span>
@@ -171,40 +203,45 @@ export default function BaseUsuarios() {
   const handleDeleteUser = async (guid: string) => {
     // Prevent admin from deleting their own account
     if (guid === user?.guid) {
-      showAlert.warning("Operación no permitida", "No puedes eliminar tu propia cuenta mientras estás autenticado.");
+      showAlert.warning('Operación no permitida', 'No puedes eliminar tu propia cuenta mientras estás autenticado.');
       return;
     }
 
     const isConfirmed = await showConfirm(
-      "¿Eliminar cuenta?",
-      "Esta acción es permanente. Si el usuario es estudiante, perderá todo su progreso. Si es examinador o administrador, sus cursos creados permanecerán en el sistema."
+      '¿Eliminar cuenta?',
+      'Esta acción es permanente. Si el usuario es estudiante, perderá todo su progreso. Si es examinador o administrador, sus cursos creados permanecerán en el sistema.',
     );
 
     if (!isConfirmed) return;
-    
+
     try {
       await api.delete(`/auth/usuarios/${guid}`);
-      showToast.success("Cuenta eliminada exitosamente.");
+      showToast.success('Cuenta eliminada exitosamente.');
       setSelectedUser(null);
       fetchUsuarios();
     } catch (err: any) {
-      showAlert.error("Error", err.response?.data?.message || "Error al eliminar la cuenta");
+      showAlert.error('Error', err.response?.data?.message || 'Error al eliminar la cuenta');
     }
   };
 
-  const filteredUsuarios = usuarios.filter(u => {
+  const filteredUsuarios = usuarios.filter((u) => {
     const matchesSearch = `${u.nombre} ${u.apellido} ${u.email}`.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTab = u.rol === activeTab;
     return matchesSearch && matchesTab;
   });
 
-  if (realRole !== "admin") {
+  if (realRole !== 'admin') {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] animate-in fade-in">
         <ShieldAlert className="h-16 w-16 text-red-500 mb-4" />
         <h1 className="text-2xl font-bold">Acceso Restringido PESV</h1>
         <p className="text-muted-foreground mt-2">Área exclusiva para Administradores de Sistema.</p>
-        <Link href="/dashboard" className="mt-6 px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-colors">Volver al Tablero</Link>
+        <Link
+          href="/dashboard"
+          className="mt-6 px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-colors"
+        >
+          Volver al Tablero
+        </Link>
       </div>
     );
   }
@@ -220,43 +257,48 @@ export default function BaseUsuarios() {
       <header className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <Users className="h-8 w-8 text-primary" />
-          Base de Usuarios 
-          <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-bold">{usuarios.length} Registrados</span>
+          Base de Usuarios
+          <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-bold">
+            {usuarios.length} Registrados
+          </span>
         </h1>
-        <p className="text-muted-foreground mt-2">Visión global de todas las cuentas organizadas por rol. Haz click en un examinador o estudiante para ver sus cursos.</p>
+        <p className="text-muted-foreground mt-2">
+          Visión global de todas las cuentas organizadas por rol. Haz click en un examinador o estudiante para ver sus
+          cursos.
+        </p>
       </header>
 
       {/* Tabs y Search Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 animate-in slide-in-from-bottom-4 duration-500">
         <div className="flex bg-muted/30 p-1 rounded-xl border border-border/50">
-          <button 
+          <button
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'ADMINISTRADOR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
             onClick={() => setActiveTab('ADMINISTRADOR')}
           >
             <Shield className="h-4 w-4 text-red-500" />
-            Administradores ({usuarios.filter(u => u.rol === 'ADMINISTRADOR').length})
+            Administradores ({usuarios.filter((u) => u.rol === 'ADMINISTRADOR').length})
           </button>
-          <button 
+          <button
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'PROFESOR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
             onClick={() => setActiveTab('PROFESOR')}
           >
             <Presentation className="h-4 w-4 text-blue-500" />
-            Examinadores ({usuarios.filter(u => u.rol === 'PROFESOR').length})
+            Examinadores ({usuarios.filter((u) => u.rol === 'PROFESOR').length})
           </button>
-          <button 
+          <button
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'ESTUDIANTE' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
             onClick={() => setActiveTab('ESTUDIANTE')}
           >
             <GraduationCap className="h-4 w-4 text-emerald-500" />
-            Estudiantes ({usuarios.filter(u => u.rol === 'ESTUDIANTE').length})
+            Estudiantes ({usuarios.filter((u) => u.rol === 'ESTUDIANTE').length})
           </button>
         </div>
 
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input 
-            type="text" 
-            placeholder="Buscar por nombre o correo..." 
+          <input
+            type="text"
+            placeholder="Buscar por nombre o correo..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-card border border-border/50 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm font-medium"
@@ -285,48 +327,66 @@ export default function BaseUsuarios() {
                   </td>
                 </tr>
               ) : (
-                filteredUsuarios.map(user => {
+                filteredUsuarios.map((user) => {
                   const clickable = true;
                   const roleInfo = getRoleInfo(user.rol);
-                  
+
                   return (
-                    <tr 
-                      key={user.guid} 
+                    <tr
+                      key={user.guid}
                       className={`hover:bg-muted/10 transition-colors ${clickable ? 'cursor-pointer hover:bg-primary/5' : ''}`}
                       onClick={() => clickable && openUserDetail(user)}
                     >
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 ${roleInfo.bg.replace('/10', '')} ${user.rol === 'ADMINISTRADOR' ? 'bg-red-500' : user.rol === 'PROFESOR' ? 'bg-blue-500' : 'bg-emerald-500'}`}>
-                             {user.nombre.charAt(0)}{user.apellido.charAt(0)}
+                          <div
+                            className={`h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 ${roleInfo.bg.replace('/10', '')} ${user.rol === 'ADMINISTRADOR' ? 'bg-red-500' : user.rol === 'PROFESOR' ? 'bg-blue-500' : 'bg-emerald-500'}`}
+                          >
+                            {user.nombre.charAt(0)}
+                            {user.apellido.charAt(0)}
                           </div>
-                          <div className="font-bold text-sm">{user.nombre} {user.apellido}</div>
+                          <div className="font-bold text-sm">
+                            {user.nombre} {user.apellido}
+                          </div>
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                            <Mail className="h-3 w-3 shrink-0" /> {user.email}
+                          <Mail className="h-3 w-3 shrink-0" /> {user.email}
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
-                         <div className="flex items-center gap-3">
-                            {activeTab === 'ADMINISTRADOR' ? (
-                                <span className="text-sm font-bold text-muted-foreground">{new Date(user.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-                            ) : user.activo ? (
-                                <span className="flex items-center gap-1 text-emerald-500 text-xs font-bold"><UserCheck className="h-3 w-3" /> Activo</span>
-                            ) : (
-                                <span className="flex items-center gap-1 text-red-500 text-xs font-bold"><UserX className="h-3 w-3" /> Inactivo</span>
-                            )}
-                            {user.usa_clave_defecto && (
-                                <span className="flex items-center gap-1 text-amber-500 text-xs font-bold" title="No ha configurado su contraseña"><Key className="h-3 w-3" /> Sin Clave</span>
-                            )}
-                         </div>
+                        <div className="flex items-center gap-3">
+                          {activeTab === 'ADMINISTRADOR' ? (
+                            <span className="text-sm font-bold text-muted-foreground">
+                              {new Date(user.created_at).toLocaleDateString('es-ES', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                              })}
+                            </span>
+                          ) : user.activo ? (
+                            <span className="flex items-center gap-1 text-emerald-500 text-xs font-bold">
+                              <UserCheck className="h-3 w-3" /> Activo
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-red-500 text-xs font-bold">
+                              <UserX className="h-3 w-3" /> Inactivo
+                            </span>
+                          )}
+                          {user.usa_clave_defecto && (
+                            <span
+                              className="flex items-center gap-1 text-amber-500 text-xs font-bold"
+                              title="No ha configurado su contraseña"
+                            >
+                              <Key className="h-3 w-3" /> Sin Clave
+                            </span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-5 py-3.5 text-sm">
-                          {renderUltimoAcceso(user.guid, user.ultimo_acceso)}
-                      </td>
+                      <td className="px-5 py-3.5 text-sm">{renderUltimoAcceso(user.guid, user.ultimo_acceso)}</td>
                     </tr>
-                  )
+                  );
                 })
               )}
             </tbody>
@@ -336,37 +396,58 @@ export default function BaseUsuarios() {
 
       {/* ======= USER DETAIL MODAL ======= */}
       {selectedUser && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center pt-24 animate-in fade-in duration-300" onClick={() => setSelectedUser(null)}>
-          <div 
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center pt-24 animate-in fade-in duration-300"
+          onClick={() => setSelectedUser(null)}
+        >
+          <div
             className="bg-card border border-border/50 rounded-2xl shadow-2xl w-full max-w-lg p-8 animate-in slide-in-from-bottom-4 duration-300"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
-                <div className={`h-12 w-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${selectedUser.rol === 'PROFESOR' ? 'bg-blue-500' : 'bg-emerald-500'}`}>
-                  {selectedUser.nombre.charAt(0)}{selectedUser.apellido.charAt(0)}
+                <div
+                  className={`h-12 w-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${selectedUser.rol === 'PROFESOR' ? 'bg-blue-500' : 'bg-emerald-500'}`}
+                >
+                  {selectedUser.nombre.charAt(0)}
+                  {selectedUser.apellido.charAt(0)}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold">{selectedUser.nombre} {selectedUser.apellido}</h2>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> {selectedUser.email}</p>
+                  <h2 className="text-xl font-bold">
+                    {selectedUser.nombre} {selectedUser.apellido}
+                  </h2>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Mail className="h-3 w-3" /> {selectedUser.email}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => handleDeleteUser(selectedUser.guid)} className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-colors text-muted-foreground" title="Eliminar cuenta">
+                <button
+                  onClick={() => handleDeleteUser(selectedUser.guid)}
+                  className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-colors text-muted-foreground"
+                  title="Eliminar cuenta"
+                >
                   <Trash2 className="h-5 w-5" />
                 </button>
-                <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-muted rounded-xl transition-colors">
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="p-2 hover:bg-muted rounded-xl transition-colors"
+                >
                   <X className="h-5 w-5 text-muted-foreground" />
                 </button>
               </div>
             </div>
 
             {/* Info */}
-            <div className={`grid ${selectedUser.rol === 'ADMINISTRADOR' ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'} gap-4 mb-6`}>
+            <div
+              className={`grid ${selectedUser.rol === 'ADMINISTRADOR' ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'} gap-4 mb-6`}
+            >
               <div className="bg-muted/20 rounded-xl p-4">
                 <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Rol</p>
-                <p className={`text-sm font-bold ${getRoleInfo(selectedUser.rol).color}`}>{getRoleInfo(selectedUser.rol).name}</p>
+                <p className={`text-sm font-bold ${getRoleInfo(selectedUser.rol).color}`}>
+                  {getRoleInfo(selectedUser.rol).name}
+                </p>
               </div>
               {selectedUser.rol !== 'ADMINISTRADOR' && (
                 <div className="bg-muted/20 rounded-xl p-4">
@@ -376,11 +457,19 @@ export default function BaseUsuarios() {
               )}
               <div className="bg-muted/20 rounded-xl p-4">
                 <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Fecha de registro</p>
-                <p className="text-sm font-bold">{new Date(selectedUser.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                <p className="text-sm font-bold">
+                  {new Date(selectedUser.created_at).toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                  })}
+                </p>
               </div>
               <div className="bg-muted/20 rounded-xl p-4">
                 <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Seguridad</p>
-                <p className={`text-sm font-bold ${selectedUser.usa_clave_defecto ? 'text-amber-500' : 'text-emerald-500'}`}>
+                <p
+                  className={`text-sm font-bold ${selectedUser.usa_clave_defecto ? 'text-amber-500' : 'text-emerald-500'}`}
+                >
                   {selectedUser.usa_clave_defecto ? '⚠ Sin Clave' : '✓ Con Clave'}
                 </p>
               </div>
@@ -389,13 +478,19 @@ export default function BaseUsuarios() {
                 <div className="mt-1">{renderUltimoAcceso(selectedUser.guid, selectedUser.ultimo_acceso)}</div>
               </div>
               <div className="bg-muted/20 rounded-xl p-4">
-                <p className="text-xs text-muted-foreground font-bold uppercase mb-1">{selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR' ? 'Cursos Creados' : 'Cursos Matriculados'}</p>
+                <p className="text-xs text-muted-foreground font-bold uppercase mb-1">
+                  {selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR'
+                    ? 'Cursos Creados'
+                    : 'Cursos Matriculados'}
+                </p>
                 <p className="text-sm font-bold">{loadingCursos ? '...' : userCourses.length}</p>
               </div>
               {selectedUser.rol === 'ADMINISTRADOR' && (
                 <div className="bg-muted/20 rounded-xl p-4">
                   <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Cuentas Aprobadas</p>
-                  <p className="text-sm font-bold text-emerald-500">{adminStats ? adminStats.cuentasAprobadas : '...'}</p>
+                  <p className="text-sm font-bold text-emerald-500">
+                    {adminStats ? adminStats.cuentasAprobadas : '...'}
+                  </p>
                 </div>
               )}
             </div>
@@ -403,29 +498,41 @@ export default function BaseUsuarios() {
             {/* Assigned/Enrolled Courses */}
             <div>
               <h3 className="text-sm font-bold uppercase text-muted-foreground tracking-wider mb-3 flex items-center gap-2">
-                <BookOpen className="h-4 w-4" /> {selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR' ? 'Cursos Creados' : 'Cursos Matriculados'}
+                <BookOpen className="h-4 w-4" />{' '}
+                {selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR'
+                  ? 'Cursos Creados'
+                  : 'Cursos Matriculados'}
               </h3>
               {loadingCursos ? (
                 <div className="text-center py-6 text-muted-foreground text-sm flex items-center justify-center gap-2">
-                  <Clock className="h-4 w-4 animate-spin"/> Cargando cursos...
+                  <Clock className="h-4 w-4 animate-spin" /> Cargando cursos...
                 </div>
               ) : userCourses.length === 0 ? (
                 <div className="text-center py-6 bg-muted/10 rounded-xl border border-border/50">
-                  <p className="text-sm text-muted-foreground">Este usuario no tiene cursos {selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR' ? 'creados' : 'matriculados'}.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Este usuario no tiene cursos{' '}
+                    {selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR'
+                      ? 'creados'
+                      : 'matriculados'}
+                    .
+                  </p>
                   {(selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR') && (
-                    <Link href="/dashboard/constructor-cursos" className="text-xs text-primary font-bold hover:underline mt-2 inline-block">
+                    <Link
+                      href="/dashboard/constructor-cursos"
+                      className="text-xs text-primary font-bold hover:underline mt-2 inline-block"
+                    >
                       Ir a Gestión de Cursos para {selectedUser.rol === 'ADMINISTRADOR' ? 'crear' : 'asignar'} →
                     </Link>
                   )}
                 </div>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {userCourses.map(curso => (
-                    <div 
-                      key={curso.guid} 
+                  {userCourses.map((curso) => (
+                    <div
+                      key={curso.guid}
                       onClick={() => {
                         if (selectedUser?.rol === 'PROFESOR') {
-                           window.location.href = `/dashboard/admin/asignacion-cursos?curso=${curso.guid}`;
+                          window.location.href = `/dashboard/admin/asignacion-cursos?curso=${curso.guid}`;
                         }
                       }}
                       className={`flex items-center justify-between p-3 bg-muted/10 rounded-xl border border-border/30 transition-colors ${selectedUser?.rol === 'PROFESOR' ? 'cursor-pointer hover:border-primary hover:bg-primary/5' : 'hover:border-primary/30'}`}
@@ -437,18 +544,34 @@ export default function BaseUsuarios() {
                         <div>
                           <p className="text-sm font-bold">{curso.titulo}</p>
                           <p className="text-xs text-muted-foreground">
-                            {selectedUser?.rol === 'PROFESOR' ? 'Asignado' : selectedUser?.rol === 'ADMINISTRADOR' ? 'Creado' : 'Matriculado'}: {(() => {
+                            {selectedUser?.rol === 'PROFESOR'
+                              ? 'Asignado'
+                              : selectedUser?.rol === 'ADMINISTRADOR'
+                                ? 'Creado'
+                                : 'Matriculado'}
+                            :{' '}
+                            {(() => {
                               const d = curso.fecha_asignacion || curso.updated_at || curso.created_at;
-                              return d ? new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Sin fecha';
+                              return d
+                                ? new Date(d).toLocaleDateString('es-ES', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                  })
+                                : 'Sin fecha';
                             })()}
                           </p>
                         </div>
                       </div>
-                      <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
-                        curso.estado === 'PUBLICADO' ? 'bg-emerald-500/10 text-emerald-500' :
-                        curso.estado === 'BORRADOR' ? 'bg-amber-500/10 text-amber-500' :
-                        'bg-muted text-muted-foreground'
-                      }`}>
+                      <span
+                        className={`text-xs font-bold px-2 py-1 rounded-lg ${
+                          curso.estado === 'PUBLICADO'
+                            ? 'bg-emerald-500/10 text-emerald-500'
+                            : curso.estado === 'BORRADOR'
+                              ? 'bg-amber-500/10 text-amber-500'
+                              : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
                         {curso.estado}
                       </span>
                     </div>

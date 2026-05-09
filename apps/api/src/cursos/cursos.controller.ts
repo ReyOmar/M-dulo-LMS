@@ -42,9 +42,9 @@ export class CursosController {
   @Get('/usuario-cursos')
   async getCursosPorUsuario(@Query('usuario_guid') usuario_guid: string, @Query('rol') rol: string) {
     if (rol === 'ESTUDIANTE') {
-        return this.cursosService.getCursosDeEstudianteConFecha(usuario_guid);
+      return this.cursosService.getCursosDeEstudianteConFecha(usuario_guid);
     } else if (rol === 'PROFESOR') {
-        return this.cursosService.getCursosDeProfesorConFecha(usuario_guid);
+      return this.cursosService.getCursosDeProfesorConFecha(usuario_guid);
     }
     return [];
   }
@@ -98,13 +98,21 @@ export class CursosController {
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Post('/:curso_guid/modulos')
-  async createModulo(@Param('curso_guid') curso_guid: string, @Body() body: CreateModuloDto, @CurrentUser() user: JwtPayload) {
+  async createModulo(
+    @Param('curso_guid') curso_guid: string,
+    @Body() body: CreateModuloDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
     return this.bloqueService.createModuloParaCurso(curso_guid, body, user);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Patch('/modulos/:modulo_guid')
-  async updateModulo(@Param('modulo_guid') modulo_guid: string, @Body() body: UpdateModuloDto, @CurrentUser() user: JwtPayload) {
+  async updateModulo(
+    @Param('modulo_guid') modulo_guid: string,
+    @Body() body: UpdateModuloDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
     return this.bloqueService.updateModulo(modulo_guid, body, user);
   }
 
@@ -118,7 +126,11 @@ export class CursosController {
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Post('/modulos/:modulo_guid/bloques')
-  async addBloque(@Param('modulo_guid') modulo_guid: string, @Body() body: CreateBloqueDto, @CurrentUser() user: JwtPayload) {
+  async addBloque(
+    @Param('modulo_guid') modulo_guid: string,
+    @Body() body: CreateBloqueDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
     return this.bloqueService.addBloqueToModulo(modulo_guid, body, user);
   }
 
@@ -130,7 +142,11 @@ export class CursosController {
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Patch('/bloques/:bloque_guid')
-  async updateBloque(@Param('bloque_guid') bloque_guid: string, @Body() body: UpdateBloqueDto, @CurrentUser() user: JwtPayload) {
+  async updateBloque(
+    @Param('bloque_guid') bloque_guid: string,
+    @Body() body: UpdateBloqueDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
     return this.bloqueService.updateBloque(bloque_guid, body, user);
   }
 
@@ -142,7 +158,11 @@ export class CursosController {
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Patch('/modulos/:modulo_guid/recursos/reorder')
-  async reorderBloques(@Param('modulo_guid') modulo_guid: string, @Body() body: { recursos_guids: string[] }, @CurrentUser() user: JwtPayload) {
+  async reorderBloques(
+    @Param('modulo_guid') modulo_guid: string,
+    @Body() body: { recursos_guids: string[] },
+    @CurrentUser() user: JwtPayload,
+  ) {
     if (!body.recursos_guids || !Array.isArray(body.recursos_guids)) {
       throw new BadRequestException('recursos_guids debe ser un arreglo de strings.');
     }
@@ -158,7 +178,11 @@ export class CursosController {
   }
 
   @Post('/student/quiz/:bloque_guid/submit')
-  async submitQuiz(@Param('bloque_guid') bloque_guid: string, @Body() body: SubmitQuizDto, @CurrentUser() user: JwtPayload) {
+  async submitQuiz(
+    @Param('bloque_guid') bloque_guid: string,
+    @Body() body: SubmitQuizDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
     await this.quizService.verificarMatricula(bloque_guid, user.sub);
     return this.quizService.evaluarQuiz(bloque_guid, user.sub, body.respuestas);
   }
