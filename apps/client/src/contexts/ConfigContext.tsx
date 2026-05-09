@@ -184,18 +184,33 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       ${fontRule}
     `;
 
-    // ── Favicon (safe update — never remove React-managed nodes) ──
-    const targetFavicon = resolveFileUrl(cfg.favicon_url) || `/favicon.ico?v=${Date.now()}`;
-    
-    // Find or create a single managed favicon link (avoid removing React-controlled nodes)
-    let faviconLink = document.getElementById('lms-favicon') as HTMLLinkElement | null;
-    if (!faviconLink) {
-      faviconLink = document.createElement('link');
-      faviconLink.id = 'lms-favicon';
-      faviconLink.rel = 'icon';
-      document.head.appendChild(faviconLink);
+    // ── Favicon ──
+    // Next.js SSR generates <link rel="icon"> from metadata. On client-side
+    // navigation or real-time preview, we need to override it with the new value.
+    const targetFavicon = resolveFileUrl(cfg.favicon_url) || null;
+
+    // Remove ALL existing favicon links (including Next.js SSR-generated ones)
+    // so the browser picks up only our dynamically-set one.
+    if (targetFavicon) {
+      document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]').forEach(el => {
+        if (el.id !== 'lms-favicon') el.remove();
+      });
     }
-    faviconLink.href = targetFavicon;
+
+    // Create or update our managed favicon link
+    let faviconLink = document.getElementById('lms-favicon') as HTMLLinkElement | null;
+    if (targetFavicon) {
+      if (!faviconLink) {
+        faviconLink = document.createElement('link');
+        faviconLink.id = 'lms-favicon';
+        faviconLink.rel = 'icon';
+        document.head.appendChild(faviconLink);
+      }
+      faviconLink.href = targetFavicon;
+    } else if (faviconLink) {
+      // No custom favicon — remove our override so Next.js default takes over
+      faviconLink.remove();
+    }
   };
 
   const updateLocalTheme = (primary: string, secondary: string) => {

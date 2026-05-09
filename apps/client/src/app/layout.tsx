@@ -9,6 +9,8 @@ import { WebSocketProvider } from "@/contexts/WebSocketContext";
 
 export async function generateMetadata(): Promise<Metadata> {
   let platformName = "Campus Virtual";
+  let faviconUrl: string | null = null;
+
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
     const res = await fetch(`${apiUrl}/configuracion`, {
@@ -20,14 +22,27 @@ export async function generateMetadata(): Promise<Metadata> {
       if (data?.nombre_plataforma) {
         platformName = data.nombre_plataforma;
       }
+      if (data?.favicon_url) {
+        // Build the full download URL for the favicon
+        faviconUrl = data.favicon_url.startsWith('http')
+          ? data.favicon_url
+          : `${apiUrl}/storage/download/${data.favicon_url}`;
+      }
     }
   } catch {
     // Fallback silently — config will load client-side via ConfigContext
   }
 
+  // Default favicon: a simple SVG with the first letter of the platform name
+  const firstLetter = platformName.charAt(0).toUpperCase();
+  const defaultFavicon = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23166534'/><text x='50' y='68' font-family='Arial' font-size='42' font-weight='bold' fill='white' text-anchor='middle'>${firstLetter}</text></svg>`;
+
   return {
     title: platformName,
     description: "Plataforma Educativa Empresarial Moderna",
+    icons: {
+      icon: faviconUrl || defaultFavicon,
+    },
   };
 }
 
