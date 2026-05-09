@@ -2,6 +2,7 @@ import { Controller, Post, Get, Param, Res, Query, StreamableFile, BadRequestExc
 import { Throttle } from '@nestjs/throttler';
 import { StorageService } from './storage.service';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -42,12 +43,20 @@ export class StorageController {
   }
 
   /**
-   * Download a file. Three strategies:
+   * Download/serve a file. Public because <img>, <video>, <a> tags
+   * cannot send JWT headers — filenames are UUID-based (unguessable).
+   *
+   * Security model:
+   * - Upload: requires ADMINISTRADOR/PROFESOR role (auth protected)
+   * - Download: public read (filenames are random UUIDs, not enumerable)
+   * - Path traversal: prevented by folder whitelist + basename sanitization
+   *
+   * Three strategies:
    * 1. R2 with public URL → 302 redirect to CDN
    * 2. R2 without public URL → proxy stream from R2 through API
    * 3. Local file → serve from filesystem
-   * Supports folder-prefixed keys like 'portadas/123-abc.png'.
    */
+  @Public()
   @Get('/download/*')
   async downloadFile(@Req() req: any, @Query('originalName') originalName: string, @Res({ passthrough: true }) res: any) {
     // Extract the full key from the URL path (supports 'file.png' and 'folder/file.png')
