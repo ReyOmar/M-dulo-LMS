@@ -115,9 +115,9 @@ async function main() {
     }
     console.log('');
 
-    // 3. Find orphans
-    const orphans = allKeys.filter(obj => !referencedKeys.has(obj.key));
-    const kept = allKeys.filter(obj => referencedKeys.has(obj.key));
+    // 3. Find orphans (exclude .keep files — they are folder markers)
+    const orphans = allKeys.filter(obj => !referencedKeys.has(obj.key) && !obj.key.endsWith('.keep'));
+    const kept = allKeys.filter(obj => referencedKeys.has(obj.key) || obj.key.endsWith('.keep'));
     const orphanSize = orphans.reduce((sum, o) => sum + o.size, 0);
 
     console.log(`📊 Summary:`);
