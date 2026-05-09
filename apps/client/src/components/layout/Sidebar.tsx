@@ -1,7 +1,7 @@
 "use client";
 
 import { useRole, Role } from "@/contexts/RoleContext";
-import { useConfig } from "@/contexts/ConfigContext";
+import { useConfig, resolveFileUrl } from "@/contexts/ConfigContext";
 import { GraduationCap, BookOpen, Clock, Award, Shield, Settings, Users, ArrowRight, Compass, ShieldAlert, BarChart3, Presentation, BookCheck, ClipboardList, LogOut, CheckCircle, Palette, ChevronUp, ClipboardCheck, MessageSquare, FileSignature, Globe, Mail, Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -156,7 +156,7 @@ export function Sidebar() {
         <div className="h-16 flex items-center justify-between px-5 border-b border-border/30 shrink-0 gap-2">
           <div className="flex items-center gap-2.5 font-bold text-base text-primary overflow-hidden flex-1">
             {config?.logo_url ? (
-               <img src={config.logo_url} alt="Logo" className="max-h-10 max-w-[36px] object-contain shrink-0" />
+               <img src={resolveFileUrl(config.logo_url) || ''} alt="Logo" className="max-h-10 max-w-[36px] object-contain shrink-0" />
             ) : (
                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                  <GraduationCap className="h-4.5 w-4.5 text-primary" />

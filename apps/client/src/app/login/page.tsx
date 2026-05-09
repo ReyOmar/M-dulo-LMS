@@ -5,7 +5,7 @@ import { Lock, Mail, ArrowRight, GraduationCap, ShieldCheck, User, Info, Eye, Ey
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
-import { useConfig } from "@/contexts/ConfigContext";
+import { useConfig, resolveFileUrl } from "@/contexts/ConfigContext";
 import api from "@/lib/api";
 import { useAlert } from "@/contexts/AlertContext";
 import { useEffect } from "react";
@@ -181,7 +181,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center text-center space-y-4 mb-8">
           {config?.logo_url && view === "LOGIN" ? (
             <div className="flex items-center justify-center mb-2">
-              <img src={config.logo_url} alt="Logo" className="max-h-24 max-w-[200px] object-contain" />
+              <img src={resolveFileUrl(config.logo_url) || ''} alt="Logo" className="max-h-24 max-w-[200px] object-contain" />
             </div>
           ) : (
             <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-2 ring-1 ring-primary/20">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { GraduationCap, ArrowRight, ShieldCheck, Truck, Route, Award, Users, BookOpen, CheckCircle, ChevronRight, Phone, Mail, MapPin, Clock, Star, Target, Shield, Zap, TrendingUp, Heart } from "lucide-react";
-import { useConfig } from "@/contexts/ConfigContext";
+import { useConfig, resolveFileUrl } from "@/contexts/ConfigContext";
 
 /* ─── Animated Counter ─── */
 function AnimCounter({ end, suffix = "", duration = 2000 }: { end: number; suffix?: string; duration?: number }) {
@@ -88,7 +88,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3 font-bold text-xl text-primary">
             {config?.logo_url ? (
-              <img src={config.logo_url} alt="Logo" className="max-h-12 max-w-[40px] object-contain" />
+              <img src={resolveFileUrl(config.logo_url) || ''} alt="Logo" className="max-h-12 max-w-[40px] object-contain" />
             ) : (
               <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
                 <Truck className="h-5 w-5 text-primary-foreground" />
@@ -287,7 +287,7 @@ export default function Home() {
             <div className="md:col-span-2">
               <div className="flex items-center gap-3 font-bold text-xl text-primary mb-4">
                 {config?.logo_url ? (
-                  <img src={config.logo_url} alt="Logo" className="max-h-10 max-w-[40px] object-contain" />
+                  <img src={resolveFileUrl(config.logo_url) || ''} alt="Logo" className="max-h-10 max-w-[40px] object-contain" />
                 ) : (
                   <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
                     <Truck className="h-5 w-5 text-primary-foreground" />

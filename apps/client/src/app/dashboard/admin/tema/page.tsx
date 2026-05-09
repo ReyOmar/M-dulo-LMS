@@ -1,6 +1,6 @@
 "use client";
 
-import { useConfig, GOOGLE_FONTS } from "@/contexts/ConfigContext";
+import { useConfig, GOOGLE_FONTS, resolveFileUrl } from "@/contexts/ConfigContext";
 import { useRole } from "@/contexts/RoleContext";
 import { Palette, Save, Eye, Upload, Type, RectangleHorizontal, Image, Sparkles, GraduationCap } from "lucide-react";
 import { useRef, useState } from "react";
@@ -35,12 +35,14 @@ export default function TemaPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const { default: api, API_BASE_URL } = await import('@/lib/api');
+      const { default: api } = await import('@/lib/api');
       const res = await api.post('/storage/upload?folder=logos', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      const fileUrl = `${API_BASE_URL}/storage/download/${res.data.filename}`;
-      updateConfig({ [field]: fileUrl });
+      // Store only the R2 key (e.g. "logos/123-abc.png"), not the full URL.
+      // The full URL is built at render time via resolveFileUrl() — this ensures
+      // images work across environments (localhost, devtunnel, production).
+      updateConfig({ [field]: res.data.filename });
     } catch (err) {
       console.error('Error uploading file:', err);
     }
@@ -84,7 +86,7 @@ export default function TemaPage() {
               >
                 {config?.logo_url ? (
                   <>
-                    <img src={config.logo_url} alt="Logo" className="max-h-24 max-w-full object-contain relative z-0" />
+                    <img src={resolveFileUrl(config.logo_url) || ''} alt="Logo" className="max-h-24 max-w-full object-contain relative z-0" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 rounded-xl">
                       <p className="text-xs font-bold text-white">Cambiar</p>
                     </div>
@@ -101,7 +103,7 @@ export default function TemaPage() {
                 <p className="text-xs text-muted-foreground">Formato sugerido: PNG, SVG</p>
                 {config?.logo_url && (
                   <div className="flex gap-3">
-                    <a href={config.logo_url} download="logo-plataforma.png" className="text-xs text-primary hover:underline font-bold transition-colors">Descargar</a>
+                    <a href={resolveFileUrl(config.logo_url) || ''} download="logo-plataforma.png" className="text-xs text-primary hover:underline font-bold transition-colors">Descargar</a>
                     <button 
                       onClick={() => updateConfig({ logo_url: null })}
                       className="text-xs text-destructive hover:underline font-bold transition-colors"
@@ -122,7 +124,7 @@ export default function TemaPage() {
               >
                 {config?.favicon_url ? (
                   <>
-                    <img src={config.favicon_url} alt="Favicon" className="h-12 w-12 object-contain relative z-0" />
+                    <img src={resolveFileUrl(config.favicon_url) || ''} alt="Favicon" className="h-12 w-12 object-contain relative z-0" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 rounded-xl">
                       <p className="text-xs font-bold text-white">Cambiar</p>
                     </div>
@@ -139,7 +141,7 @@ export default function TemaPage() {
                 <p className="text-xs text-muted-foreground">Ícono de la pestaña (.ico, .png, .svg)</p>
                 {config?.favicon_url && (
                   <div className="flex gap-3">
-                    <a href={config.favicon_url} download="favicon-plataforma.png" className="text-xs text-primary hover:underline font-bold transition-colors">Descargar</a>
+                    <a href={resolveFileUrl(config.favicon_url) || ''} download="favicon-plataforma.png" className="text-xs text-primary hover:underline font-bold transition-colors">Descargar</a>
                     <button 
                       onClick={() => updateConfig({ favicon_url: null })}
                       className="text-xs text-destructive hover:underline font-bold transition-colors"
@@ -328,7 +330,7 @@ export default function TemaPage() {
             >
               {config?.login_fondo_url ? (
                 <>
-                  <img src={config.login_fondo_url} alt="Fondo login" className="absolute inset-0 w-full h-full object-cover opacity-100" />
+                  <img src={resolveFileUrl(config.login_fondo_url) || ''} alt="Fondo login" className="absolute inset-0 w-full h-full object-cover opacity-100" />
                   <div className="relative z-10 bg-card/80 backdrop-blur-sm px-4 py-2 rounded-lg">
                     <p className="text-xs font-bold">Click para cambiar imagen</p>
                   </div>
@@ -346,7 +348,7 @@ export default function TemaPage() {
               <p className="text-xs text-muted-foreground">Opcional para personalizar la pantalla de acceso</p>
               {config?.login_fondo_url && (
                 <div className="flex gap-3">
-                  <a href={config.login_fondo_url} download="fondo-login.png" className="text-xs text-primary hover:underline font-bold transition-colors">Descargar</a>
+                  <a href={resolveFileUrl(config.login_fondo_url) || ''} download="fondo-login.png" className="text-xs text-primary hover:underline font-bold transition-colors">Descargar</a>
                   <button 
                     onClick={() => updateConfig({ login_fondo_url: null })}
                     className="text-xs text-destructive hover:underline font-bold transition-colors"

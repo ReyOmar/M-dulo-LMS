@@ -74,6 +74,22 @@ const hexToHsl = (hex: string): string => {
 
 const GOOGLE_FONTS = ['Inter', 'Roboto', 'Montserrat', 'Poppins', 'Outfit', 'Open Sans', 'Lato'];
 
+/**
+ * Resolves a file reference to a full download URL.
+ * Handles both:
+ * - Relative R2 keys: "logos/123-abc.png" → "{API_BASE_URL}/storage/download/logos/123-abc.png"
+ * - Legacy absolute URLs: "http://..." → returned as-is
+ * This ensures images work across environments (localhost, devtunnel, production).
+ */
+export function resolveFileUrl(fileRef: string | null | undefined): string | null {
+  if (!fileRef) return null;
+  // Already a full URL (legacy data) — return as-is
+  if (fileRef.startsWith('http://') || fileRef.startsWith('https://')) return fileRef;
+  // Relative key — build the download URL using current API base
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
+  return `${apiUrl}/storage/download/${fileRef}`;
+}
+
 function loadGoogleFont(fontName: string) {
   const id = `gfont-${fontName.replace(/\s/g, '-')}`;
   if (document.getElementById(id)) return;
@@ -181,7 +197,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     `;
 
     // ── Favicon (safe update — never remove React-managed nodes) ──
-    const targetFavicon = cfg.favicon_url || `/favicon.ico?v=${Date.now()}`;
+    const targetFavicon = resolveFileUrl(cfg.favicon_url) || `/favicon.ico?v=${Date.now()}`;
     
     // Find or create a single managed favicon link (avoid removing React-controlled nodes)
     let faviconLink = document.getElementById('lms-favicon') as HTMLLinkElement | null;
