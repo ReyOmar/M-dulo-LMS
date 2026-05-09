@@ -1,11 +1,21 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LmsGateway } from '../ws/lms.gateway';
+import { StorageService } from '../storage/storage.service';
 import { UpdateConfiguracionDto } from './dto/update-configuracion.dto';
+
+/** Fields in lms_configuracion that reference uploaded files */
+const FILE_FIELDS = ['logo_url', 'favicon_url', 'login_fondo_url'] as const;
 
 @Injectable()
 export class ConfiguracionService implements OnModuleInit {
-  constructor(private prisma: PrismaService, private lmsGateway: LmsGateway) {}
+  private readonly logger = new Logger(ConfiguracionService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private lmsGateway: LmsGateway,
+    private storageService: StorageService,
+  ) {}
 
   async onModuleInit() {
     await this.ensureConfig();
@@ -60,7 +70,27 @@ export class ConfiguracionService implements OnModuleInit {
     });
   }
 
+  /**
+   * Update platform configuration.
+   * Automatically cleans up old files from R2 when file fields (logo, favicon, fondo) are replaced.
+   */
   async updateConfig(dto: UpdateConfiguracionDto) {
+    // Fetch current config to detect file replacements
+    const current = await this.prisma.lms_configuracion.findUnique({ where: { id: 1 } });
+
+    // Clean up old files that are being replaced
+    if (current) {
+      for (const field of FILE_FIELDS) {
+        const oldValue = (current as any)[field];
+        const newValue = (dto as any)[field];
+        // Only delete if field is being updated AND the old value exists AND it's different
+        if (newValue !== undefined && oldValue && oldValue !== newValue) {
+          this.logger.log(`🗑️  Cleaning up replaced file: ${oldValue} (field: ${field})`);
+          await this.storageService.deleteFile(oldValue);
+        }
+      }
+    }
+
     const updated = await this.prisma.lms_configuracion.update({
       where: { id: 1 },
       data: dto,
@@ -146,7 +176,23 @@ export class ConfiguracionService implements OnModuleInit {
     return user;
   }
 
+  /**
+   * Update examiner's signature data.
+   * Cleans up old signature image from R2 when replaced.
+   */
   async updateFirma(usuario_guid: string, dto: { firma_url?: string; firma_nombre?: string; firma_cargo?: string }) {
+    // Clean up old signature image if being replaced
+    if (dto.firma_url !== undefined) {
+      const currentUser = await this.prisma.usuarios.findUnique({
+        where: { guid: usuario_guid },
+        select: { firma_url: true },
+      });
+      if (currentUser?.firma_url && currentUser.firma_url !== dto.firma_url) {
+        this.logger.log(`🗑️  Cleaning up old signature: ${currentUser.firma_url}`);
+        await this.storageService.deleteFile(currentUser.firma_url);
+      }
+    }
+
     const allowedFields = ['firma_url', 'firma_nombre', 'firma_cargo'];
     const data: any = {};
     for (const key of allowedFields) {

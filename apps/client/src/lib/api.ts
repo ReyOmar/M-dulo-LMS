@@ -59,5 +59,20 @@ async function uploadFile(url: string, file: File, fieldName = 'file') {
   return res.data;
 }
 
-export { API_BASE_URL, uploadFile };
+/**
+ * Resolves a file reference to a full download URL.
+ * Handles both:
+ * - Relative R2 keys: "logos/123-abc.png" → "{API_BASE_URL}/storage/download/logos/123-abc.png"
+ * - Legacy absolute URLs: "http://..." → returned as-is
+ * This ensures images work across environments (localhost, devtunnel, production).
+ */
+function resolveFileUrl(fileRef: string | null | undefined): string | null {
+  if (!fileRef) return null;
+  // Already a full URL (legacy data) — return as-is
+  if (fileRef.startsWith('http://') || fileRef.startsWith('https://')) return fileRef;
+  // Relative key — build the download URL using current API base
+  return `${API_BASE_URL}/storage/download/${fileRef}`;
+}
+
+export { API_BASE_URL, uploadFile, resolveFileUrl };
 export default api;

@@ -40,6 +40,7 @@ async function bootstrap() {
       },
     },
     crossOriginEmbedderPolicy: false, // Allow embedding resources (images, fonts)
+    crossOriginResourcePolicy: false,  // Allow cross-origin <img>/<video> from frontend (different port/domain)
   });
 
   // Enable multipart/form-data for file uploads (50MB limit)
