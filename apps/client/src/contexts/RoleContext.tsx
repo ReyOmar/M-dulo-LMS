@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PageLoader } from "@/components/ui/PageLoader";
+import { getEnv } from "@/lib/env";
 
 export type Role = "admin" | "teacher" | "student";
 
@@ -82,7 +83,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     // Revoke token server-side (fire-and-forget — don't block on network errors)
     const token = localStorage.getItem("lms_token");
     if (token) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
+      const apiUrl = getEnv().apiUrl;
       fetch(`${apiUrl}/auth/logout`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },

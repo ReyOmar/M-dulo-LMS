@@ -1,12 +1,13 @@
 import axios from 'axios';
+import { getEnv } from './env';
 
 /**
  * Centralized API client for all backend requests.
- * - Base URL configured from env variable
+ * - Base URL validated from env variable (see lib/env.ts)
  * - Automatically attaches JWT Bearer token from localStorage
  * - Handles 401 responses by clearing session and redirecting to login
  */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
+const API_BASE_URL = getEnv().apiUrl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,

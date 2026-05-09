@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from 'react';
+import { getEnv } from '@/lib/env';
 
 type WebSocketEvent = 
   | 'session:revoked'
@@ -65,8 +66,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) return;
 
-    // Use environment variable for API URL or default
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
+    // Use validated environment variable for API URL
+    const apiBaseUrl = getEnv().apiUrl;
     const token = localStorage.getItem('lms_token');
     
     let wsUrl = apiBaseUrl.replace(/^http/, 'ws').replace('/api', '') + '/ws';

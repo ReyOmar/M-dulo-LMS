@@ -11,15 +11,18 @@ export async function generateMetadata(): Promise<Metadata> {
   let platformName = "Campus Virtual";
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
-    const res = await fetch(`${apiUrl}/configuracion`, { cache: 'no-store' });
+    const res = await fetch(`${apiUrl}/configuracion`, {
+      next: { revalidate: 60 }, // Cache for 60s — much faster than no-store
+      signal: AbortSignal.timeout(3000), // Don't block SSR more than 3s
+    });
     if (res.ok) {
       const data = await res.json();
-      if (data && data.nombre_plataforma) {
+      if (data?.nombre_plataforma) {
         platformName = data.nombre_plataforma;
       }
     }
-  } catch (error) {
-    // Fallback if API is unreachable during SSR
+  } catch {
+    // Fallback silently — config will load client-side via ConfigContext
   }
 
   return {
