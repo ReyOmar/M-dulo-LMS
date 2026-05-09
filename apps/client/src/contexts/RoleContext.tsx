@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { PageLoader } from "@/components/ui/PageLoader";
-import { getEnv } from "@/lib/env";
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { PageLoader } from '@/components/ui/PageLoader';
+import { getEnv } from '@/lib/env';
 
-export type Role = "admin" | "teacher" | "student";
+export type Role = 'admin' | 'teacher' | 'student';
 
 interface RoleContextType {
   role: Role;
@@ -20,7 +20,7 @@ interface RoleContextType {
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [role, setRoleState] = useState<Role>("student");
+  const [role, setRoleState] = useState<Role>('student');
   const [simulatedRole, setSimulatedRole] = useState<Role | null>(null);
   const [user, setUser] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
@@ -34,43 +34,42 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const savedToken = localStorage.getItem("lms_token");
-    const savedUser = localStorage.getItem("lms_user");
-    
+    const savedToken = localStorage.getItem('lms_token');
+    const savedUser = localStorage.getItem('lms_user');
+
     if (savedToken && savedUser) {
       try {
         const u = JSON.parse(savedUser);
         setUser(u);
         setRoleState(mapDbRole(u.role));
-        
+
         // Verify session against backend to ensure account hasn't been deleted or revoked
         import('@/lib/api').then(({ default: api }) => {
-          api.get('/auth/me').then(res => {
-            // Update local storage with fresh user data in case roles changed
-            if (res.data) {
-              const freshUser = { ...u, role: res.data.rol };
-              setUser(freshUser);
-              setRoleState(mapDbRole(res.data.rol));
-              localStorage.setItem("lms_user", JSON.stringify(freshUser));
-            }
-          }).catch(err => {
-            // If 401 Unauthorized, check whether it's active revocation or simple expiry
-            if (err.response?.status === 401) {
-              const msg = (err.response?.data?.message || '').toLowerCase();
-              const isActiveRevocation = msg.includes('revocada')
-                || msg.includes('eliminada')
-                || msg.includes('desactivada');
-
-              logout();
-              if (window.location.pathname !== '/login') {
-                window.location.href = isActiveRevocation
-                  ? '/login?revoked=true'
-                  : '/login?expired=true';
+          api
+            .get('/auth/me')
+            .then((res) => {
+              // Update local storage with fresh user data in case roles changed
+              if (res.data) {
+                const freshUser = { ...u, role: res.data.rol };
+                setUser(freshUser);
+                setRoleState(mapDbRole(res.data.rol));
+                localStorage.setItem('lms_user', JSON.stringify(freshUser));
               }
-            }
-          });
+            })
+            .catch((err) => {
+              // If 401 Unauthorized, check whether it's active revocation or simple expiry
+              if (err.response?.status === 401) {
+                const msg = (err.response?.data?.message || '').toLowerCase();
+                const isActiveRevocation =
+                  msg.includes('revocada') || msg.includes('eliminada') || msg.includes('desactivada');
+
+                logout();
+                if (window.location.pathname !== '/login') {
+                  window.location.href = isActiveRevocation ? '/login?revoked=true' : '/login?expired=true';
+                }
+              }
+            });
         });
-        
       } catch (e) {
         logout();
       }
@@ -79,8 +78,8 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const syncSession = (tokenStr: string, userData: any) => {
-    localStorage.setItem("lms_token", tokenStr);
-    localStorage.setItem("lms_user", JSON.stringify(userData));
+    localStorage.setItem('lms_token', tokenStr);
+    localStorage.setItem('lms_user', JSON.stringify(userData));
     setUser(userData);
     setRoleState(mapDbRole(userData.role));
   };
@@ -88,41 +87,44 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setLoggingOut(true);
     // Revoke token server-side (fire-and-forget — don't block on network errors)
-    const token = localStorage.getItem("lms_token");
+    const token = localStorage.getItem('lms_token');
     if (token) {
       const apiUrl = getEnv().apiUrl;
       fetch(`${apiUrl}/auth/logout`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {}); // Ignore errors — local cleanup happens regardless
     }
-    localStorage.removeItem("lms_token");
-    localStorage.removeItem("lms_user");
+    localStorage.removeItem('lms_token');
+    localStorage.removeItem('lms_user');
     setUser(null);
     setSimulatedRole(null);
-    window.location.href = "/login";
+    window.location.href = '/login';
   };
 
   const activeRole = simulatedRole || role;
 
   if (!mounted) return <div className="min-h-screen bg-muted/20" />;
 
-  if (loggingOut) return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/20">
-      <PageLoader message="Cerrando sesión..." />
-    </div>
-  );
+  if (loggingOut)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/20">
+        <PageLoader message="Cerrando sesión..." />
+      </div>
+    );
 
   return (
-    <RoleContext.Provider value={{ 
-      role: activeRole, 
-      realRole: role, // allow components like Simulator to know who they actually are
-      simulatedRole, 
-      setSimulatedRole, 
-      user, 
-      logout, 
-      syncSession 
-    }}>
+    <RoleContext.Provider
+      value={{
+        role: activeRole,
+        realRole: role, // allow components like Simulator to know who they actually are
+        simulatedRole,
+        setSimulatedRole,
+        user,
+        logout,
+        syncSession,
+      }}
+    >
       {children}
     </RoleContext.Provider>
   );
@@ -131,7 +133,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 export function useRole() {
   const context = useContext(RoleContext);
   if (context === undefined) {
-    throw new Error("useRole must be used within a RoleProvider");
+    throw new Error('useRole must be used within a RoleProvider');
   }
   return context;
 }

@@ -40,12 +40,28 @@ const VARIABLE_META: Record<string, { label: string; sample: string; color: stri
   apellido: { label: 'Apellido', sample: 'Pérez', color: 'bg-blue-500/15 text-blue-700 border-blue-200' },
   email: { label: 'Correo', sample: 'juan@correo.com', color: 'bg-violet-500/15 text-violet-700 border-violet-200' },
   contrasena: { label: 'Contraseña', sample: '••••••••', color: 'bg-red-500/15 text-red-700 border-red-200' },
-  curso: { label: 'Curso', sample: 'Módulo PESV Básico', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-200' },
+  curso: {
+    label: 'Curso',
+    sample: 'Módulo PESV Básico',
+    color: 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
+  },
   tarea: { label: 'Tarea', sample: 'Evaluación Final', color: 'bg-amber-500/15 text-amber-700 border-amber-200' },
-  calificacion: { label: 'Calificación', sample: '4.5', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-200' },
-  mensaje_aprobacion: { label: 'Resultado', sample: '¡Aprobado! Excelente trabajo.', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-200' },
+  calificacion: {
+    label: 'Calificación',
+    sample: '4.5',
+    color: 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
+  },
+  mensaje_aprobacion: {
+    label: 'Resultado',
+    sample: '¡Aprobado! Excelente trabajo.',
+    color: 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
+  },
   emoji: { label: 'Emoji', sample: '🎓', color: 'bg-pink-500/15 text-pink-700 border-pink-200' },
-  enlace: { label: 'Enlace', sample: 'https://plataforma.com/...', color: 'bg-cyan-500/15 text-cyan-700 border-cyan-200' },
+  enlace: {
+    label: 'Enlace',
+    sample: 'https://plataforma.com/...',
+    color: 'bg-cyan-500/15 text-cyan-700 border-cyan-200',
+  },
   fecha: { label: 'Fecha', sample: '09/05/2026', color: 'bg-slate-500/15 text-slate-700 border-slate-200' },
   modulo: { label: 'Módulo', sample: 'Módulo 1', color: 'bg-indigo-500/15 text-indigo-700 border-indigo-200' },
   codigo: { label: 'Código', sample: 'CERT-2026-ABC', color: 'bg-orange-500/15 text-orange-700 border-orange-200' },
@@ -64,7 +80,9 @@ function VariablePill({ variable, size = 'sm' }: { variable: string; size?: 'sm'
   const meta = getVariableMeta(variable);
   const sizeClasses = size === 'md' ? 'text-xs px-2.5 py-1' : 'text-[10px] px-2 py-0.5';
   return (
-    <span className={`inline-flex items-center gap-1 font-bold rounded-full border ${meta.color} ${sizeClasses} whitespace-nowrap`}>
+    <span
+      className={`inline-flex items-center gap-1 font-bold rounded-full border ${meta.color} ${sizeClasses} whitespace-nowrap`}
+    >
       <AtSign className={size === 'md' ? 'h-3 w-3' : 'h-2.5 w-2.5'} />
       {meta.label}
     </span>
@@ -113,7 +131,7 @@ function SubjectWithPills({ text, variables }: { text: string; variables: string
           <span key={i}>{part}</span>
         ) : (
           <VariablePill key={i} variable={part.variable} size="sm" />
-        )
+        ),
       )}
     </span>
   );
@@ -143,7 +161,7 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
   };
 
   const insertVariable = (variable: string) => {
-    setCuerpoHtml(prev => prev + ` {{${variable}}}`);
+    setCuerpoHtml((prev) => prev + ` {{${variable}}}`);
   };
 
   return (
@@ -158,20 +176,23 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
           <p className="text-sm text-muted-foreground mt-1">{evento.descripcion}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button 
+          <button
             onClick={() => setShowPreview(!showPreview)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-              showPreview 
-                ? 'bg-primary text-primary-foreground shadow-sm' 
-                : 'bg-muted hover:bg-muted/80'
+              showPreview ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted hover:bg-muted/80'
             }`}
           >
-            {showPreview ? <><EyeOff className="h-4 w-4"/> Editar</> : <><Eye className="h-4 w-4"/> Previsualizar</>}
+            {showPreview ? (
+              <>
+                <EyeOff className="h-4 w-4" /> Editar
+              </>
+            ) : (
+              <>
+                <Eye className="h-4 w-4" /> Previsualizar
+              </>
+            )}
           </button>
-          <button 
-            onClick={onCancel}
-            className="p-2 hover:bg-muted rounded-xl transition-colors text-muted-foreground"
-          >
+          <button onClick={onCancel} className="p-2 hover:bg-muted rounded-xl transition-colors text-muted-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -179,12 +200,14 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
 
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* Editor Area */}
-        <div className={`flex-1 p-6 overflow-y-auto ${showPreview ? 'hidden md:block opacity-50 pointer-events-none' : 'block'}`}>
+        <div
+          className={`flex-1 p-6 overflow-y-auto ${showPreview ? 'hidden md:block opacity-50 pointer-events-none' : 'block'}`}
+        >
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-bold mb-2">Asunto del Correo</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={asunto}
                 onChange={(e) => setAsunto(e.target.value)}
                 className="w-full px-4 py-3 bg-muted/20 border border-border/50 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-medium"
@@ -197,7 +220,7 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
                 <label className="block text-sm font-bold">Cuerpo HTML</label>
               </div>
               <div className="bg-background rounded-xl border border-border/50 overflow-hidden">
-                <ReactQuill 
+                <ReactQuill
                   theme="snow"
                   value={cuerpoHtml}
                   onChange={setCuerpoHtml}
@@ -214,10 +237,11 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
           {showPreview ? (
             <div className="flex-1">
               <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-amber-500"/> Vista Previa con Datos de Ejemplo
+                <Sparkles className="h-4 w-4 text-amber-500" /> Vista Previa con Datos de Ejemplo
               </h3>
               <p className="text-[11px] text-muted-foreground mb-4 leading-relaxed">
-                Así se verá el correo cuando llegue al destinatario. Las etiquetas se reemplazan automáticamente con datos reales.
+                Así se verá el correo cuando llegue al destinatario. Las etiquetas se reemplazan automáticamente con
+                datos reales.
               </p>
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden text-slate-800">
                 <div className="bg-primary p-4 text-white font-bold text-sm">
@@ -229,30 +253,27 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
           ) : (
             <div className="flex-1">
               <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-                <AtSign className="h-4 w-4"/> Datos Automáticos
+                <AtSign className="h-4 w-4" /> Datos Automáticos
               </h3>
               <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-4">
-                <p className="text-xs text-foreground mb-1 font-bold">
-                  ¿Cómo funcionan?
-                </p>
+                <p className="text-xs text-foreground mb-1 font-bold">¿Cómo funcionan?</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Haz clic en una etiqueta para insertarla en el cuerpo del correo. Al enviar, el sistema reemplaza cada etiqueta con la información real del destinatario.
+                  Haz clic en una etiqueta para insertarla en el cuerpo del correo. Al enviar, el sistema reemplaza cada
+                  etiqueta con la información real del destinatario.
                 </p>
               </div>
               <div className="space-y-2">
-                {variablesArray.map(v => {
+                {variablesArray.map((v) => {
                   const meta = getVariableMeta(v);
                   return (
-                    <button 
+                    <button
                       key={v}
                       onClick={() => insertVariable(v)}
                       className="w-full text-left p-3 bg-card border border-border/50 rounded-xl hover:border-primary hover:bg-primary/5 transition-all group flex items-center gap-3 shadow-sm hover:shadow"
                     >
                       <VariablePill variable={v} size="md" />
                       <div className="flex-1 min-w-0">
-                        <span className="text-[11px] text-muted-foreground block truncate">
-                          Ej: {meta.sample}
-                        </span>
+                        <span className="text-[11px] text-muted-foreground block truncate">Ej: {meta.sample}</span>
                       </div>
                       <span className="text-[10px] uppercase font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0">
                         <Plus className="h-3 w-3" /> Insertar
@@ -268,18 +289,24 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
 
       {/* Footer */}
       <div className="p-6 border-t border-border/30 bg-muted/5 flex items-center justify-end gap-3 mt-auto">
-        <button 
+        <button
           onClick={onCancel}
           className="px-6 py-2.5 rounded-xl font-bold text-muted-foreground hover:bg-muted transition-colors"
         >
           Cancelar
         </button>
-        <button 
+        <button
           onClick={handleSave}
           disabled={isSaving || !asunto || !cuerpoHtml}
           className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
-          {isSaving ? <span className="animate-pulse">Guardando...</span> : <><Save className="h-4 w-4"/> Guardar Cambios</>}
+          {isSaving ? (
+            <span className="animate-pulse">Guardando...</span>
+          ) : (
+            <>
+              <Save className="h-4 w-4" /> Guardar Cambios
+            </>
+          )}
         </button>
       </div>
     </div>

@@ -38,9 +38,10 @@ api.interceptors.response.use(
         // Differentiate between active revocation and normal token expiry.
         // Backend sends specific messages for revoked/deleted accounts.
         const serverMessage = (error.response?.data?.message || '').toLowerCase();
-        const isActiveRevocation = serverMessage.includes('revocada')
-          || serverMessage.includes('eliminada')
-          || serverMessage.includes('desactivada');
+        const isActiveRevocation =
+          serverMessage.includes('revocada') ||
+          serverMessage.includes('eliminada') ||
+          serverMessage.includes('desactivada');
 
         if (isActiveRevocation) {
           window.location.href = '/login?revoked=true';

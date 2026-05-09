@@ -1,7 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { Lock, Mail, ArrowRight, GraduationCap, ShieldCheck, User, Info, Eye, EyeOff, ShieldAlert, Clock, Monitor } from 'lucide-react';
+import {
+  Lock,
+  Mail,
+  ArrowRight,
+  GraduationCap,
+  ShieldCheck,
+  User,
+  Info,
+  Eye,
+  EyeOff,
+  ShieldAlert,
+  Clock,
+  Monitor,
+} from 'lucide-react';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useRole } from '@/contexts/RoleContext';
@@ -27,9 +40,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
-  const [view, setView] = useState<'LOGIN' | 'SETUP_PASSWORD' | 'REQUEST_ACCESS' | 'REQUEST_SUCCESS' | 'REVOKED' | 'EXPIRED' | 'DISPLACED'>(
-    'LOGIN',
-  );
+  const [view, setView] = useState<
+    'LOGIN' | 'SETUP_PASSWORD' | 'REQUEST_ACCESS' | 'REQUEST_SUCCESS' | 'REVOKED' | 'EXPIRED' | 'DISPLACED'
+  >('LOGIN');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const { showAlert, showToast } = useAlert();
@@ -230,7 +243,8 @@ export default function LoginPage() {
                 'Tu petición se ha registrado y está en espera de aprobación, contacta al administrador.'}
               {view === 'REVOKED' && 'No tienes autorización para acceder al sistema.'}
               {view === 'EXPIRED' && 'Tu sesión anterior ha expirado. Inicia sesión de nuevo para continuar.'}
-              {view === 'DISPLACED' && 'Se inició sesión con tu cuenta en otro dispositivo. Solo puedes tener una sesión activa a la vez.'}
+              {view === 'DISPLACED' &&
+                'Se inició sesión con tu cuenta en otro dispositivo. Solo puedes tener una sesión activa a la vez.'}
             </p>
           </div>
         </div>
@@ -467,7 +481,8 @@ export default function LoginPage() {
             <div className="text-muted-foreground p-2 mb-6">
               Se detectó un <span className="font-bold text-foreground">inicio de sesión en otro dispositivo</span>.
               <br />
-              Por seguridad, solo se permite <span className="font-bold text-foreground">una sesión activa</span> a la vez.
+              Por seguridad, solo se permite <span className="font-bold text-foreground">una sesión activa</span> a la
+              vez.
             </div>
             <button
               onClick={handleGoToLogin}
