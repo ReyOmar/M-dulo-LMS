@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LmsGateway } from '../ws/lms.gateway';
 import { ConfiguracionService } from '../configuracion/configuracion.service';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
+import { StorageService } from '../storage/storage.service';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PDFDocument = require('pdfkit');
 import * as fs from 'fs';
@@ -19,6 +20,7 @@ export class CertificadosService {
     private lmsGateway: LmsGateway,
     private configuracionService: ConfiguracionService,
     private notificacionesService: NotificacionesService,
+    private storageService: StorageService,
   ) {
     if (!fs.existsSync(CERTS_DIR)) {
       fs.mkdirSync(CERTS_DIR, { recursive: true });
@@ -276,6 +278,17 @@ export class CertificadosService {
       firmaCargo: curso.profesor.firma_cargo || null,
     });
 
+    // F7.1: Upload PDF to R2 if cloud storage is active
+    if (this.storageService.isCloudStorageActive()) {
+      try {
+        const pdfBuffer = await fs.promises.readFile(pdfPath);
+        await this.storageService.uploadToR2WithKey(pdfBuffer, `certificados/${pdfFilename}`, 'application/pdf');
+        this.logger.log(`Certificate PDF uploaded to R2: certificados/${pdfFilename}`);
+      } catch (err) {
+        this.logger.error('Failed to upload certificate PDF to R2, local copy preserved:', err);
+      }
+    }
+
     // Create DB record
     const certificado = await this.prisma.lms_certificados.create({
       data: {
@@ -314,6 +327,10 @@ export class CertificadosService {
       ref_tipo: 'certificado',
       ref_guid: certificado.guid,
     }).catch((err) => this.logger.error('Certificate notification error:', err));
+
+    // F7.5.2: Purge submission files to free storage (fire-and-forget)
+    this.purgeEntregaFiles(usuario_guid, curso_guid)
+      .catch((err) => this.logger.error('Entrega file purge error:', err));
 
     return certificado;
   }
@@ -385,12 +402,43 @@ export class CertificadosService {
   }
 
   /**
+   * Public certificate verification by unique verification code.
+   * Returns limited, non-sensitive data for third-party validation.
+   */
+  async verificarPublico(codigo: string) {
+    const cert = await this.prisma.lms_certificados.findUnique({
+      where: { codigo_verificacion: codigo },
+      include: {
+        curso: { select: { titulo: true } },
+        usuario: { select: { nombre: true, apellido: true } },
+      },
+    });
+    if (!cert) {
+      return { valido: false, mensaje: 'No se encontró ningún certificado con ese código de verificación.' };
+    }
+    return {
+      valido: true,
+      certificado: {
+        nombre_estudiante: `${cert.usuario.nombre} ${cert.usuario.apellido}`,
+        curso: cert.curso.titulo,
+        fecha_emision: cert.fecha_completado,
+        codigo_verificacion: cert.codigo_verificacion,
+        nota_promedio: cert.nota_promedio,
+      },
+    };
+  }
+
+  /**
    * Get the PDF file path for download.
    */
   getArchivoPDF(filename: string): string {
+    // Try local cert directory first
     const fullPath = path.join(CERTS_DIR, filename);
-    if (!fs.existsSync(fullPath)) throw new NotFoundException('Archivo PDF no encontrado.');
-    return fullPath;
+    if (fs.existsSync(fullPath)) return fullPath;
+    // Try general uploads directory (legacy)
+    const uploadsPath = path.join(process.cwd(), 'uploads', filename);
+    if (fs.existsSync(uploadsPath)) return uploadsPath;
+    throw new NotFoundException('Archivo PDF no encontrado.');
   }
 
   // ─── PDF GENERATION ──────────────────────────────────────
@@ -685,24 +733,83 @@ export class CertificadosService {
   }
 
   /**
-   * Blend two hex colors by a given ratio (0=color1, 1=color2).
+   * F7.5.2: Purge submission files after certificate generation.
+   * Deletes the actual files from R2/local storage, but preserves
+   * `respuesta_texto` (original filename) so students can see what they submitted.
    */
-  private blendColors(hex1: string, hex2: string, ratio: number): string {
-    const c1 = this.hexToRgb(hex1);
-    const c2 = this.hexToRgb(hex2);
-    const r = Math.round(c1.r + (c2.r - c1.r) * ratio);
-    const g = Math.round(c1.g + (c2.g - c1.g) * ratio);
-    const b = Math.round(c1.b + (c2.b - c1.b) * ratio);
-    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  async purgeEntregaFiles(usuario_guid: string, curso_guid: string): Promise<void> {
+    // Find all tasks in this course
+    const curso = await this.prisma.lms_cursos.findUnique({
+      where: { guid: curso_guid },
+      select: {
+        modulos: {
+          select: {
+            lecciones: {
+              select: {
+                recursos: {
+                  where: { tipo: 'TAREA' },
+                  select: { guid: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!curso) return;
+
+    // Collect all task GUIDs
+    const taskGuids: string[] = [];
+    for (const mod of curso.modulos) {
+      for (const lec of mod.lecciones) {
+        for (const rec of lec.recursos) {
+          taskGuids.push(rec.guid);
+        }
+      }
+    }
+    if (taskGuids.length === 0) return;
+
+    // Find entregas with files that haven't been purged yet
+    const entregas = await this.prisma.lms_entregas.findMany({
+      where: {
+        usuario_guid,
+        tarea_guid: { in: taskGuids },
+        url_archivo_adjunto: { not: null },
+        archivo_purgado: false,
+      },
+      select: { guid: true, url_archivo_adjunto: true, respuesta_texto: true },
+    });
+
+    if (entregas.length === 0) return;
+
+    let purged = 0;
+    for (const entrega of entregas) {
+      const filename = entrega.url_archivo_adjunto;
+      if (!filename) continue;
+
+      // Delete file from R2 and/or local storage
+      try {
+        await this.storageService.deleteFile(filename);
+      } catch (err) {
+        this.logger.warn(`Failed to delete file ${filename}, marking as purged anyway:`, err);
+      }
+
+      // Nullify the file reference but keep the original name
+      await this.prisma.lms_entregas.update({
+        where: { guid: entrega.guid },
+        data: {
+          url_archivo_adjunto: null,
+          archivo_purgado: true,
+        },
+      });
+
+      purged++;
+    }
+
+    if (purged > 0) {
+      this.logger.log(`📦 Purged ${purged} submission files for user ${usuario_guid} in course ${curso_guid}`);
+    }
   }
 
-  private hexToRgb(hex: string): { r: number; g: number; b: number } {
-    hex = hex.replace('#', '');
-    return {
-      r: parseInt(hex.substring(0, 2), 16),
-      g: parseInt(hex.substring(2, 4), 16),
-      b: parseInt(hex.substring(4, 6), 16),
-    };
-  }
 }
 

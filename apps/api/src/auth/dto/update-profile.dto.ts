@@ -1,24 +1,31 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, MaxLength } from 'class-validator';
 
 export class UpdateProfileDto {
+  @IsOptional()
   @IsString()
   @IsNotEmpty({ message: 'El nombre es obligatorio.' })
-  nombre: string;
-
-  @IsString()
-  @IsNotEmpty({ message: 'El apellido es obligatorio.' })
-  apellido: string;
-
-  @IsEmail({}, { message: 'El correo electrónico no es válido.' })
-  @IsNotEmpty({ message: 'El correo es obligatorio.' })
-  email: string;
+  @MaxLength(100)
+  nombre?: string;
 
   @IsOptional()
   @IsString()
+  @IsNotEmpty({ message: 'El apellido es obligatorio.' })
+  @MaxLength(100)
+  apellido?: string;
+
+  @IsOptional()
+  @IsEmail({}, { message: 'El correo electrónico no es válido.' })
+  @MaxLength(255)
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
   contrasena_actual?: string;
 
   @IsOptional()
   @IsString()
-  @MinLength(6, { message: 'La nueva contraseña debe tener al menos 6 caracteres.' })
+  @MinLength(8, { message: 'La nueva contraseña debe tener al menos 8 caracteres.' })
+  @MaxLength(128)
   nueva_contrasena?: string;
 }

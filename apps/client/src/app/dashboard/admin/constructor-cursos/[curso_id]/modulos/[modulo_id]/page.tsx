@@ -64,10 +64,10 @@ export default function ModuleEditorPage() {
           try {
               const formData = new FormData();
               formData.append('file', file);
-              const res = await api.post('/cursos/upload', formData, {
+              const res = await api.post('/storage/upload?folder=recursos', formData, {
                   headers: { 'Content-Type': 'multipart/form-data' },
               });
-              setBloqueBase64(`${API_BASE_URL}/cursos/download/${res.data.filename}`);
+              setBloqueBase64(`${API_BASE_URL}/storage/download/${res.data.filename}`);
           } catch (err) {
               console.error('Error uploading image:', err);
           }
@@ -85,10 +85,10 @@ export default function ModuleEditorPage() {
           try {
               const formData = new FormData();
               formData.append('file', file);
-              const res = await api.post('/cursos/upload', formData, {
+              const res = await api.post('/storage/upload?folder=recursos', formData, {
                   headers: { 'Content-Type': 'multipart/form-data' },
               });
-              setBloqueBase64(`${API_BASE_URL}/cursos/download/${res.data.filename}`);
+              setBloqueBase64(`${API_BASE_URL}/storage/download/${res.data.filename}`);
           } catch (err) {
               console.error('Error uploading dropped image:', err);
           }

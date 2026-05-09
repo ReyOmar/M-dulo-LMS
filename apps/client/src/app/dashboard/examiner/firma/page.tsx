@@ -63,7 +63,7 @@ export default function ExaminerFirmaPage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await api.post("/cursos/upload", formData, {
+      const res = await api.post("/storage/upload?folder=firmas", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       const filename = res.data.filename || res.data.url;
@@ -141,7 +141,7 @@ export default function ExaminerFirmaPage() {
             <div className="flex items-center gap-4 p-4 bg-background border border-border/50 rounded-xl">
               <div className="h-16 w-32 bg-muted/50 rounded-lg border border-dashed border-border flex items-center justify-center overflow-hidden">
                 <img
-                  src={`${API_BASE_URL}/cursos/download/${firmaUrl}`}
+                  src={`${API_BASE_URL}/storage/download/${firmaUrl}`}
                   alt="Firma"
                   className="max-h-full max-w-full object-contain"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -231,7 +231,7 @@ export default function ExaminerFirmaPage() {
             {firmaUrl && (
               <div className="mb-2 h-12 w-28 flex items-center justify-center">
                 <img
-                  src={`${API_BASE_URL}/cursos/download/${firmaUrl}`}
+                  src={`${API_BASE_URL}/storage/download/${firmaUrl}`}
                   alt="Firma"
                   className="max-h-full max-w-full object-contain"
                 />

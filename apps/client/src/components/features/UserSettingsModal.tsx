@@ -161,7 +161,7 @@ export function UserSettingsModal({ open, onClose }: Props) {
             <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          <div className="p-6 space-y-6 max-h-[70dvh] overflow-y-auto">
 
             {/* Feedback */}
             {feedback && (
@@ -184,7 +184,7 @@ export function UserSettingsModal({ open, onClose }: Props) {
             </div>
 
             {/* Name fields */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Nombre</label>
                 <div className="relative">
@@ -257,7 +257,7 @@ export function UserSettingsModal({ open, onClose }: Props) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Nueva Contraseña</label>
                     <div className="relative">
@@ -305,7 +305,7 @@ export function UserSettingsModal({ open, onClose }: Props) {
 
         {/* Footer */}
         {!loading && (
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-border/50 bg-muted/5">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 p-6 border-t border-border/50 bg-muted/5">
             <button onClick={handleClose} className="px-5 py-2.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors rounded-xl hover:bg-muted active:scale-95">
               Cancelar
             </button>

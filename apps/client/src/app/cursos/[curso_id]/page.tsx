@@ -124,7 +124,7 @@ export default function CursoVisorPage() {
     if (!userGuid || !curso_id || viewOnlyMode) return;
     const sendHeartbeat = () => {
       if (!document.hidden) {
-        api.post(`/cursos/student/heartbeat?usuario_guid=${userGuid}`, { curso_guid: curso_id }).catch(() => {});
+        api.post(`/estudiantes/student/heartbeat?usuario_guid=${userGuid}`, { curso_guid: curso_id }).catch(() => {});
       }
     };
     sendHeartbeat(); // Send immediately
@@ -150,7 +150,7 @@ export default function CursoVisorPage() {
 
   const fetchProgreso = async () => {
     try {
-      const res = await api.get(`/cursos/student/progreso?usuario_guid=${userGuid}&curso_guid=${curso_id}`);
+      const res = await api.get(`/estudiantes/student/progreso?usuario_guid=${userGuid}&curso_guid=${curso_id}`);
       const data = res.data;
       // Merge completados + desbloqueados_por_tiempo for navigation purposes
       const realCompleted = data.completados || [];
@@ -161,11 +161,11 @@ export default function CursoVisorPage() {
 
       // Check if course has a certificate (already completed)
       try {
-        const verifRes = await api.get(`/cursos/student/certificados/verificar/${curso_id}?usuario_guid=${userGuid}`);
+        const verifRes = await api.get(`/estudiantes/student/certificados/verificar/${curso_id}?usuario_guid=${userGuid}`);
         const verifData = verifRes.data;
         if (verifData.completo && verifData.puede_generar_certificado) {
           // Check if certificate actually exists
-          const certsRes = await api.get(`/cursos/student/certificados?usuario_guid=${userGuid}`);
+          const certsRes = await api.get(`/estudiantes/student/certificados?usuario_guid=${userGuid}`);
           const certs = Array.isArray(certsRes.data) ? certsRes.data : [];
           const matchCert = certs.find((c: any) => c.curso_guid === curso_id);
           if (matchCert) {
@@ -185,7 +185,7 @@ export default function CursoVisorPage() {
   const marcarCompletado = useCallback(async (recurso_guid: string) => {
     if (!userGuid || completados.includes(recurso_guid)) return;
     try {
-      await api.post(`/cursos/student/completar-recurso?usuario_guid=${userGuid}`, { recurso_guid });
+      await api.post(`/estudiantes/student/completar-recurso?usuario_guid=${userGuid}`, { recurso_guid });
       setCompletados(prev => [...prev, recurso_guid]);
     } catch (err) {
       console.error(err);
@@ -552,7 +552,7 @@ export default function CursoVisorPage() {
                     </a>
                   )}
                   {selectedRecurso.archivo_adjunto && (
-                    <a href={`${API_BASE_URL}/cursos/download/${selectedRecurso.archivo_adjunto}?originalName=${encodeURIComponent(selectedRecurso.archivo_adjunto_nombre)}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 transition-colors">
+                    <a href={`${API_BASE_URL}/storage/download/${selectedRecurso.archivo_adjunto}?originalName=${encodeURIComponent(selectedRecurso.archivo_adjunto_nombre)}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 transition-colors">
                       <Paperclip className="h-4 w-4 text-primary" />
                       <span className="text-sm font-bold">{selectedRecurso.archivo_adjunto_nombre || 'Archivo adjunto'}</span>
                     </a>

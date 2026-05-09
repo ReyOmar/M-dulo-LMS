@@ -33,6 +33,7 @@ export default function AssignmentPlayer({
 }: AssignmentPlayerProps) {
     const [loading, setLoading] = useState(true);
     const [uploadState, setUploadState] = useState<'idle' | 'uploading' | 'done'>('idle');
+    const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [entrega, setEntrega] = useState<any>(null);
@@ -41,7 +42,7 @@ export default function AssignmentPlayer({
 
     const fetchStatus = async () => {
         try {
-            const { data } = await api.get(`/cursos/tareas/${recurso_guid}/entregas/mine`);
+            const { data } = await api.get(`/evaluaciones/tareas/${recurso_guid}/entregas/mine`);
             if (data?.respuesta_texto) {
                 setEntrega(data);
                 setUploadState('done');
@@ -56,7 +57,7 @@ export default function AssignmentPlayer({
                         const userGuid = savedUser ? JSON.parse(savedUser).guid : '';
                         if (userGuid) {
                             try {
-                                await api.post(`/cursos/student/completar-recurso?usuario_guid=${userGuid}`, { recurso_guid });
+                                await api.post(`/estudiantes/student/completar-recurso?usuario_guid=${userGuid}`, { recurso_guid });
                             } catch (e) { console.error("Error marcando recurso como completado", e); }
                         }
                     }
@@ -92,12 +93,16 @@ export default function AssignmentPlayer({
         }
         try {
             setUploadState('uploading');
+            setUploadProgress(0);
             const formData = new FormData();
             formData.append('file', file);
-            const { data } = await api.post(`/cursos/tareas/${recurso_guid}/entregas`, formData, {
+            const { data } = await api.post(`/evaluaciones/tareas/${recurso_guid}/entregas`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
                 maxBodyLength: 50 * 1024 * 1024,
                 maxContentLength: 50 * 1024 * 1024,
+                onUploadProgress: (e) => {
+                    if (e.total) setUploadProgress(Math.round((e.loaded * 100) / e.total));
+                },
             });
             setEntrega(data);
             setUploadState('done');
@@ -111,7 +116,7 @@ export default function AssignmentPlayer({
 
     const handleDownload = () => {
         if (!entrega?.url_archivo_adjunto) return;
-        const url = `${API_BASE_URL}/cursos/download/${encodeURIComponent(entrega.url_archivo_adjunto)}?originalName=${encodeURIComponent(entrega.respuesta_texto || entrega.url_archivo_adjunto)}`;
+        const url = `${API_BASE_URL}/storage/download/${encodeURIComponent(entrega.url_archivo_adjunto)}?originalName=${encodeURIComponent(entrega.respuesta_texto || entrega.url_archivo_adjunto)}`;
         window.open(url, '_blank');
     };
 
@@ -172,7 +177,7 @@ export default function AssignmentPlayer({
                             </a>
                         )}
                         {archivo_adjunto && (
-                            <a href={`${API_BASE_URL}/cursos/download/${archivo_adjunto}?originalName=${encodeURIComponent(archivo_adjunto_nombre || 'archivo')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-background border border-border rounded-xl hover:border-blue-500/50 hover:shadow-md transition-all group">
+                            <a href={`${API_BASE_URL}/storage/download/${archivo_adjunto}?originalName=${encodeURIComponent(archivo_adjunto_nombre || 'archivo')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-background border border-border rounded-xl hover:border-blue-500/50 hover:shadow-md transition-all group">
                                 <div className="h-10 w-10 bg-blue-500/10 text-blue-500 flex items-center justify-center rounded-lg group-hover:scale-110 transition-transform">
                                     <Paperclip className="h-5 w-5" />
                                 </div>
@@ -239,14 +244,20 @@ export default function AssignmentPlayer({
 
                             {/* Tarjeta del archivo subido */}
                             <div className="w-full max-w-md bg-background border border-border/60 rounded-xl p-4 flex items-center gap-4 shadow-sm">
-                                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                    <FileIcon className="h-6 w-6 text-primary" />
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${entrega.archivo_purgado ? 'bg-muted' : 'bg-primary/10'}`}>
+                                    <FileIcon className={`h-6 w-6 ${entrega.archivo_purgado ? 'text-muted-foreground' : 'text-primary'}`} />
                                 </div>
                                 <div className="flex-1 min-w-0 text-left">
-                                    <p className="text-sm font-semibold text-foreground truncate">{entrega.respuesta_texto}</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">Archivo entregado</p>
+                                    <p className={`text-sm font-semibold truncate ${entrega.archivo_purgado ? 'text-muted-foreground' : 'text-foreground'}`}>{entrega.respuesta_texto}</p>
+                                    {entrega.archivo_purgado ? (
+                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-md mt-0.5" title="El archivo fue eliminado automáticamente tras obtener el certificado para optimizar recursos">
+                                            <CheckCircle2 className="h-3 w-3" /> Archivo liberado
+                                        </span>
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground mt-0.5">Archivo entregado</p>
+                                    )}
                                 </div>
-                                {entrega.url_archivo_adjunto && !readOnly && (
+                                {entrega.url_archivo_adjunto && !entrega.archivo_purgado && !readOnly && (
                                     <button
                                         onClick={handleDownload}
                                         className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold flex items-center gap-2 transition-transform hover:scale-105"
@@ -257,7 +268,7 @@ export default function AssignmentPlayer({
                                 )}
                             </div>
 
-                            {!readOnly && (
+                            {!readOnly && !entrega.archivo_purgado && (
                               <button
                                   onClick={() => fileInputRef.current?.click()}
                                   className="mt-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1.5"
@@ -267,12 +278,23 @@ export default function AssignmentPlayer({
                             )}
                         </div>
                     ) : uploadState === 'uploading' ? (
-                        /* ── Estado Subiendo ── */
+                        /* ── Estado Subiendo con Progress Bar ── */
                         <div className="flex flex-col items-center text-center gap-4 py-6">
-                            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                            <div>
-                                <h3 className="text-lg font-bold text-foreground mb-1">Subiendo tu entrega...</h3>
-                                <p className="text-sm text-muted-foreground">Por favor no cierres esta ventana</p>
+                            <div className="relative">
+                                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                                <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-primary">
+                                    {uploadProgress}%
+                                </span>
+                            </div>
+                            <div className="w-full max-w-xs">
+                                <h3 className="text-lg font-bold text-foreground mb-2">Subiendo tu entrega...</h3>
+                                <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-300 ease-out"
+                                        style={{ width: `${uploadProgress}%` }}
+                                    />
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-2">Por favor no cierres esta ventana</p>
                             </div>
                         </div>
                     ) : (

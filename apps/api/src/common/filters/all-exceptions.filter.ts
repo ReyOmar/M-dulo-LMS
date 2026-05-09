@@ -59,16 +59,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.error(`Unknown exception type on ${request.method} ${request.url}:`, exception);
     }
 
+    // Extract correlation ID from request if available
+    const requestId = request?.id || request?.headers?.['x-request-id'] || undefined;
+
     const responseBody = {
       statusCode: status,
       error,
       message,
       timestamp: new Date().toISOString(),
+      ...(requestId && { requestId }),
     };
 
     // Only log non-4xx errors as errors (4xx are client errors, expected)
     if (status >= 500) {
-      this.logger.error(`[${status}] ${request.method} ${request.url} — ${message}`);
+      this.logger.error(`[${status}] ${request.method} ${request.url} — ${message}${requestId ? ` [${requestId}]` : ''}`);
     }
 
     response.status(status).send(responseBody);

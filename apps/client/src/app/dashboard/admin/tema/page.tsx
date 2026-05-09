@@ -36,10 +36,10 @@ export default function TemaPage() {
       const formData = new FormData();
       formData.append('file', file);
       const { default: api, API_BASE_URL } = await import('@/lib/api');
-      const res = await api.post('/cursos/upload', formData, {
+      const res = await api.post('/storage/upload?folder=logos', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      const fileUrl = `${API_BASE_URL}/cursos/download/${res.data.filename}`;
+      const fileUrl = `${API_BASE_URL}/storage/download/${res.data.filename}`;
       updateConfig({ [field]: fileUrl });
     } catch (err) {
       console.error('Error uploading file:', err);

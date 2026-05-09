@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BookOpen, Lock, AlertCircle, ArrowRight, Loader2, Eye, EyeOff, Search, ChevronDown } from "lucide-react";
+import { BookOpen, Lock, AlertCircle, ArrowRight, Eye, EyeOff, Search, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
 import { useWS } from "@/contexts/WebSocketContext";
+import { PageLoader } from "@/components/ui/PageLoader";
+import { EmptyState } from "@/components/ui/EmptyState";
 import api, { API_BASE_URL } from "@/lib/api";
 
 export function TeacherDashboard() {
@@ -19,7 +21,7 @@ export function TeacherDashboard() {
 
   const fetchCursos = async () => {
     try {
-      const res = await api.get(`/cursos?role=teacher&profesor_guid=${user?.guid}`);
+      const res = await api.get('/cursos');
       const data = res.data;
       setCursos(data);
     } catch (e) {
@@ -47,30 +49,23 @@ export function TeacherDashboard() {
   }, [user?.guid, subscribe]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <PageLoader message="Cargando asignaciones..." />;
   }
 
   return (
-    <div className="animate-in fade-in duration-700">
+    <div className="animate-fade-slide-in">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Tablero del Examinador</h1>
-        <p className="text-muted-foreground mt-1">Aquí verás los cursos que la Administración te ha asignado para supervisar.</p>
+        <p className="text-sm font-medium text-muted-foreground mb-1">Panel del</p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Examinador</h1>
+        <p className="text-muted-foreground text-sm mt-1">Cursos asignados para supervisión y evaluación.</p>
       </header>
 
       {cursos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center bg-card rounded-2xl border border-dashed border-border p-16 text-center">
-          <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-            <Lock className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h2 className="text-xl font-bold mb-2">Sin cursos asignados</h2>
-          <p className="text-muted-foreground max-w-sm">
-            Aún no tienes cursos asignados. Contacta con un administrador para que te asigne cursos para supervisar.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Lock className="h-10 w-10" />}
+          title="Sin cursos asignados"
+          description="Aún no tienes cursos asignados. Contacta con un administrador para que te asigne cursos para supervisar."
+        />
       ) : (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -132,7 +127,7 @@ export function TeacherDashboard() {
 
               <div className="h-32 bg-gradient-to-br from-primary/10 to-secondary/10 relative flex items-center justify-center overflow-hidden">
                 {curso.imagen_portada ? (
-                  <img src={`${API_BASE_URL}/cursos/download/${curso.imagen_portada}`} alt={curso.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                  <img src={`${API_BASE_URL}/storage/download/${curso.imagen_portada}`} alt={curso.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                 ) : (
                   <BookOpen className="h-12 w-12 text-primary/30 group-hover:scale-110 transition-transform" />
                 )}

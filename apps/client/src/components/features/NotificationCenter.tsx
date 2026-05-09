@@ -34,7 +34,7 @@ const colorMap: Record<string, string> = {
   ENTREGA_RECHAZADA: 'text-red-500 bg-red-500/10',
   MODULO_REINICIADO: 'text-amber-500 bg-amber-500/10',
   REVISION_ENTREGA: 'text-blue-500 bg-blue-500/10',
-  MENSAJE_NUEVO: 'text-purple-500 bg-purple-500/10',
+  MENSAJE_NUEVO: 'text-primary bg-primary/10',
   CURSO_REACTIVADO: 'text-emerald-500 bg-emerald-500/10',
   RECORDATORIO_INACTIVIDAD: 'text-amber-500 bg-amber-500/10',
 };
@@ -167,7 +167,7 @@ export function NotificationCenter() {
 
       {/* Notification Panel */}
       {open && (
-        <div className="absolute -left-10 sm:left-0 top-14 w-[320px] sm:w-[380px] max-h-[520px] bg-card border border-border rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] z-[99999] overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
+        <div className="fixed inset-x-0 top-0 bottom-0 sm:absolute sm:inset-auto sm:left-0 sm:top-14 sm:w-[380px] sm:max-h-[520px] sm:rounded-2xl bg-card border border-border sm:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] z-[99999] overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200 flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-card to-muted/30">
             <div className="flex items-center gap-2">

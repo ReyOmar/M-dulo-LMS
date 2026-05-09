@@ -5,6 +5,8 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import { UpdateConfiguracionDto } from './dto/update-configuracion.dto';
+import { UpdateCertConfigDto } from './dto/update-cert-config.dto';
+import { UpdateFirmaDto } from './dto/update-firma.dto';
 
 @Controller('configuracion')
 export class ConfiguracionController {
@@ -22,6 +24,12 @@ export class ConfiguracionController {
     return this.configuracionService.updateConfig(body);
   }
 
+  @Roles('ADMINISTRADOR')
+  @Get('/full')
+  getFullConfig() {
+    return this.configuracionService.getFullConfig();
+  }
+
   @Public()
   @Get('/landing')
   getLandingConfig() {
@@ -36,7 +44,7 @@ export class ConfiguracionController {
 
   @Roles('ADMINISTRADOR')
   @Post('/certificados')
-  updateCertConfig(@Body() body: any) {
+  updateCertConfig(@Body() body: UpdateCertConfigDto) {
     return this.configuracionService.updateCertConfig(body);
   }
 
@@ -51,7 +59,7 @@ export class ConfiguracionController {
   @Post('/firma')
   updateFirma(
     @CurrentUser() user: JwtPayload,
-    @Body() body: { firma_url?: string; firma_nombre?: string; firma_cargo?: string },
+    @Body() body: UpdateFirmaDto,
     @Query('usuario_guid') usuario_guid?: string,
   ) {
     const guid = usuario_guid || user.sub;

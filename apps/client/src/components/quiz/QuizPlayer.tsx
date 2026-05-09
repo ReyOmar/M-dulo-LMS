@@ -327,7 +327,7 @@ export default function QuizPlayer({
                                     </a>
                                 )}
                                 {archivo_adjunto && (
-                                    <a href={`${API_BASE_URL}/cursos/download/${archivo_adjunto}?originalName=${encodeURIComponent(archivo_adjunto_nombre || 'archivo')}`} className="flex items-center gap-4 p-4 bg-background/50 border border-border rounded-2xl hover:bg-primary/5 hover:border-primary/20 transition-all group">
+                                    <a href={`${API_BASE_URL}/storage/download/${archivo_adjunto}?originalName=${encodeURIComponent(archivo_adjunto_nombre || 'archivo')}`} className="flex items-center gap-4 p-4 bg-background/50 border border-border rounded-2xl hover:bg-primary/5 hover:border-primary/20 transition-all group">
                                         <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                                             <Paperclip className="h-5 w-5 text-primary" />
                                         </div>

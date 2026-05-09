@@ -1,10 +1,9 @@
 import { Controller, Get, Post, Delete, Param, Body } from '@nestjs/common';
 import { MatriculasService } from './matriculas.service';
 import { Roles } from '../common/decorators/roles.decorator';
-import { Public } from '../common/decorators/public.decorator';
 import { MatricularEstudianteDto } from './dto/matricular.dto';
 
-@Controller('cursos')
+@Controller('matriculas')
 export class MatriculasController {
   constructor(private readonly matriculasService: MatriculasService) {}
 
@@ -24,19 +23,19 @@ export class MatriculasController {
   }
 
   @Roles('ADMINISTRADOR')
-  @Get('/matriculas/:curso_guid')
+  @Get('/:curso_guid')
   async getMatriculasCurso(@Param('curso_guid') curso_guid: string) {
     return this.matriculasService.getMatriculasCurso(curso_guid);
   }
 
   @Roles('ADMINISTRADOR')
-  @Post('/matriculas/:curso_guid')
+  @Post('/:curso_guid')
   async matricularEstudiante(@Param('curso_guid') curso_guid: string, @Body() body: MatricularEstudianteDto) {
     return this.matriculasService.matricularEstudiante(curso_guid, body.usuario_guid);
   }
 
   @Roles('ADMINISTRADOR')
-  @Delete('/matriculas/:curso_guid/:usuario_guid')
+  @Delete('/:curso_guid/:usuario_guid')
   async desmatricularEstudiante(@Param('curso_guid') curso_guid: string, @Param('usuario_guid') usuario_guid: string) {
     return this.matriculasService.desmatricularEstudiante(curso_guid, usuario_guid);
   }

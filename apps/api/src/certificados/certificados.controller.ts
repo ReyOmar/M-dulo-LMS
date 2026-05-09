@@ -2,10 +2,11 @@ import { Controller, Get, Post, Param, Body, Res, Query } from '@nestjs/common';
 import { CertificadosService } from './certificados.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
+import { Public } from '../common/decorators/public.decorator';
 import { FastifyReply } from 'fastify';
 import * as fs from 'fs';
 
-@Controller('cursos/student/certificados')
+@Controller('estudiantes/student/certificados')
 export class CertificadosController {
   constructor(private readonly certificadosService: CertificadosService) {}
 
@@ -61,6 +62,16 @@ export class CertificadosController {
     reply.header('Content-Type', 'application/pdf');
     reply.header('Content-Disposition', `attachment; filename="Certificado-${cert.curso.titulo.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, '')}.pdf"`);
     return reply.send(stream);
+  }
+
+  /**
+   * Public certificate verification by verification code.
+   * No authentication required — for third-party validation.
+   */
+  @Public()
+  @Get('/publico/verificar/:codigo')
+  async verificarPublico(@Param('codigo') codigo: string) {
+    return this.certificadosService.verificarPublico(codigo);
   }
 
   /**

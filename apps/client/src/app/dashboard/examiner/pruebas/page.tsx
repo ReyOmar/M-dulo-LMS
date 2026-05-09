@@ -2,7 +2,18 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { ClipboardCheck, Loader2, Check, Search, FileText, Star, ArrowLeft, ArrowRight, BarChart3, TrendingUp, ChevronDown, Image as ImageIcon, PieChart as PieChartIcon, AlertCircle, Award, BookMarked, History } from "lucide-react";
-import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
+import dynamic from 'next/dynamic';
+const PieChart = dynamic(() => import('recharts').then(m => m.PieChart), { ssr: false });
+const Pie = dynamic(() => import('recharts').then(m => m.Pie), { ssr: false });
+const Cell = dynamic(() => import('recharts').then(m => m.Cell), { ssr: false });
+const RechartsTooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false });
+const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
+const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false });
+const Bar = dynamic(() => import('recharts').then(m => m.Bar), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then(m => m.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then(m => m.CartesianGrid), { ssr: false });
+const Legend = dynamic(() => import('recharts').then(m => m.Legend), { ssr: false });
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import { useWS } from "@/contexts/WebSocketContext";
@@ -57,8 +68,8 @@ export default function MonitoreoPruebasPage() {
   const fetchData = async () => {
     try {
       const [resEntregas, resCursos] = await Promise.all([
-        api.get(`/cursos/examiner/entregas?profesor_guid=${user?.guid}`),
-        api.get(`/cursos?role=teacher&profesor_guid=${user?.guid}`)
+        api.get(`/evaluaciones/examiner/entregas`),
+        api.get('/cursos')
       ]);
       const data = resEntregas.data;
       if (Array.isArray(data)) {

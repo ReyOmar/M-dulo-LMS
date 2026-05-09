@@ -17,7 +17,7 @@ export default function StudentCursosActivos() {
 
   const fetchCursos = async () => {
     try {
-      const res = await api.get(`/cursos?role=student&usuario_guid=${user.guid}`);
+      const res = await api.get('/cursos');
       const data = res.data;
       setCursos(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -89,7 +89,7 @@ export default function StudentCursosActivos() {
                     <div className="h-32 bg-primary/10 relative flex items-center justify-center overflow-hidden">
                         {curso.imagen_portada ? (
                            // eslint-disable-next-line @next/next/no-img-element
-                           <img src={`${API_BASE_URL}/cursos/download/${curso.imagen_portada}`} alt={curso.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                           <img src={`${API_BASE_URL}/storage/download/${curso.imagen_portada}`} alt={curso.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                         ) : (
                            <BookOpen className="h-12 w-12 text-primary/30 group-hover:scale-110 transition-transform" />
                         )}

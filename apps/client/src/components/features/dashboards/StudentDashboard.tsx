@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Play, BookOpen, Clock, GraduationCap, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from "lucide-react";
+import { Play, BookOpen, Clock, GraduationCap, ChevronLeft, ChevronRight, AlertTriangle, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
 import { useWS } from "@/contexts/WebSocketContext";
+import { PageLoader } from "@/components/ui/PageLoader";
+import { StatCard } from "@/components/ui/StatCard";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 import api from "@/lib/api";
 
 export function StudentDashboard() {
@@ -50,8 +53,8 @@ export function StudentDashboard() {
   const fetchData = async () => {
     try {
       const [cursosRes, metricasRes] = await Promise.all([
-        api.get(`/cursos?role=student&usuario_guid=${user.guid}`),
-        api.get(`/cursos/student/metricas?usuario_guid=${user.guid}`),
+        api.get('/cursos'),
+        api.get(`/estudiantes/student/metricas?usuario_guid=${user.guid}`),
       ]);
       const cursosData = cursosRes.data;
       const metricasData = metricasRes.data;
@@ -62,7 +65,7 @@ export function StudentDashboard() {
       // Fetch certificates to know which courses are completed
       let certs: any[] = [];
       try {
-        const certsRes = await api.get(`/cursos/student/certificados?usuario_guid=${user.guid}`);
+        const certsRes = await api.get(`/estudiantes/student/certificados?usuario_guid=${user.guid}`);
         certs = Array.isArray(certsRes.data) ? certsRes.data : [];
         setCompletedCourseGuids(new Set(certs.map((c: any) => c.curso_guid)));
       } catch {}
@@ -73,7 +76,7 @@ export function StudentDashboard() {
       const progCurso = firstActiveCurso || cursosArr[0];
       if (progCurso) {
         try {
-          const progRes = await api.get(`/cursos/student/progreso?usuario_guid=${user.guid}&curso_guid=${progCurso.guid}`);
+          const progRes = await api.get(`/estudiantes/student/progreso?usuario_guid=${user.guid}&curso_guid=${progCurso.guid}`);
           const progData = await progRes.data;
           setProgreso({
             completados: progData.completados?.length || 0,
@@ -109,7 +112,7 @@ export function StudentDashboard() {
   // Fetch active days when calendar month changes
   useEffect(() => {
     if (user?.guid) {
-      api.get(`/cursos/student/dias-activos?usuario_guid=${user.guid}&year=${calYear}&month=${calMonth}`)
+      api.get(`/estudiantes/student/dias-activos?usuario_guid=${user.guid}&year=${calYear}&month=${calMonth}`)
         .then(r => r.data)
         .then(data => setActiveDays(Array.isArray(data.dias) ? data.dias : []))
         .catch(() => setActiveDays([]));
@@ -118,21 +121,49 @@ export function StudentDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="animate-fade-slide-in">
+        <div className="mb-8">
+          <div className="h-4 w-32 rounded bg-muted animate-shimmer mb-2" />
+          <div className="h-8 w-44 rounded-lg bg-muted animate-shimmer mb-1" />
+          <div className="h-4 w-60 rounded bg-muted animate-shimmer" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-2 rounded-2xl border border-border/50 p-6 space-y-4">
+            <div className="h-5 w-40 rounded bg-muted animate-shimmer" />
+            <div className="h-32 rounded-xl bg-muted/50 animate-shimmer" />
+          </div>
+          <div className="rounded-2xl border border-border/50 p-6">
+            <div className="h-5 w-24 rounded bg-muted animate-shimmer mb-4" />
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({length: 35}).map((_,i) => (
+                <div key={i} className="h-8 rounded bg-muted/40 animate-shimmer" style={{animationDelay:`${i*20}ms`}} />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="rounded-2xl border border-border/50 p-5 space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-muted animate-shimmer" />
+              <div className="h-7 w-16 rounded bg-muted animate-shimmer" />
+              <div className="h-3 w-24 rounded bg-muted animate-shimmer" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="animate-in slide-in-from-bottom-4 duration-700">
+    <div className="animate-fade-slide-in">
       {/* Header */}
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          Hola, {user?.nombre || 'Estudiante'} 👋
+        <p className="text-sm font-medium text-muted-foreground mb-1">Bienvenido de vuelta,</p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+          {user?.nombre || 'Estudiante'} 👋
         </h1>
-        <p className="text-muted-foreground mt-1">
-          Bienvenido de vuelta a tu espacio de capacitación.
+        <p className="text-muted-foreground text-sm mt-1">
+          Tu espacio de capacitación y formación.
         </p>
       </header>
 
@@ -244,36 +275,31 @@ export function StudentDashboard() {
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm flex items-center gap-4">
-          <div className="h-12 w-12 bg-blue-500/10 rounded-xl flex items-center justify-center shrink-0">
-            <Clock className="h-6 w-6 text-blue-500" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold">{Number(metricas?.total_horas_invertidas || 0).toFixed(1)}h</p>
-            <p className="text-xs text-muted-foreground font-medium">Horas en Capacitación</p>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm flex items-center gap-4">
-          <div className="h-12 w-12 bg-emerald-500/10 rounded-xl flex items-center justify-center shrink-0">
-            <GraduationCap className="h-6 w-6 text-emerald-500" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold">{metricas?.cursos_completados || 0}/{metricas?.total_cursos || cursos.length}</p>
-            <p className="text-xs text-muted-foreground font-medium">Cursos Completados</p>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm flex items-center gap-4">
-          <div className="h-12 w-12 bg-purple-500/10 rounded-xl flex items-center justify-center shrink-0">
-            <BookOpen className="h-6 w-6 text-purple-500" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold">{activeCursos.length}/{cursos.length}</p>
-            <p className="text-xs text-muted-foreground font-medium">Cursos Activos</p>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard
+          label="Horas en Capacitación"
+          value={Math.round(Number(metricas?.total_horas_invertidas || 0) * 10) / 10}
+          suffix="h"
+          icon={<Clock className="h-5 w-5" />}
+          color="info"
+          className="stagger-5 animate-fade-slide-in"
+        />
+        <StatCard
+          label="Cursos Completados"
+          value={metricas?.cursos_completados || 0}
+          suffix={`/${metricas?.total_cursos || cursos.length}`}
+          icon={<GraduationCap className="h-5 w-5" />}
+          color="success"
+          className="stagger-6 animate-fade-slide-in"
+        />
+        <StatCard
+          label="Cursos Activos"
+          value={activeCursos.length}
+          suffix={`/${cursos.length}`}
+          icon={<BookOpen className="h-5 w-5" />}
+          color="primary"
+          className="stagger-7 animate-fade-slide-in"
+        />
       </div>
     </div>
   );

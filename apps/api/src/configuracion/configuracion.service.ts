@@ -43,6 +43,18 @@ export class ConfiguracionService implements OnModuleInit {
   }
 
   async getConfig() {
+    const config = await this.prisma.lms_configuracion.findUnique({
+      where: { id: 1 },
+    });
+    if (config) {
+      // Strip sensitive fields from public response
+      const { contrasena_defecto, ...safeConfig } = config as any;
+      return safeConfig;
+    }
+    return config;
+  }
+
+  async getFullConfig() {
     return this.prisma.lms_configuracion.findUnique({
       where: { id: 1 },
     });

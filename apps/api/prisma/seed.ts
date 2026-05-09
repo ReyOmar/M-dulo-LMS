@@ -214,6 +214,29 @@ async function main() {
 </div>`,
         es_sistema: true,
       }
+    },
+    {
+      identificador: 'USUARIO_APROBADO',
+      nombre_legible: 'Usuario Aprobado (Bienvenida)',
+      descripcion: 'Se envía al usuario cuando su solicitud de acceso es aprobada, con sus credenciales temporales.',
+      variables: JSON.stringify(["nombre", "email", "tempPassword", "url_campus"]),
+      plantilla: {
+        nombre_interno: 'Plantilla por defecto - Bienvenida',
+        asunto: '🎓 ¡Bienvenido al Campus Virtual!',
+        cuerpo_html: `<h2 style="color:#1e293b;margin:0 0 16px">¡Hola {{nombre}}! 👋</h2>
+<p style="color:#64748b;font-size:15px;line-height:1.6">Tu solicitud de acceso ha sido <strong style="color:#10b981">aprobada</strong>. Ya puedes iniciar sesión en el Campus Virtual.</p>
+<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:20px;margin:20px 0">
+  <table style="width:100%;border-collapse:collapse;font-size:14px">
+    <tr><td style="padding:6px 0;color:#94a3b8;width:120px">📧 Email:</td><td style="padding:6px 0;color:#1e293b;font-weight:600">{{email}}</td></tr>
+    <tr><td style="padding:6px 0;color:#94a3b8">🔑 Contraseña:</td><td style="padding:6px 0;color:#1e293b;font-weight:600"><code style="background:#e2e8f0;padding:2px 8px;border-radius:4px">{{tempPassword}}</code></td></tr>
+  </table>
+</div>
+<p style="color:#ef4444;font-size:14px;font-weight:600">⚠️ Deberás cambiar tu contraseña en el primer inicio de sesión.</p>
+<div style="text-align:center;margin:32px 0">
+  <a href="{{url_campus}}" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">Ir al Campus Virtual</a>
+</div>`,
+        es_sistema: true,
+      }
     }
   ];
 

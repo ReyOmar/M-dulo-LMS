@@ -70,7 +70,7 @@ export default function ConfigurarTareaPage() {
       setUploadingFile(true);
       const formData = new FormData();
       formData.append('file', file);
-      const res = await api.post('/cursos/upload', formData, {
+      const res = await api.post('/storage/upload?folder=recursos', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setArchivoAdjunto(res.data.filename);
@@ -182,7 +182,7 @@ export default function ConfigurarTareaPage() {
               {archivoAdjunto ? (
                 <div className="flex items-center gap-3 p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl">
                   <Paperclip className="h-4 w-4 text-blue-500 shrink-0" />
-                  <a href={`${API_BASE_URL}/cursos/download/${archivoAdjunto}?originalName=${encodeURIComponent(archivoAdjuntoNombre)}`} target="_blank" className="text-sm font-bold text-blue-600 hover:underline flex-1 truncate">
+                  <a href={`${API_BASE_URL}/storage/download/${archivoAdjunto}?originalName=${encodeURIComponent(archivoAdjuntoNombre)}`} target="_blank" className="text-sm font-bold text-blue-600 hover:underline flex-1 truncate">
                     {archivoAdjuntoNombre}
                   </a>
                   <button onClick={() => { setArchivoAdjunto(''); setArchivoAdjuntoNombre(''); }} className="text-muted-foreground hover:text-red-500 transition-colors">

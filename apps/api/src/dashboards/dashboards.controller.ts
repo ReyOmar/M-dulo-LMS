@@ -3,7 +3,7 @@ import { DashboardsService } from './dashboards.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
 
-@Controller('cursos')
+@Controller('dashboards')
 export class DashboardsController {
   constructor(private readonly dashboardsService: DashboardsService) {}
 

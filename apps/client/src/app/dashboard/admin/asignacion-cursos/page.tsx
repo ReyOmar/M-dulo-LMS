@@ -93,9 +93,9 @@ export default function AsignacionCursosPage() {
   const fetchData = async () => {
     try {
       const [cursosRes, profesoresRes, estudiantesRes] = await Promise.all([
-        api.get('/cursos?role=admin'),
+        api.get('/cursos'),
         api.get('/cursos/profesores'),
-        api.get('/cursos/estudiantes')
+        api.get('/matriculas/estudiantes')
       ]);
       const [cursosData, profesoresData, estudiantesData] = await Promise.all([
         cursosRes.data, profesoresRes.data, estudiantesRes.data
@@ -122,7 +122,7 @@ export default function AsignacionCursosPage() {
   const fetchMatriculas = async (cursoGuid: string) => {
     setLoadingMatriculas(true);
     try {
-      const res = await api.get(`/cursos/matriculas/${cursoGuid}`);
+      const res = await api.get(`/matriculas/${cursoGuid}`);
       const data = res.data;
       setMatriculados(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -145,7 +145,7 @@ export default function AsignacionCursosPage() {
   const matricularEstudiante = async (usuario_guid: string) => {
     if (!selectedCursoId) return;
     try {
-      await api.post(`/cursos/matriculas/${selectedCursoId}`, { usuario_guid });
+      await api.post(`/matriculas/${selectedCursoId}`, { usuario_guid });
       showFeedback('success', 'Estudiante matriculado');
       fetchMatriculas(selectedCursoId);
     } catch (err) {
@@ -156,7 +156,7 @@ export default function AsignacionCursosPage() {
   const desmatricularEstudiante = async (usuario_guid: string) => {
     if (!selectedCursoId) return;
     try {
-      await api.delete(`/cursos/matriculas/${selectedCursoId}/${usuario_guid}`);
+      await api.delete(`/matriculas/${selectedCursoId}/${usuario_guid}`);
       showFeedback('success', 'Estudiante removido');
       fetchMatriculas(selectedCursoId);
     } catch (err) {

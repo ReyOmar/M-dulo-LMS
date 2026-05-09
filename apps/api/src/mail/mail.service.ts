@@ -148,9 +148,9 @@ export class MailService implements OnModuleInit {
     return this.sendMail(email, rendered.asunto, rendered.html);
   }
 
-  async sendGradeNotification(email: string, nombre: string, tarea: string, calificacion: number) {
-    const emoji = calificacion >= 3.0 ? '🎉' : '⚠️';
-    const mensaje_aprobacion = calificacion < 3.0 ? '<p style="color:#ef4444;font-size:14px;font-weight:600">Debes subir un nuevo documento para mejorar tu nota.</p>' : '<p style="color:#10b981;font-size:14px;font-weight:600">¡Buen trabajo! Sigue así.</p>';
+  async sendGradeNotification(email: string, nombre: string, tarea: string, calificacion: number, notaAprobacion = 3.0) {
+    const emoji = calificacion >= notaAprobacion ? '🎉' : '⚠️';
+    const mensaje_aprobacion = calificacion < notaAprobacion ? '<p style="color:#ef4444;font-size:14px;font-weight:600">Debes subir un nuevo documento para mejorar tu nota.</p>' : '<p style="color:#10b981;font-size:14px;font-weight:600">¡Buen trabajo! Sigue así.</p>';
     const rendered = await this.renderTemplate('CALIFICACION_RECIBIDA', { nombre, tarea, calificacion, emoji, mensaje_aprobacion, url_campus: `${this.appUrl}/dashboard` });
     if (!rendered) return false;
     return this.sendMail(email, rendered.asunto, rendered.html);
@@ -186,6 +186,39 @@ export class MailService implements OnModuleInit {
     const rendered = await this.renderTemplate('MODULO_REINICIADO', { nombre, quizTitulo, moduloTitulo, nota, url_campus: `${this.appUrl}/dashboard` });
     if (!rendered) return false;
     return this.sendMail(email, rendered.asunto, rendered.html);
+  }
+
+  /**
+   * BUG-08 FIX: Send welcome email to newly approved users with their temp password.
+   */
+  async sendWelcomeEmail(email: string, nombre: string, tempPassword: string) {
+    // Try template system first (USUARIO_APROBADO)
+    const rendered = await this.renderTemplate('USUARIO_APROBADO', {
+      nombre,
+      email,
+      tempPassword,
+      url_campus: this.appUrl,
+    });
+
+    if (rendered) {
+      return this.sendMail(email, rendered.asunto, rendered.html);
+    }
+
+    // Fallback: hardcoded template if USUARIO_APROBADO event not seeded yet
+    const subject = '🎓 ¡Bienvenido al Campus Virtual!';
+    const fallbackHtml = await this.wrapTemplate(`
+      <h2 style="color:#1e293b;margin:0 0 16px">¡Hola ${nombre}! 👋</h2>
+      <p style="color:#64748b;font-size:15px;line-height:1.6">Tu solicitud de acceso ha sido <strong style="color:#10b981">aprobada</strong>.</p>
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:20px;margin:20px 0">
+        <p style="margin:4px 0"><strong>📧 Email:</strong> ${email}</p>
+        <p style="margin:4px 0"><strong>🔑 Contraseña temporal:</strong> <code style="background:#e2e8f0;padding:2px 8px;border-radius:4px">${tempPassword}</code></p>
+      </div>
+      <p style="color:#ef4444;font-weight:600">⚠️ Deberás cambiar tu contraseña en el primer inicio de sesión.</p>
+      <div style="text-align:center;margin:32px 0">
+        <a href="${this.appUrl}" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">Ir al Campus Virtual</a>
+      </div>
+    `);
+    return this.sendMail(email, subject, fallbackHtml);
   }
 
   /**

@@ -2,7 +2,18 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { BookCheck, Download, Loader2, Check, Search, FileText, Star, MessageSquare, X, ArrowLeft, ArrowRight, BarChart3, TrendingUp, ChevronDown, ChevronUp, Image as ImageIcon, PieChart as PieChartIcon, Edit3 } from "lucide-react";
-import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
+import dynamic from 'next/dynamic';
+const PieChart = dynamic(() => import('recharts').then(m => m.PieChart), { ssr: false });
+const Pie = dynamic(() => import('recharts').then(m => m.Pie), { ssr: false });
+const Cell = dynamic(() => import('recharts').then(m => m.Cell), { ssr: false });
+const RechartsTooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false });
+const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
+const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false });
+const Bar = dynamic(() => import('recharts').then(m => m.Bar), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then(m => m.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then(m => m.CartesianGrid), { ssr: false });
+const Legend = dynamic(() => import('recharts').then(m => m.Legend), { ssr: false });
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useRole } from "@/contexts/RoleContext";
 import { useWS } from "@/contexts/WebSocketContext";
@@ -62,8 +73,8 @@ export default function CalificacionManualPage() {
   const fetchData = async () => {
     try {
       const [resEntregas, resCursos] = await Promise.all([
-        api.get(`/cursos/examiner/entregas?profesor_guid=${user?.guid}`),
-        api.get(`/cursos?role=teacher&profesor_guid=${user?.guid}`)
+        api.get(`/evaluaciones/examiner/entregas`),
+        api.get('/cursos')
       ]);
       const data = resEntregas.data;
       if (Array.isArray(data)) {
@@ -116,7 +127,7 @@ export default function CalificacionManualPage() {
     }
     setSaving(true);
     try {
-      await api.patch(`/cursos/entregas/${guid}/calificar`, { calificacion: nota, comentario: gradeComment || undefined });
+      await api.patch(`/evaluaciones/entregas/${guid}/calificar`, { calificacion: nota, comentario: gradeComment || undefined });
       setEntregas(prev =>
         prev.map(e =>
           e.guid === guid
@@ -509,7 +520,7 @@ export default function CalificacionManualPage() {
                   <div className="flex items-center gap-4 mt-auto">
                     <div className="w-24 h-24 shrink-0 rounded-xl overflow-hidden relative group/cover bg-muted flex items-center justify-center border border-border">
                       {curso.imagen_portada ? (
-                        <img src={`${API_BASE_URL}/cursos/download/${curso.imagen_portada}`} alt="Portada" className="w-full h-full object-cover" />
+                        <img src={`${API_BASE_URL}/storage/download/${curso.imagen_portada}`} alt="Portada" className="w-full h-full object-cover" />
                       ) : (
                         <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
                       )}
@@ -853,7 +864,7 @@ export default function CalificacionManualPage() {
                                       {/* File Button */}
                                       {entrega.archivo_servidor && (
                                         <a
-                                          href={`${API_BASE_URL}/cursos/download/${entrega.archivo_servidor}?originalName=${encodeURIComponent(entrega.archivo_nombre || 'archivo')}`}
+                                          href={`${API_BASE_URL}/storage/download/${entrega.archivo_servidor}?originalName=${encodeURIComponent(entrega.archivo_nombre || 'archivo')}`}
                                           className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-xl text-xs font-bold transition-colors"
                                           title="Descargar entrega"
                                           target="_blank"
@@ -905,7 +916,7 @@ export default function CalificacionManualPage() {
                                       </div>
                                       {entrega.archivo_servidor ? (
                                         <a
-                                          href={`${API_BASE_URL}/cursos/download/${entrega.archivo_servidor}?originalName=${encodeURIComponent(entrega.archivo_nombre || 'archivo')}`}
+                                          href={`${API_BASE_URL}/storage/download/${entrega.archivo_servidor}?originalName=${encodeURIComponent(entrega.archivo_nombre || 'archivo')}`}
                                           className="flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold transition-transform hover:-translate-y-0.5 shadow-md shrink-0"
                                           target="_blank"
                                           rel="noopener noreferrer"

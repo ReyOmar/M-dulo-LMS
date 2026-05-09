@@ -17,10 +17,22 @@
     "db:generate": "cd apps/api && npx prisma generate",
     "db:push": "dotenv -e .env -- npx prisma db push --schema=apps/api/prisma/schema.prisma",
     "db:seed": "dotenv -e .env -- npx prisma db seed --schema=apps/api/prisma/schema.prisma",
-    "typecheck": "concurrently --success all \"cd apps/api && npx tsc --noEmit\" \"cd apps/client && npx tsc --noEmit\""
+    "typecheck": "concurrently --success all \"cd apps/api && npx tsc --noEmit\" \"cd apps/client && npx tsc --noEmit\"",
+    "test": "cd apps/api && npm test",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "apps/api/src/**/*.ts": [
+      "prettier --write"
+    ],
+    "apps/client/src/**/*.{ts,tsx}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "concurrently": "^9.0.0",
-    "dotenv-cli": "^10.0.0"
+    "dotenv-cli": "^10.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.3"
   }
 }

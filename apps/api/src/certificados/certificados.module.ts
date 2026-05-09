@@ -5,9 +5,10 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { WsModule } from '../ws/ws.module';
 import { ConfiguracionModule } from '../configuracion/configuracion.module';
 import { NotificacionesModule } from '../notificaciones/notificaciones.module';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
-  imports: [PrismaModule, WsModule, ConfiguracionModule, NotificacionesModule],
+  imports: [PrismaModule, WsModule, ConfiguracionModule, NotificacionesModule, StorageModule],
   controllers: [CertificadosController],
   providers: [CertificadosService],
   exports: [CertificadosService],

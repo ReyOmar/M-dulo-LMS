@@ -154,7 +154,7 @@ model lms_cursos {
 
   // Relaciones
   profesor_guid     String
-  profesor          usuarios           @relation(fields: [profesor_guid], references: [guid])
+  profesor          usuarios           @relation(fields: [profesor_guid], references: [guid], onDelete: Cascade)
   modulos           lms_modulos[]
   matriculas        lms_matriculas[]
   certificados      lms_certificados[]
@@ -214,6 +214,7 @@ model lms_recursos {
   updated_at            DateTime              @updatedAt
   deleted_at            DateTime?
   progreso              lms_progreso_recurso[]
+  entregas              lms_entregas[]
 
   @@index([leccion_guid])
 }
@@ -223,8 +224,9 @@ model lms_recursos {
 model lms_entregas {
   guid            String               @id @default(uuid())
   usuario_guid    String
-  usuario         usuarios             @relation(fields: [usuario_guid], references: [guid])
+  usuario         usuarios             @relation(fields: [usuario_guid], references: [guid], onDelete: Cascade)
   tarea_guid      String?              // GUID del recurso tipo TAREA (lms_recursos)
+  tarea           lms_recursos?        @relation(fields: [tarea_guid], references: [guid], onDelete: SetNull)
   url_archivo_adjunto String?          // Nombre del archivo subido en servidor (uploads/)
   respuesta_texto String?              // Nombre original del archivo entregado
 
@@ -236,6 +238,7 @@ model lms_entregas {
   calificacion    Decimal?             // Nota numérica (ej. 4.5) — reemplaza parseo de contenido_texto
   comentario_calificacion String?      @db.Text // Comentario del examinador al calificar
   ip_address      String?
+  archivo_purgado Boolean              @default(false) // true = archivo eliminado tras obtener certificado
 
   created_at      DateTime             @default(now())
   updated_at      DateTime             @updatedAt
@@ -243,6 +246,7 @@ model lms_entregas {
   @@index([usuario_guid])
   @@index([tarea_guid])
   @@index([tarea_guid, usuario_guid])
+  @@index([estado])
 }
 
 // ── PROGRESO Y MATRÍCULAS ──
@@ -452,6 +456,18 @@ model lms_contacto_chat {
   @@unique([solicitante_guid, receptor_guid, curso_guid])
   @@index([receptor_guid])
   @@index([solicitante_guid])
+}
+
+// ── TOKEN REVOCATIONS (for JWT blacklist persistence) ──
+
+model lms_token_revocations {
+  id            Int      @id @default(autoincrement())
+  usuario_guid  String
+  revoked_at    DateTime @default(now())
+  expires_at    DateTime // Auto-cleanup: delete after JWT max lifetime (25h)
+
+  @@index([usuario_guid])
+  @@index([expires_at])
 }
 
 // ── PLANTILLAS DE CORREO ──

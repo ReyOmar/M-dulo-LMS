@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -73,7 +73,7 @@ export class StorageService {
    * Upload a file from a Buffer (multipart upload).
    * This is the primary upload method for the new multipart flow.
    */
-  async uploadFromBuffer(buffer: Buffer, originalName: string): Promise<string> {
+  async uploadFromBuffer(buffer: Buffer, originalName: string, folder?: string): Promise<string> {
     const ext = path.extname(originalName).toLowerCase() || '.bin';
     if (!ALLOWED_EXTENSIONS.includes(ext)) {
       throw new BadRequestException(`Tipo de archivo no permitido: ${ext}`);
@@ -82,25 +82,49 @@ export class StorageService {
       throw new BadRequestException(`El archivo excede el tamaño máximo permitido (50MB).`);
     }
 
+    // F7.5: Validate MIME magic bytes to prevent extension spoofing
+    this.validateMagicBytes(buffer, ext);
+
     const uniqueName = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`;
+    // In R2, organize files by folder prefix (e.g. "portadas/123-abc.png")
+    const r2Key = folder ? `${folder}/${uniqueName}` : uniqueName;
     const contentType = MIME_MAP[ext] || 'application/octet-stream';
 
     if (this.useR2 && this.s3Client) {
-      // Upload to Cloudflare R2
+      // Upload to Cloudflare R2 with folder prefix
       await this.s3Client.send(new PutObjectCommand({
         Bucket: this.bucketName,
-        Key: uniqueName,
+        Key: r2Key,
         Body: buffer,
         ContentType: contentType,
       }));
-      this.logger.log(`☁️  Uploaded to R2: ${uniqueName} (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
+      this.logger.log(`☁️  Uploaded to R2: ${r2Key} (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
     } else {
-      // Fallback: save to local uploads directory
+      // Fallback: save to local uploads directory (flat, no subfolders for simplicity)
       await fs.promises.writeFile(path.join(UPLOADS_DIR, uniqueName), buffer);
       this.logger.log(`💾 Saved locally: ${uniqueName} (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
     }
 
-    return uniqueName;
+    // Return the key with folder prefix so downloads resolve correctly
+    return r2Key;
+  }
+
+  /**
+   * Upload a buffer to R2 with a specific key (no renaming).
+   * Used for structured paths like 'certificados/filename.pdf'.
+   * Falls back silently if R2 is not configured.
+   */
+  async uploadToR2WithKey(buffer: Buffer, key: string, contentType = 'application/octet-stream'): Promise<boolean> {
+    if (!this.useR2 || !this.s3Client) return false;
+
+    await this.s3Client.send(new PutObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    }));
+    this.logger.log(`☁️  Uploaded to R2: ${key} (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
+    return true;
   }
 
 
@@ -114,7 +138,7 @@ export class StorageService {
     }
     // Fallback: serve through API
     const base = apiBaseUrl || '/api';
-    return `${base}/cursos/download/${filename}`;
+    return `${base}/storage/download/${filename}`;
   }
 
   /**
@@ -138,5 +162,75 @@ export class StorageService {
    */
   isCloudStorageActive(): boolean {
     return this.useR2;
+  }
+
+  /**
+   * R2-02: Delete a file from storage (R2 or local filesystem).
+   * Silently ignores if the file doesn't exist.
+   */
+  async deleteFile(filename: string): Promise<void> {
+    if (!filename) return;
+
+    // For R2: use the full key (may include folder prefix like 'entregas/123-abc.docx')
+    // For local: use just the basename (flat storage)
+    const localName = path.basename(filename);
+
+    if (this.useR2 && this.s3Client) {
+      try {
+        await this.s3Client.send(new DeleteObjectCommand({
+          Bucket: process.env.R2_BUCKET_NAME!,
+          Key: filename, // Full key including folder prefix
+        }));
+        this.logger.log(`Deleted from R2: ${filename}`);
+      } catch (err) {
+        this.logger.warn(`Failed to delete from R2: ${filename}`, err);
+      }
+    }
+
+    // Always try local cleanup too (might exist as fallback copy)
+    const localPath = path.join(UPLOADS_DIR, localName);
+    if (fs.existsSync(localPath)) {
+      try {
+        fs.unlinkSync(localPath);
+        this.logger.log(`Deleted local file: ${localName}`);
+      } catch (err) {
+        this.logger.warn(`Failed to delete local file: ${localName}`, err);
+      }
+    }
+  }
+
+  /**
+   * F7.5: Validate file magic bytes to prevent extension spoofing.
+   * Only checks formats where magic bytes are well-defined.
+   * Allows unknown formats (txt, csv, etc.) to pass through.
+   */
+  private validateMagicBytes(buffer: Buffer, ext: string): void {
+    if (buffer.length < 8) return; // Too small to check
+
+    const SIGNATURES: Record<string, number[][]> = {
+      '.pdf': [[0x25, 0x50, 0x44, 0x46]], // %PDF
+      '.png': [[0x89, 0x50, 0x4E, 0x47]], // PNG header
+      '.jpg': [[0xFF, 0xD8, 0xFF]],
+      '.jpeg': [[0xFF, 0xD8, 0xFF]],
+      '.gif': [[0x47, 0x49, 0x46, 0x38]], // GIF8
+      '.zip': [[0x50, 0x4B, 0x03, 0x04], [0x50, 0x4B, 0x05, 0x06]], // PK
+      '.webp': [[0x52, 0x49, 0x46, 0x46]], // RIFF
+      '.mp4': [], // MP4 has variable headers, skip check
+      '.mp3': [[0xFF, 0xFB], [0xFF, 0xF3], [0xFF, 0xF2], [0x49, 0x44, 0x33]], // MP3 frame sync or ID3
+    };
+
+    const expected = SIGNATURES[ext];
+    if (!expected || expected.length === 0) return; // No signature to check
+
+    const matches = expected.some(sig =>
+      sig.every((byte, i) => buffer[i] === byte)
+    );
+
+    if (!matches) {
+      this.logger.warn(`Magic byte mismatch for extension ${ext}: got ${buffer.slice(0, 4).toString('hex')}`);
+      throw new BadRequestException(
+        `El contenido del archivo no coincide con la extensión ${ext}. Posible archivo corrupto o renombrado.`
+      );
+    }
   }
 }

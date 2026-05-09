@@ -4,18 +4,24 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { MailService } from '../mail/mail.service';
 import { LmsGateway } from '../ws/lms.gateway';
+import { StorageService } from '../storage/storage.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class SchedulerService implements OnModuleInit {
   private readonly logger = new Logger(SchedulerService.name);
   // Track courses that were in BORRADOR so we can detect when they go back to PUBLICADO
   private previousDraftCourses = new Set<string>();
+  // Guard against overlapping cron executions (single-instance idempotency)
+  private runningJobs = new Set<string>();
 
   constructor(
     private prisma: PrismaService,
     private notificacionesService: NotificacionesService,
     private mailService: MailService,
     private lmsGateway: LmsGateway,
+    private storageService: StorageService,
   ) {}
 
   async onModuleInit() {
@@ -26,6 +32,25 @@ export class SchedulerService implements OnModuleInit {
     });
     drafts.forEach(d => this.previousDraftCourses.add(d.guid));
     this.logger.log(`Scheduler initialized — monitoring ${drafts.length} draft courses`);
+  }
+
+  /**
+   * Guard to prevent overlapping cron executions.
+   * If a job with the same name is already running, skip the execution.
+   */
+  private async withJobLock(jobName: string, fn: () => Promise<void>): Promise<void> {
+    if (this.runningJobs.has(jobName)) {
+      this.logger.warn(`Skipping ${jobName} — previous execution still running`);
+      return;
+    }
+    this.runningJobs.add(jobName);
+    try {
+      await fn();
+    } catch (err) {
+      this.logger.error(`${jobName} failed:`, err);
+    } finally {
+      this.runningJobs.delete(jobName);
+    }
   }
 
   /**
@@ -170,6 +195,7 @@ export class SchedulerService implements OnModuleInit {
         usuario_guid: true,
         tarea_guid: true,
         fecha_entrega: true,
+        calificacion: true,
       },
     });
 
@@ -191,6 +217,34 @@ export class SchedulerService implements OnModuleInit {
       });
 
       if (existing) continue; // Already unlocked
+
+      // F5.8: If submission already has a calificacion, verify it meets nota_aprobacion
+      // This prevents auto-unlock for submissions that were graded as failing
+      // but whose estado wasn't transitioned to CALIFICADA correctly
+      if (submission.calificacion != null) {
+        const recursoConCurso = await this.prisma.lms_recursos.findUnique({
+          where: { guid: submission.tarea_guid },
+          select: {
+            leccion: {
+              select: {
+                modulo: {
+                  select: {
+                    curso: { select: { nota_aprobacion: true } }
+                  }
+                }
+              }
+            }
+          }
+        });
+        const notaAprobacion = recursoConCurso?.leccion?.modulo?.curso?.nota_aprobacion
+          ? Number(recursoConCurso.leccion.modulo.curso.nota_aprobacion)
+          : 3.0;
+
+        if (Number(submission.calificacion) < notaAprobacion) {
+          this.logger.warn(`Skipping auto-unlock for submission ${submission.guid}: grade ${submission.calificacion} < ${notaAprobacion}`);
+          continue; // Don't unlock — student needs to resubmit
+        }
+      }
 
       // Create progress record to unlock the next resource
       await this.prisma.lms_progreso_recurso.create({
@@ -222,6 +276,134 @@ export class SchedulerService implements OnModuleInit {
     if (unlocked > 0) {
       this.logger.log(`Auto-unlocked ${unlocked} resources for pending submissions >48h`);
       this.lmsGateway.broadcast('dashboard:refresh', { reason: 'auto_unlock' });
+    }
+  }
+
+  /**
+   * F7.7: Clean up orphan files in uploads/ directory.
+   * Runs daily at 3:00 AM. Finds files not referenced in the DB and deletes them.
+   * Only deletes files older than 24h to avoid race conditions with in-progress uploads.
+   */
+  @Cron('0 3 * * *') // Daily at 3:00 AM
+  async cleanupOrphanFiles() {
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadsDir)) return;
+
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+
+    // Get all filenames referenced in DB
+    const [recursos, entregas, certificados, usuarios, configuracion, cursos] = await Promise.all([
+      this.prisma.lms_recursos.findMany({
+        where: { archivo_adjunto: { not: null } },
+        select: { archivo_adjunto: true },
+      }),
+      this.prisma.lms_entregas.findMany({
+        where: { url_archivo_adjunto: { not: null } },
+        select: { url_archivo_adjunto: true },
+      }),
+      this.prisma.lms_certificados.findMany({
+        select: { archivo_pdf: true },
+      }),
+      this.prisma.usuarios.findMany({
+        where: { firma_url: { not: null } },
+        select: { firma_url: true },
+      }),
+      this.prisma.lms_configuracion.findFirst({
+        select: { logo_url: true },
+      }),
+      this.prisma.lms_cursos.findMany({
+        where: { imagen_portada: { not: null } },
+        select: { imagen_portada: true },
+      }),
+    ]);
+
+    const referencedFiles = new Set<string>();
+    recursos.forEach(r => r.archivo_adjunto && referencedFiles.add(r.archivo_adjunto));
+    entregas.forEach(e => e.url_archivo_adjunto && referencedFiles.add(e.url_archivo_adjunto));
+    certificados.forEach(c => c.archivo_pdf && referencedFiles.add(c.archivo_pdf));
+    usuarios.forEach(u => u.firma_url && referencedFiles.add(u.firma_url));
+    cursos.forEach(c => c.imagen_portada && referencedFiles.add(c.imagen_portada));
+    if (configuracion?.logo_url) referencedFiles.add(configuracion.logo_url);
+
+    // Scan local files
+    const localFiles = fs.readdirSync(uploadsDir).filter(f => {
+      const fullPath = path.join(uploadsDir, f);
+      return fs.statSync(fullPath).isFile();
+    });
+
+    let deleted = 0;
+    for (const file of localFiles) {
+      if (referencedFiles.has(file)) continue; // Referenced in DB
+
+      const fullPath = path.join(uploadsDir, file);
+      const stat = fs.statSync(fullPath);
+
+      // Only delete files older than 24h (safety buffer)
+      if (stat.mtimeMs > oneDayAgo) continue;
+
+      try {
+        fs.unlinkSync(fullPath);
+        deleted++;
+        this.logger.log(`Deleted orphan file: ${file}`);
+      } catch (err) {
+        this.logger.warn(`Failed to delete orphan file: ${file}`, err);
+      }
+    }
+
+    if (deleted > 0) {
+      this.logger.log(`Orphan cleanup: deleted ${deleted} unreferenced files`);
+    }
+  }
+
+  /**
+   * F7.5.5: Weekly retrospective purge — clean up submission files
+   * for students who already have a certificate but files weren't purged
+   * (e.g. submissions from before this feature was implemented).
+   * Runs every Sunday at 4:00 AM.
+   */
+  @Cron('0 4 * * 0')
+  async purgeRetroactiveEntregaFiles() {
+    this.logger.log('⏰ Running weekly retrospective entrega file purge...');
+
+    try {
+      // Find entregas that have files + are CALIFICADA + the user has a certificate for that course
+      const entregas = await this.prisma.$queryRaw<Array<{
+        guid: string;
+        url_archivo_adjunto: string;
+      }>>`
+        SELECT e.guid, e.url_archivo_adjunto
+        FROM lms_entregas e
+        INNER JOIN lms_recursos r ON e.tarea_guid = r.guid
+        INNER JOIN lms_lecciones l ON r.leccion_guid = l.guid
+        INNER JOIN lms_modulos m ON l.modulo_guid = m.guid
+        INNER JOIN lms_certificados c ON c.usuario_guid = e.usuario_guid AND c.curso_guid = m.curso_guid
+        WHERE e.url_archivo_adjunto IS NOT NULL
+          AND e.archivo_purgado = false
+          AND e.estado = 'CALIFICADA'
+      `;
+
+      if (entregas.length === 0) {
+        this.logger.log('No retrospective entregas to purge.');
+        return;
+      }
+
+      let purged = 0;
+      for (const entrega of entregas) {
+        try {
+          await this.storageService.deleteFile(entrega.url_archivo_adjunto);
+          await this.prisma.lms_entregas.update({
+            where: { guid: entrega.guid },
+            data: { url_archivo_adjunto: null, archivo_purgado: true },
+          });
+          purged++;
+        } catch (err) {
+          this.logger.warn(`Failed to purge retroactive entrega ${entrega.guid}:`, err);
+        }
+      }
+
+      this.logger.log(`📦 Retrospective purge: cleaned ${purged}/${entregas.length} submission files`);
+    } catch (err) {
+      this.logger.error('Retrospective purge failed:', err);
     }
   }
 }

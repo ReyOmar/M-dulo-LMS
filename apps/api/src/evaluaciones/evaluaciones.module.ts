@@ -5,9 +5,10 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { StorageModule } from '../storage/storage.module';
 import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 import { CertificadosModule } from '../certificados/certificados.module';
+import { CursosModule } from '../cursos/cursos.module';
 
 @Module({
-  imports: [PrismaModule, StorageModule, NotificacionesModule, CertificadosModule],
+  imports: [PrismaModule, StorageModule, NotificacionesModule, CertificadosModule, CursosModule],
   controllers: [EvaluacionesController],
   providers: [EvaluacionesService]
 })

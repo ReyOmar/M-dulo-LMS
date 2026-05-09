@@ -4,7 +4,7 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { WsAdapter } from '@nestjs/platform-ws';
@@ -12,6 +12,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import compress from '@fastify/compress';
 import multipart from '@fastify/multipart';
 import helmet from '@fastify/helmet';
+import { randomUUID } from 'crypto';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -24,7 +25,20 @@ async function bootstrap() {
 
   // Security headers (X-Frame-Options, X-Content-Type-Options, HSTS, etc.)
   await app.register(helmet, {
-    contentSecurityPolicy: false, // CSP managed by Next.js frontend
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],  // Swagger UI needs inline styles
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
     crossOriginEmbedderPolicy: false, // Allow embedding resources (images, fonts)
   });
 
@@ -34,6 +48,32 @@ async function bootstrap() {
       fileSize: 50 * 1024 * 1024, // 50MB max file size
       files: 1, // Max 1 file per request
     },
+  });
+
+  // ── Request ID + Logging ──
+  const httpLogger = new Logger('HTTP');
+  const fastify = app.getHttpAdapter().getInstance();
+  fastify.addHook('onRequest', (request: any, reply: any, done: () => void) => {
+    request.id = request.headers['x-request-id'] || randomUUID();
+    reply.header('X-Request-ID', request.id);
+    done();
+  });
+  fastify.addHook('onResponse', (request: any, reply: any, done: () => void) => {
+    // Skip health checks from logs
+    if (request.url !== '/api/health') {
+      const ms = reply.elapsedTime?.toFixed(0) || '?';
+      const status = reply.statusCode;
+      const logLine = `${request.method} ${request.url} ${status} ${ms}ms [${request.id}]`;
+
+      if (status >= 500) {
+        httpLogger.error(logLine);
+      } else if (Number(ms) > 1000) {
+        httpLogger.warn(`SLOW ${logLine}`);
+      } else {
+        httpLogger.log(logLine);
+      }
+    }
+    done();
   });
   
   const configService = app.get(ConfigService);
@@ -80,6 +120,9 @@ async function bootstrap() {
 
   // Enable WebSocket support with native ws adapter (compatible with Fastify)
   app.useWebSocketAdapter(new WsAdapter(app));
+
+  // Enable graceful shutdown hooks (Prisma disconnect, cron cleanup, WS close)
+  app.enableShutdownHooks();
 
   const port = process.env.APP_PORT || 3200;
   await app.listen(port, '0.0.0.0');

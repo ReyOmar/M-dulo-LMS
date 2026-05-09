@@ -1,6 +1,8 @@
 import { Controller, Post, Body, Get, Param, Patch, ForbiddenException, Delete } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
+import { UserService } from './user.service';
+import { TokenBlacklistService } from './token-blacklist.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -9,61 +11,75 @@ import { LoginDto } from './dto/login.dto';
 import { SolicitarAccesoDto } from './dto/solicitar-acceso.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { SetupPasswordDto } from './dto/setup-password.dto';
+import { RequestPasswordResetDto, ResetPasswordDto } from './dto/password-reset.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private userService: UserService,
+    private tokenBlacklistService: TokenBlacklistService,
+  ) {}
+
+  // ── Public auth endpoints ──
 
   @Public()
-  @Throttle({ default: { ttl: 60000, limit: 3 } }) // 3 access requests per minute
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
   @Post('solicitar')
   async requestAccess(@Body() dto: SolicitarAccesoDto) {
     return this.authService.requestAccess(dto);
   }
 
   @Public()
-  @Throttle({ default: { ttl: 60000, limit: 5 } }) // Stricter: 5 login attempts per minute
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('login')
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.contrasena);
   }
 
   @Public()
-  @Throttle({ default: { ttl: 60000, limit: 5 } }) // 5 attempts per minute
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('establecer-password')
   async setupPassword(@Body() body: SetupPasswordDto) {
     return this.authService.setupPassword(body.email, body.contrasenaTemporal, body.nuevaContrasena);
   }
 
   @Public()
-  @Throttle({ default: { ttl: 60000, limit: 3 } }) // 3 reset requests per minute
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
   @Post('recuperar-contrasena')
-  async requestPasswordReset(@Body() body: { email: string }) {
+  async requestPasswordReset(@Body() body: RequestPasswordResetDto) {
     return this.authService.requestPasswordReset(body.email);
   }
 
   @Public()
-  @Throttle({ default: { ttl: 60000, limit: 5 } }) // 5 reset attempts per minute
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('restablecer-contrasena')
-  async resetPassword(@Body() body: { token: string; nuevaContrasena: string }) {
+  async resetPassword(@Body() body: ResetPasswordDto) {
     return this.authService.resetPassword(body.token, body.nuevaContrasena);
   }
 
-  // --- PERFIL DE USUARIO (autenticado) ---
+  // ── Session management ──
+
+  @Post('logout')
+  async logout(@CurrentUser() user: JwtPayload) {
+    this.tokenBlacklistService.revokeUser(user.sub);
+    return { message: 'Sesión cerrada correctamente.' };
+  }
+
+  // ── User profile (delegated to UserService) ──
 
   @Get('me')
   async getMe(@CurrentUser() user: JwtPayload) {
     if (!user) throw new ForbiddenException('No autenticado');
-    return this.authService.getUserProfile(user.sub);
+    return this.userService.getUserProfile(user.sub);
   }
 
   @Get('perfil/:guid')
   async getProfile(@Param('guid') guid: string, @CurrentUser() user: JwtPayload) {
-    // When JWT is available, enforce ownership; otherwise allow access by guid
     if (user && user.sub !== guid && user.role !== 'ADMINISTRADOR') {
       throw new ForbiddenException('No tienes permiso para ver este perfil.');
     }
-    return this.authService.getUserProfile(guid);
+    return this.userService.getUserProfile(guid);
   }
 
   @Patch('perfil/:guid')
@@ -71,28 +87,30 @@ export class AuthController {
     if (user && user.sub !== guid && user.role !== 'ADMINISTRADOR') {
       throw new ForbiddenException('No tienes permiso para modificar este perfil.');
     }
-    return this.authService.updateProfile(guid, dto);
+    return this.userService.updateProfile(guid, dto);
   }
 
-  // --- RUTAS DE ADMINISTRADOR (autenticado — future: add @Roles('ADMINISTRADOR')) ---
+  // ── Admin user management (delegated to UserService) ──
 
   @Roles('ADMINISTRADOR')
   @Get('usuarios')
   async getAllUsers() {
-    return this.authService.getAllUsers();
+    return this.userService.getAllUsers();
   }
 
   @Roles('ADMINISTRADOR')
   @Get('admin-stats')
   async getAdminStats() {
-    return this.authService.getAdminStats();
+    return this.userService.getAdminStats();
   }
 
   @Roles('ADMINISTRADOR')
   @Delete('usuarios/:guid')
   async deleteUser(@Param('guid') guid: string, @CurrentUser() currentUser: any) {
-    return this.authService.deleteUser(guid, currentUser?.sub);
+    return this.userService.deleteUser(guid, currentUser?.sub);
   }
+
+  // ── Access request management ──
 
   @Roles('ADMINISTRADOR')
   @Get('solicitudes')

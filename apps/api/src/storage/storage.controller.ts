@@ -1,11 +1,11 @@
 import { Controller, Post, Get, Param, Res, Query, StreamableFile, BadRequestException, Req } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { StorageService } from './storage.service';
-import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import * as path from 'path';
 import * as fs from 'fs';
 
-@Controller('cursos')
+@Controller('storage')
 export class StorageController {
   constructor(private readonly storageService: StorageService) {}
 
@@ -14,12 +14,17 @@ export class StorageController {
    * Accepts a single file field named 'file'.
    */
   @Roles('ADMINISTRADOR', 'PROFESOR')
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('/upload')
-  async uploadFile(@Req() req: any) {
+  async uploadFile(@Req() req: any, @Query('folder') folder?: string) {
     const data = await req.file();
     if (!data) {
       throw new BadRequestException('No se envió ningún archivo. Usa multipart/form-data con el campo "file".');
     }
+
+    // Validate folder param (whitelist to prevent path traversal)
+    const ALLOWED_FOLDERS = ['portadas', 'recursos', 'entregas', 'firmas', 'logos'];
+    const safeFolder = folder && ALLOWED_FOLDERS.includes(folder) ? folder : undefined;
 
     // Read the file into a buffer
     const chunks: Buffer[] = [];
@@ -32,38 +37,55 @@ export class StorageController {
       throw new BadRequestException('El archivo está vacío.');
     }
 
-    const filename = await this.storageService.uploadFromBuffer(buffer, data.filename || 'file.bin');
+    const filename = await this.storageService.uploadFromBuffer(buffer, data.filename || 'file.bin', safeFolder);
     return { filename };
   }
 
   /**
    * Download a file. Serves from local storage (legacy) or redirects to R2 public URL.
+   * Supports folder-prefixed keys like 'portadas/123-abc.png'.
+   * SEC-03 FIX: Requires authentication — removed @Public() to prevent unauthorized access to uploads.
    */
-  @Public()
-  @Get('/download/:filename')
-  async downloadFile(@Param('filename') filename: string, @Query('originalName') originalName: string, @Res({ passthrough: true }) res: any) {
-    const sanitized = path.basename(filename);
-    if (!sanitized || sanitized !== filename) {
-      throw new BadRequestException('Nombre de archivo inválido.');
+  @Get('/download/*')
+  async downloadFile(@Req() req: any, @Query('originalName') originalName: string, @Res({ passthrough: true }) res: any) {
+    // Extract the full key from the URL path (supports 'file.png' and 'folder/file.png')
+    const rawKey: string = req.params['*'] || '';
+    if (!rawKey) throw new BadRequestException('Nombre de archivo requerido.');
+
+    // Validate each path segment to prevent directory traversal
+    const segments = rawKey.split('/');
+    const ALLOWED_FOLDERS = ['portadas', 'recursos', 'entregas', 'firmas', 'logos', 'certificados'];
+    
+    let sanitizedKey: string;
+    if (segments.length === 1) {
+      // Legacy flat file: "123-abc.pdf"
+      sanitizedKey = path.basename(segments[0]);
+    } else if (segments.length === 2 && ALLOWED_FOLDERS.includes(segments[0])) {
+      // Folder-prefixed: "portadas/123-abc.png"
+      sanitizedKey = `${segments[0]}/${path.basename(segments[1])}`;
+    } else {
+      throw new BadRequestException('Ruta de archivo inválida.');
     }
 
-    // If R2 is active and the file is not local, redirect to R2 public URL
-    if (this.storageService.isCloudStorageActive() && !this.storageService.existsLocally(sanitized)) {
-      const publicUrl = this.storageService.getFileUrl(sanitized);
+    const justFilename = path.basename(sanitizedKey);
+
+    // If R2 is active and the file is not local, redirect to R2/API URL
+    if (this.storageService.isCloudStorageActive() && !this.storageService.existsLocally(justFilename)) {
+      const publicUrl = this.storageService.getFileUrl(sanitizedKey);
       res.redirect(302, publicUrl);
       return;
     }
 
     // Serve from local storage (legacy files or fallback mode)
-    const filePath = this.storageService.getUploadPath(sanitized);
+    const filePath = this.storageService.getUploadPath(justFilename);
     const stream = fs.createReadStream(filePath);
     
-    const ext = sanitized.split('.').pop()?.toLowerCase();
+    const ext = justFilename.split('.').pop()?.toLowerCase();
     let contentType = 'application/octet-stream';
     if (ext === 'pdf') contentType = 'application/pdf';
     else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext || '')) contentType = `image/${ext}`;
     
-    const downloadName = originalName ? path.basename(originalName).replace(/"/g, '') : sanitized;
+    const downloadName = originalName ? path.basename(originalName).replace(/"/g, '') : justFilename;
 
     res.header('Content-Type', contentType);
     res.header('Content-Disposition', `attachment; filename="${downloadName}"`);

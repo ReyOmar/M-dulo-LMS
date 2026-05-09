@@ -79,6 +79,15 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setLoggingOut(true);
+    // Revoke token server-side (fire-and-forget — don't block on network errors)
+    const token = localStorage.getItem("lms_token");
+    if (token) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
+      fetch(`${apiUrl}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      }).catch(() => {}); // Ignore errors — local cleanup happens regardless
+    }
     localStorage.removeItem("lms_token");
     localStorage.removeItem("lms_user");
     setUser(null);

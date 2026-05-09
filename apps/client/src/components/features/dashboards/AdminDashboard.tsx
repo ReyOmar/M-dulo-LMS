@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookOpen, Users, Award, TrendingUp, GraduationCap, AlertCircle, Loader2 } from "lucide-react";
+import { BookOpen, Users, Award, GraduationCap, AlertCircle, TrendingUp } from "lucide-react";
 import { PageLoader } from "@/components/ui/PageLoader";
+import { StatCard } from "@/components/ui/StatCard";
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import api from "@/lib/api";
-
 import { useWS } from "@/contexts/WebSocketContext";
+import { useRole } from "@/contexts/RoleContext";
 
 // Dynamically import Recharts to avoid SSR issues
 const AreaChart = dynamic(() => import('recharts').then(m => m.AreaChart), { ssr: false });
@@ -20,17 +21,35 @@ const PieChart = dynamic(() => import('recharts').then(m => m.PieChart), { ssr: 
 const Pie = dynamic(() => import('recharts').then(m => m.Pie), { ssr: false });
 const Cell = dynamic(() => import('recharts').then(m => m.Cell), { ssr: false });
 
+// Chart colors using the transport palette
+const CHART_COLORS = {
+  primary: 'hsl(207, 80%, 42%)',
+  primaryLight: 'hsl(207, 80%, 55%)',
+  accent: 'hsl(38, 92%, 50%)',
+  success: 'hsl(152, 60%, 40%)',
+  info: 'hsl(200, 70%, 50%)',
+  danger: 'hsl(0, 72%, 51%)',
+};
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Buenos días";
+  if (hour < 18) return "Buenas tardes";
+  return "Buenas noches";
+}
+
 export function AdminDashboard() {
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { subscribe } = useWS();
+  const { user } = useRole();
 
   const fetchDashboardData = () => {
     Promise.all([
       api.get('/auth/solicitudes').then(r => r.data).catch(() => []),
-      api.get('/cursos/admin/dashboard-stats').then(r => r.data).catch(() => null)
+      api.get('/dashboards/admin/dashboard-stats').then(r => r.data).catch(() => null)
     ]).then(([solicitudes, dashStats]) => {
       const pending = Array.isArray(solicitudes) ? solicitudes.filter((s: any) => s.estado === 'PENDIENTE').length : 0;
       setSolicitudesPendientes(pending);
@@ -58,112 +77,129 @@ export function AdminDashboard() {
   const totalMatriculas = stats?.totalMatriculas || 0;
 
   if (loading) {
-    return <PageLoader message="Cargando panel administrativo..." />;
+    return (
+      <div className="animate-fade-slide-in">
+        {/* Skeleton Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-10">
+          <div>
+            <div className="h-4 w-24 rounded-lg bg-muted animate-shimmer mb-2" />
+            <div className="h-8 w-48 rounded-lg bg-muted animate-shimmer mb-1" />
+            <div className="h-4 w-56 rounded-lg bg-muted animate-shimmer" />
+          </div>
+          <div className="h-8 w-40 rounded-full bg-muted animate-shimmer" />
+        </div>
+        {/* Skeleton KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="rounded-2xl border border-border/50 p-6 space-y-3" style={{ animationDelay: `${i * 80}ms` }}>
+              <div className="flex items-center justify-between">
+                <div className="h-10 w-10 rounded-xl bg-muted animate-shimmer" />
+                <div className="h-4 w-16 rounded bg-muted animate-shimmer" />
+              </div>
+              <div className="h-8 w-20 rounded bg-muted animate-shimmer" />
+              <div className="h-3 w-32 rounded bg-muted animate-shimmer" />
+            </div>
+          ))}
+        </div>
+        {/* Skeleton Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 rounded-2xl border border-border/50 p-6">
+            <div className="h-5 w-40 rounded bg-muted animate-shimmer mb-2" />
+            <div className="h-3 w-64 rounded bg-muted animate-shimmer mb-6" />
+            <div className="h-64 rounded-xl bg-muted/50 animate-shimmer" />
+          </div>
+          <div className="rounded-2xl border border-border/50 p-6">
+            <div className="h-5 w-36 rounded bg-muted animate-shimmer mb-2" />
+            <div className="h-3 w-28 rounded bg-muted animate-shimmer mb-4" />
+            <div className="h-52 rounded-full mx-auto w-40 bg-muted/50 animate-shimmer" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="animate-in fade-in duration-700">
-      <header className="flex justify-between items-end mb-10">
+    <div className="animate-fade-slide-in">
+      {/* ── Header with greeting ── */}
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-10">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Panel Administrativo</h1>
-          <p className="text-muted-foreground mt-1">Visión de estado general de la plataforma y métricas maestras.</p>
+          <p className="text-sm font-medium text-muted-foreground mb-1">{getGreeting()},</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+            {user?.nombre || 'Administrador'}
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">Panel de control de la plataforma</p>
         </div>
-        <div className="flex items-center gap-2 bg-muted/20 border border-border/50 px-3 py-1.5 rounded-full">
+        <div className="flex items-center gap-2 bg-card border border-border/50 px-3 py-1.5 rounded-full shadow-sm">
           <span className="flex h-2 w-2 relative" title="Conexión en tiempo real activa">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
           </span>
           <p className="text-xs text-muted-foreground font-medium">
-            Última actualización: <span className="text-foreground font-bold">{lastUpdated ? lastUpdated.toLocaleString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) : '...'}</span>
+            <span className="text-foreground font-semibold">
+              {lastUpdated ? lastUpdated.toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true }) : '...'}
+            </span>
           </p>
         </div>
       </header>
 
-      {/* =================== KPI CARDS =================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
-        
-        {/* Usuarios Activos */}
-        <Link href="/dashboard/admin/usuarios" className="relative overflow-hidden rounded-2xl border border-border/50 p-5 shadow-sm hover:shadow-lg transition-all duration-300 group
-                        bg-card/70 backdrop-blur-md hover:border-primary/40 cursor-pointer block">
-          <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 blur-xl group-hover:scale-150 transition-transform duration-500" />
-          <div className="relative z-10 flex justify-between items-start">
-            <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Usuarios Activos</p>
-              <p className="text-3xl font-black tracking-tight">{stats?.usuarios?.total || 0}</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                {stats?.usuarios?.estudiantes || 0} estudiantes · {stats?.usuarios?.profesores || 0} profesores
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 group-hover:scale-110 transition-transform">
-              <Users className="h-5 w-5 text-primary" />
-            </div>
-          </div>
-        </Link>
-
-        {/* Cursos */}
-        <Link href="/dashboard/admin/constructor-cursos" className="relative overflow-hidden rounded-2xl border border-border/50 p-5 shadow-sm hover:shadow-lg transition-all duration-300 group
-                        bg-card/70 backdrop-blur-md hover:border-blue-500/40 cursor-pointer block">
-          <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-gradient-to-br from-blue-500/20 to-blue-500/5 blur-xl group-hover:scale-150 transition-transform duration-500" />
-          <div className="relative z-10 flex justify-between items-start">
-            <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Cursos</p>
-              <p className="text-3xl font-black tracking-tight">{(stats?.cursos?.publicados || 0) + (stats?.cursos?.borrador || 0)}</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                {stats?.cursos?.publicados || 0} en publicación · {stats?.cursos?.borrador || 0} en borrador
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/10 group-hover:scale-110 transition-transform">
-              <BookOpen className="h-5 w-5 text-blue-500" />
-            </div>
-          </div>
-        </Link>
-
-        {/* Solicitudes Pendientes — conectado a API real */}
-        <Link href="/dashboard/admin/solicitudes" className="relative overflow-hidden rounded-2xl border border-border/50 p-5 shadow-sm hover:shadow-lg transition-all duration-300 group
-                        bg-card/70 backdrop-blur-md hover:border-orange-500/40 cursor-pointer">
-          <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-gradient-to-br from-orange-500/20 to-orange-500/5 blur-xl group-hover:scale-150 transition-transform duration-500" />
-          <div className="relative z-10 flex justify-between items-start">
-            <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Solicitudes Pendientes</p>
-              <p className="text-3xl font-black tracking-tight">{solicitudesPendientes}</p>
-              <p className={`text-xs font-semibold mt-2 flex items-center gap-1 ${solicitudesPendientes > 0 ? 'text-orange-500' : 'text-emerald-500'}`}>
-                <AlertCircle className="h-3 w-3" /> {solicitudesPendientes > 0 ? 'Requieren revisión' : 'Todo al día'}
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-500/10 group-hover:scale-110 transition-transform">
-              <Users className="h-5 w-5 text-orange-500" />
-            </div>
-          </div>
-        </Link>
-
-        {/* Promedio Calificación */}
-        <div className="relative overflow-hidden rounded-2xl border border-border/50 p-5 shadow-sm hover:shadow-lg transition-all duration-300 group
-                        bg-card/70 backdrop-blur-md hover:border-amber-500/40">
-          <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-500/5 blur-xl group-hover:scale-150 transition-transform duration-500" />
-          <div className="relative z-10 flex justify-between items-start">
-            <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Calificación Global</p>
-              <p className="text-3xl font-black tracking-tight">
-                {stats?.promedioGlobal || 0}<span className="text-lg text-muted-foreground">/5.0</span>
-              </p>
-              <p className="text-xs text-amber-500 font-semibold mt-2 flex items-center gap-1">
-                <Award className="h-3 w-3" /> {stats?.promedioGlobal >= 4 ? 'Excelente rendimiento' : stats?.promedioGlobal >= 3 ? 'Buen rendimiento' : stats?.promedioGlobal > 0 ? 'Necesita mejora' : 'Sin calificaciones'}
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/10 group-hover:scale-110 transition-transform">
-              <GraduationCap className="h-5 w-5 text-amber-500" />
-            </div>
-          </div>
-        </div>
+      {/* ── KPI Cards ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        <StatCard
+          label="Usuarios Activos"
+          value={stats?.usuarios?.total || 0}
+          icon={<Users className="h-5 w-5" />}
+          color="primary"
+          trend={{
+            value: stats?.usuarios?.estudiantes || 0,
+            label: `${stats?.usuarios?.estudiantes || 0} estudiantes · ${stats?.usuarios?.profesores || 0} profesores`
+          }}
+          href="/dashboard/admin/usuarios"
+          className="stagger-1 animate-fade-slide-in"
+        />
+        <StatCard
+          label="Cursos"
+          value={(stats?.cursos?.publicados || 0) + (stats?.cursos?.borrador || 0)}
+          icon={<BookOpen className="h-5 w-5" />}
+          color="info"
+          trend={{
+            value: stats?.cursos?.publicados || 0,
+            label: `${stats?.cursos?.publicados || 0} publicados · ${stats?.cursos?.borrador || 0} borrador`
+          }}
+          href="/dashboard/admin/constructor-cursos"
+          className="stagger-2 animate-fade-slide-in"
+        />
+        <StatCard
+          label="Solicitudes Pendientes"
+          value={solicitudesPendientes}
+          icon={<AlertCircle className="h-5 w-5" />}
+          color={solicitudesPendientes > 0 ? "warning" : "success"}
+          trend={{
+            value: solicitudesPendientes > 0 ? -1 : 1,
+            label: solicitudesPendientes > 0 ? 'Requieren revisión' : 'Todo al día'
+          }}
+          href="/dashboard/admin/solicitudes"
+          className="stagger-3 animate-fade-slide-in"
+        />
+        <StatCard
+          label="Calificación Global"
+          value={parseFloat(stats?.promedioGlobal) || 0}
+          suffix="/5.0"
+          icon={<GraduationCap className="h-5 w-5" />}
+          color="accent"
+          trend={{
+            value: (stats?.promedioGlobal || 0) >= 3 ? 1 : -1,
+            label: stats?.promedioGlobal >= 4 ? 'Excelente rendimiento' : stats?.promedioGlobal >= 3 ? 'Buen rendimiento' : stats?.promedioGlobal > 0 ? 'Necesita mejora' : 'Sin calificaciones'
+          }}
+          className="stagger-4 animate-fade-slide-in"
+        />
       </div>
 
-      {/* =================== CHARTS ROW =================== */}
+      {/* ── Charts Row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
         
-        {/* Weekly Activity Chart — spans 2 columns */}
-        <div className="lg:col-span-2 relative overflow-hidden rounded-2xl border border-border/50 p-6 shadow-sm
-                        bg-card/70 backdrop-blur-md animate-in slide-in-from-bottom-4 duration-700">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent pointer-events-none" />
+        {/* Weekly Activity Chart — 2 columns */}
+        <div className="lg:col-span-2 relative overflow-hidden rounded-2xl border border-border/50 p-6 shadow-sm bg-card/70 backdrop-blur-md stagger-5 animate-fade-slide-in">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent pointer-events-none" />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -172,10 +208,10 @@ export function AdminDashboard() {
               </div>
               <div className="flex gap-4 text-xs font-medium">
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-primary" /> Recursos
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: CHART_COLORS.primary }} /> Recursos
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Entregas
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: CHART_COLORS.success }} /> Entregas
                 </span>
               </div>
             </div>
@@ -184,12 +220,12 @@ export function AdminDashboard() {
                 <AreaChart data={weeklyActivity} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradSesiones" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      <stop offset="0%" stopColor={CHART_COLORS.primary} stopOpacity={0.3} />
+                      <stop offset="100%" stopColor={CHART_COLORS.primary} stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="gradEntregas" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(150, 65%, 45%)" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="hsl(150, 65%, 45%)" stopOpacity={0} />
+                      <stop offset="0%" stopColor={CHART_COLORS.success} stopOpacity={0.25} />
+                      <stop offset="100%" stopColor={CHART_COLORS.success} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
@@ -203,8 +239,8 @@ export function AdminDashboard() {
                       fontSize: '13px',
                     }}
                   />
-                  <Area type="monotone" dataKey="sesiones" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#gradSesiones)" />
-                  <Area type="monotone" dataKey="entregas" stroke="hsl(150, 65%, 45%)" strokeWidth={2} fill="url(#gradEntregas)" />
+                  <Area type="monotone" dataKey="sesiones" stroke={CHART_COLORS.primary} strokeWidth={2.5} fill="url(#gradSesiones)" />
+                  <Area type="monotone" dataKey="entregas" stroke={CHART_COLORS.success} strokeWidth={2} fill="url(#gradEntregas)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -212,9 +248,8 @@ export function AdminDashboard() {
         </div>
 
         {/* Student Distribution Donut */}
-        <div className="relative overflow-hidden rounded-2xl border border-border/50 p-6 shadow-sm
-                        bg-card/70 backdrop-blur-md animate-in slide-in-from-bottom-4 duration-700">
-          <div className="absolute inset-0 bg-gradient-to-br from-secondary/[0.03] to-transparent pointer-events-none" />
+        <div className="relative overflow-hidden rounded-2xl border border-border/50 p-6 shadow-sm bg-card/70 backdrop-blur-md stagger-6 animate-fade-slide-in">
+          <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.02] to-transparent pointer-events-none" />
           <div className="relative z-10">
             <h2 className="text-lg font-bold mb-1">Distribución por Curso</h2>
             <p className="text-xs text-muted-foreground mb-4">{totalMatriculas} matrículas totales</p>

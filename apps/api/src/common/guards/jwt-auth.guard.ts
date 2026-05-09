@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException, OnModuleDestroy } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
@@ -8,10 +8,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TokenBlacklistService } from '../../auth/token-blacklist.service';
 
 @Injectable()
-export class JwtAuthGuard implements CanActivate {
+export class JwtAuthGuard implements CanActivate, OnModuleDestroy {
   // Throttle ultimo_acceso updates: max once every 5 minutes per user
   private lastAccessUpdates = new Map<string, number>();
   private static readonly ACCESS_UPDATE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  private cleanupInterval: ReturnType<typeof setInterval>;
 
   constructor(
     private jwtService: JwtService,
@@ -19,7 +20,19 @@ export class JwtAuthGuard implements CanActivate {
     private reflector: Reflector,
     private prisma: PrismaService,
     private tokenBlacklistService: TokenBlacklistService,
-  ) {}
+  ) {
+    // PERF-03: Periodically clean up stale entries to prevent memory leak
+    this.cleanupInterval = setInterval(() => {
+      const cutoff = Date.now() - 10 * 60 * 1000; // 10 minutes
+      for (const [guid, timestamp] of this.lastAccessUpdates) {
+        if (timestamp < cutoff) this.lastAccessUpdates.delete(guid);
+      }
+    }, 60 * 60 * 1000); // Every hour
+  }
+
+  onModuleDestroy() {
+    clearInterval(this.cleanupInterval);
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [

@@ -149,7 +149,7 @@ export function AlertProvider({ children }: { children: ReactNode }) {
           className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-opacity duration-150 ${closing ? 'opacity-0' : 'opacity-100 animate-in fade-in duration-200'}`}
           onClick={(e) => { if (e.target === e.currentTarget) closeAlert(); }}
         >
-          <div className={`bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transition-all duration-150 ${closing ? 'scale-95 opacity-0' : 'animate-in zoom-in-95 duration-200'}`}>
+          <div role="alertdialog" aria-live="assertive" aria-label={alert.title} className={`bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transition-all duration-150 ${closing ? 'scale-95 opacity-0' : 'animate-in zoom-in-95 duration-200'}`}>
             {/* Close button */}
             <button
               type="button"
@@ -198,7 +198,7 @@ export function AlertProvider({ children }: { children: ReactNode }) {
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 p-4"
           onClick={(e) => { if (e.target === e.currentTarget) confirm.onCancel(); }}
         >
-          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+          <div role="alertdialog" aria-live="assertive" aria-label={confirm.title} className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 flex flex-col items-center text-center">
               <div className={`w-16 h-16 ${confirmColors.bg} rounded-full flex items-center justify-center mb-4`}>
                 <AlertTriangle className={`h-8 w-8 ${confirmColors.icon}`} />

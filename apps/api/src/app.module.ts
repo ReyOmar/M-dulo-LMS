@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 import { ConfiguracionModule } from './configuracion/configuracion.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -21,6 +22,7 @@ import { MailModule } from './mail/mail.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { CertificadosModule } from './certificados/certificados.module';
 import { HealthModule } from './health/health.module';
+import { LmsEventListener } from './common/listeners/lms-event.listener';
 
 @Module({
   imports: [
@@ -44,6 +46,9 @@ import { HealthModule } from './health/health.module';
     ThrottlerModule.forRoot({
       throttlers: [{ ttl: 60000, limit: 200 }],
     }),
+
+    // Event-driven architecture — decoupled service-to-service communication
+    EventEmitterModule.forRoot(),
 
     ConfiguracionModule,
     PrismaModule,
@@ -72,6 +77,9 @@ import { HealthModule } from './health/health.module';
 
     // Global rate limiting guard
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+
+    // Centralized event listener for cross-cutting concerns
+    LmsEventListener,
   ],
 })
 export class AppModule {}

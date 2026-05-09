@@ -1,14 +1,14 @@
 import { Module } from '@nestjs/common';
 import { CursosService } from './cursos.service';
+import { QuizService } from './quiz.service';
+import { BloqueService } from './bloque.service';
 import { CursosController } from './cursos.controller';
 import { PrismaModule } from '../prisma/prisma.module';
-import { NotificacionesModule } from '../notificaciones/notificaciones.module';
-import { CertificadosModule } from '../certificados/certificados.module';
 
 @Module({
-  imports: [PrismaModule, NotificacionesModule, CertificadosModule],
+  imports: [PrismaModule],
   controllers: [CursosController],
-  providers: [CursosService],
+  providers: [CursosService, QuizService, BloqueService],
+  exports: [CursosService, QuizService, BloqueService],
 })
 export class CursosModule {}
-

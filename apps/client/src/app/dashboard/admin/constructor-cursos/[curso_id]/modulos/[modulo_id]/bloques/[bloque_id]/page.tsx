@@ -153,7 +153,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
         try {
             const formData = new FormData();
             formData.append('file', file);
-            const res = await api.post('/cursos/upload', formData, {
+            const res = await api.post('/storage/upload?folder=recursos', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
             setArchivoAdjunto(res.data.filename);
@@ -349,7 +349,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                                 <div className="flex items-center gap-3 bg-background border border-border rounded-xl px-4 py-3">
                                     <Paperclip className="h-5 w-5 text-primary flex-shrink-0" />
                                     <a 
-                                        href={`${API_BASE_URL}/cursos/download/${archivoAdjunto}?originalName=${encodeURIComponent(archivoAdjuntoNombre)}`}
+                                        href={`${API_BASE_URL}/storage/download/${archivoAdjunto}?originalName=${encodeURIComponent(archivoAdjuntoNombre)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="font-medium text-sm flex-1 truncate text-primary hover:underline cursor-pointer flex items-center gap-1"

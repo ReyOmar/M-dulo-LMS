@@ -54,6 +54,11 @@ export class MatriculasService {
   }
 
   async seedMatriculas() {
+    // COD-07: Guard against accidental execution in production
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('seedMatriculas no está disponible en producción.');
+    }
+
     const estudiantes = await this.prisma.usuarios.findMany({ where: { rol: 'ESTUDIANTE' } });
     const cursos = await this.prisma.lms_cursos.findMany({ where: { estado: 'PUBLICADO' } });
 

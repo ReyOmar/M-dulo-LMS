@@ -1,13 +1,17 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, UnauthorizedException, BadRequestException, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UnauthorizedException, BadRequestException, Req } from '@nestjs/common';
 import { EvaluacionesService } from './evaluaciones.service';
+import { QuizService } from '../cursos/quiz.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import { CalificarEntregaDto } from './dto/calificar-entrega.dto';
 
-@Controller('cursos')
+@Controller('evaluaciones')
 export class EvaluacionesController {
-  constructor(private readonly evaluacionesService: EvaluacionesService) {}
+  constructor(
+    private readonly evaluacionesService: EvaluacionesService,
+    private readonly quizService: QuizService,
+  ) {}
 
   /**
    * Submit a file for a task via multipart/form-data.
@@ -21,6 +25,9 @@ export class EvaluacionesController {
   ) {
     const userGuid = user.sub;
     if (!userGuid) throw new UnauthorizedException('Debes iniciar sesión para subir tu tarea.');
+
+    // SEC-06: Verify enrollment before allowing file submission
+    await this.quizService.verificarMatricula(tarea_guid, userGuid);
 
     const data = await req.file();
     if (!data) {
@@ -60,8 +67,10 @@ export class EvaluacionesController {
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Get('/examiner/entregas')
-  async getEntregasParaCalificar(@Query('profesor_guid') profesor_guid: string) {
-    return this.evaluacionesService.getEntregasParaCalificar(profesor_guid);
+  async getEntregasParaCalificar(@CurrentUser() user: JwtPayload) {
+    // BUG-07 FIX: Use the authenticated user's GUID from JWT instead of an untrusted query param.
+    // This prevents a professor from viewing another professor's submissions.
+    return this.evaluacionesService.getEntregasParaCalificar(user.sub);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')

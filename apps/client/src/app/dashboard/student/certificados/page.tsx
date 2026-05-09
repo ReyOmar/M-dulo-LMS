@@ -39,7 +39,7 @@ export default function CertificadosPage() {
 
   const fetchCertificados = useCallback(async () => {
     try {
-      const res = await api.get(`/cursos/student/certificados?usuario_guid=${user?.guid}`);
+      const res = await api.get(`/estudiantes/student/certificados?usuario_guid=${user?.guid}`);
       setCertificados(Array.isArray(res.data) ? res.data : []);
     } catch (err: any) {
       console.error('Error loading certificates:', err);
@@ -50,12 +50,12 @@ export default function CertificadosPage() {
 
     // Also fetch pending courses (completed but awaiting grading)
     try {
-      const cursosRes = await api.get(`/cursos?role=student&usuario_guid=${user?.guid}`);
+      const cursosRes = await api.get('/cursos');
       const cursos = Array.isArray(cursosRes.data) ? cursosRes.data : [];
       const pending: { curso_titulo: string; tareas_pendientes: { titulo: string }[] }[] = [];
       for (const curso of cursos) {
         try {
-          const verif = await api.get(`/cursos/student/certificados/verificar/${curso.guid}?usuario_guid=${user?.guid}`);
+          const verif = await api.get(`/estudiantes/student/certificados/verificar/${curso.guid}?usuario_guid=${user?.guid}`);
           const data = verif.data;
           if (data.completo && !data.puede_generar_certificado && data.tareas_pendientes?.length > 0) {
             pending.push({
@@ -91,7 +91,7 @@ export default function CertificadosPage() {
   const handleDownload = async (cert: Certificate) => {
     setDownloading(cert.guid);
     try {
-      const response = await api.get(`/cursos/student/certificados/${cert.guid}/pdf`, {
+      const response = await api.get(`/estudiantes/student/certificados/${cert.guid}/pdf`, {
         responseType: 'blob',
       });
       const blob = new Blob([response.data], { type: 'application/pdf' });

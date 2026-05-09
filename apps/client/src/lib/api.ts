@@ -42,7 +42,7 @@ api.interceptors.response.use(
 
 /**
  * Upload a file via multipart/form-data (much faster than base64).
- * @param url - The endpoint to upload to (e.g., '/cursos/upload')
+ * @param url - The endpoint to upload to (e.g., '/storage/upload')
  * @param file - The File object from an <input type="file">
  * @param fieldName - The form field name (default: 'file')
  * @returns The server response data

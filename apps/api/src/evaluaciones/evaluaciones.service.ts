@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { lms_estado_entrega } from '@prisma/client';
@@ -19,19 +19,40 @@ export class EvaluacionesService {
     private certificadosService: CertificadosService,
   ) {}
 
+  /**
+   * Submit or resubmit a student delivery for a task.
+   * - First submission: creates new entrega with status ENTREGADA.
+   * - Resubmission after failing grade: updates with status EN_REVISION.
+   * - BUG-02 FIX: Blocks resubmission if already graded with passing score.
+   * @throws BadRequestException if delivery was already approved.
+   */
   async submitEntrega(tarea_guid: string, data: { buffer: Buffer, nombre_archivo: string, usuario_guid: string }) {
-    const serverFilename = await this.storageService.uploadFromBuffer(data.buffer, data.nombre_archivo);
+    const serverFilename = await this.storageService.uploadFromBuffer(data.buffer, data.nombre_archivo, 'entregas');
 
     let entrega = await this.prisma.lms_entregas.findFirst({
         where: { tarea_guid, usuario_guid: data.usuario_guid }
     });
 
     if (entrega) {
-        // Check if this is a re-submission after a low grade
-        const previousGrade = entrega.contenido_texto?.startsWith('NOTA:') 
-          ? parseFloat(entrega.contenido_texto.replace('NOTA: ', '').split(' | ')[0])
-          : null;
-        const isResubmission = entrega.estado === 'CALIFICADA' && previousGrade !== null && previousGrade < 3;
+        // BUG-02 FIX: Block resubmission if the delivery was already graded with a passing score.
+        // Look up the course's nota_aprobacion to determine the threshold dynamically.
+        const previousGrade = entrega.calificacion != null ? Number(entrega.calificacion) : null;
+        let notaAprobacion = 3.0; // safe default
+        if (previousGrade !== null) {
+          const recurso = await this.prisma.lms_recursos.findUnique({
+            where: { guid: tarea_guid },
+            select: { leccion: { select: { modulo: { select: { curso: { select: { nota_aprobacion: true } } } } } } },
+          });
+          if (recurso?.leccion?.modulo?.curso?.nota_aprobacion != null) {
+            notaAprobacion = Number(recurso.leccion.modulo.curso.nota_aprobacion);
+          }
+        }
+        if (entrega.estado === 'CALIFICADA' && previousGrade !== null && previousGrade >= notaAprobacion) {
+          throw new BadRequestException(
+            `Tu entrega ya fue aprobada con ${previousGrade.toFixed(1)}/5.0. No es necesario re-enviar.`,
+          );
+        }
+        const isResubmission = entrega.estado === 'CALIFICADA' && previousGrade !== null && previousGrade < notaAprobacion;
 
         entrega = await this.prisma.lms_entregas.update({
             where: { guid: entrega.guid },
@@ -105,6 +126,7 @@ export class EvaluacionesService {
             respuesta_texto: true,
             url_archivo_adjunto: true,
             contenido_texto: true,
+            archivo_purgado: true,
         }
     });
   }
@@ -117,12 +139,18 @@ export class EvaluacionesService {
             estado: true,
             fecha_entrega: true,
             respuesta_texto: true,
+            url_archivo_adjunto: true,
+            archivo_purgado: true,
             usuario_guid: true,
         },
         orderBy: { fecha_entrega: 'desc' }
     });
   }
 
+  /**
+   * Get all deliveries for a professor's courses, enriched with student info and task metadata.
+   * Returns up to 500 most recent deliveries ordered by date.
+   */
   async getEntregasParaCalificar(profesor_guid: string) {
     const cursos = await this.prisma.lms_cursos.findMany({
       where: { profesor_guid },
@@ -196,6 +224,14 @@ export class EvaluacionesService {
     }));
   }
 
+  /**
+   * Grade a student delivery.
+   * - Updates entrega status to CALIFICADA with numeric grade.
+   * - If passing grade: creates lms_progreso_recurso record (marks resource complete).
+   * - Broadcasts submission:graded to student via WebSocket.
+   * - Fire-and-forget: sends notification + grade email to student.
+   * - If passing: triggers async certificate check for course completion.
+   */
   async calificarEntrega(guid: string, data: { calificacion: number; comentario?: string }) {
     const entrega = await this.prisma.lms_entregas.update({
       where: { guid },
@@ -208,7 +244,19 @@ export class EvaluacionesService {
       }
     });
 
-    if (data.calificacion >= 3.0 && entrega.tarea_guid) {
+    // BUG-01 FIX: Look up the course's actual nota_aprobacion instead of hardcoding 3.0
+    let notaAprobacion = 3.0; // safe default
+    if (entrega.tarea_guid) {
+      const recurso = await this.prisma.lms_recursos.findUnique({
+        where: { guid: entrega.tarea_guid },
+        select: { leccion: { select: { modulo: { select: { curso: { select: { nota_aprobacion: true } } } } } } },
+      });
+      if (recurso?.leccion?.modulo?.curso?.nota_aprobacion != null) {
+        notaAprobacion = Number(recurso.leccion.modulo.curso.nota_aprobacion);
+      }
+    }
+
+    if (data.calificacion >= notaAprobacion && entrega.tarea_guid) {
       const existing = await this.prisma.lms_progreso_recurso.findUnique({
         where: {
           usuario_guid_recurso_guid: {
@@ -246,7 +294,7 @@ export class EvaluacionesService {
         ]);
         const tareaTitulo = tareaInfo?.titulo || 'Tarea';
 
-        const notifPromise = data.calificacion < 3.0
+        const notifPromise = data.calificacion < notaAprobacion
           ? this.notificacionesService.crearNotificacion({
               usuario_guid: entrega.usuario_guid,
               tipo: 'ENTREGA_RECHAZADA',
@@ -263,7 +311,7 @@ export class EvaluacionesService {
             });
 
         const emailPromise = estudianteInfo
-          ? this.mailService.sendGradeNotification(estudianteInfo.email, estudianteInfo.nombre, tareaTitulo, data.calificacion)
+          ? this.mailService.sendGradeNotification(estudianteInfo.email, estudianteInfo.nombre, tareaTitulo, data.calificacion, notaAprobacion)
           : Promise.resolve();
 
         await Promise.all([notifPromise, emailPromise]);
@@ -273,7 +321,7 @@ export class EvaluacionesService {
     })();
 
     // ── Check if this grading completes the course for certificate generation ──
-    if (data.calificacion >= 3.0 && entrega.tarea_guid) {
+    if (data.calificacion >= notaAprobacion && entrega.tarea_guid) {
       this.certificadosService.checkCertificateAfterGrading(entrega.usuario_guid, entrega.tarea_guid).catch((err) => {
         this.logger.error('Post-grading certificate check error:', err?.message || err);
       });

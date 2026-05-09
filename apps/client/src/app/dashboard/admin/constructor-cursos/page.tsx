@@ -192,7 +192,7 @@ export default function ConstructorCursosRoot() {
       const href = anchor.getAttribute('href');
       if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
       // Only intercept internal navigation away from this page
-      if (href.includes('/constructor-cursos') || href.includes('/cursos/download/')) return;
+      if (href.includes('/constructor-cursos') || href.includes('/storage/download/')) return;
       
       e.preventDefault();
       e.stopPropagation();
@@ -294,10 +294,7 @@ export default function ConstructorCursosRoot() {
 
   const fetchData = async () => {
     try {
-        // Use correct role param based on actual user role to avoid 403 for examiners
-        const roleParam = role === 'admin' ? 'admin' : 'teacher';
-        const queryExtra = role === 'teacher' ? `&profesor_guid=${user?.guid}` : '';
-        const res = await api.get(`/cursos?role=${roleParam}${queryExtra}`);
+        const res = await api.get('/cursos');
         const data = res.data;
         setCursos(data);
     } catch (e) {
@@ -316,7 +313,7 @@ export default function ConstructorCursosRoot() {
       try {
         const formData = new FormData();
         formData.append('file', file);
-        const uploadRes = await api.post('/cursos/upload', formData, {
+        const uploadRes = await api.post('/storage/upload?folder=portadas', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         const filename = uploadRes.data.filename;
@@ -421,10 +418,10 @@ export default function ConstructorCursosRoot() {
           try {
               const formData = new FormData();
               formData.append('file', file);
-              const res = await api.post('/cursos/upload', formData, {
+              const res = await api.post('/storage/upload?folder=recursos', formData, {
                   headers: { 'Content-Type': 'multipart/form-data' },
               });
-              setBloqueBase64(`${API_BASE_URL}/cursos/download/${res.data.filename}`);
+              setBloqueBase64(`${API_BASE_URL}/storage/download/${res.data.filename}`);
           } catch (err) {
               console.error('Error uploading image:', err);
           }
@@ -439,10 +436,10 @@ export default function ConstructorCursosRoot() {
           try {
               const formData = new FormData();
               formData.append('file', file);
-              const res = await api.post('/cursos/upload', formData, {
+              const res = await api.post('/storage/upload?folder=recursos', formData, {
                   headers: { 'Content-Type': 'multipart/form-data' },
               });
-              setBloqueBase64(`${API_BASE_URL}/cursos/download/${res.data.filename}`);
+              setBloqueBase64(`${API_BASE_URL}/storage/download/${res.data.filename}`);
           } catch (err) {
               console.error('Error uploading dropped image:', err);
           }
@@ -497,7 +494,7 @@ export default function ConstructorCursosRoot() {
       }
       if (recurso?.archivo_adjunto_nombre && recurso?.archivo_adjunto) {
           extras.push(
-              <a key="file" href={`${API_BASE_URL}/cursos/download/${recurso.archivo_adjunto}?originalName=${encodeURIComponent(recurso.archivo_adjunto_nombre)}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-colors cursor-pointer group">
+              <a key="file" href={`${API_BASE_URL}/storage/download/${recurso.archivo_adjunto}?originalName=${encodeURIComponent(recurso.archivo_adjunto_nombre)}`} className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-colors cursor-pointer group">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                       <Paperclip className="h-4 w-4 text-primary" />
                   </div>
@@ -732,10 +729,10 @@ export default function ConstructorCursosRoot() {
                                     <div className="w-full max-w-md h-56 bg-muted rounded-xl border-2 border-dashed border-border flex items-center justify-center relative overflow-hidden group">
                                         {activeCourse.imagen_portada ? (
                                             <>
-                                                <img src={`${API_BASE_URL}/cursos/download/${activeCourse.imagen_portada}`} className="w-full h-full object-cover" />
+                                                <img src={`${API_BASE_URL}/storage/download/${activeCourse.imagen_portada}`} className="w-full h-full object-cover" />
                                                 <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                                                     <a 
-                                                        href={`${API_BASE_URL}/cursos/download/${activeCourse.imagen_portada}?originalName=portada_${encodeURIComponent(activeCourse.titulo)}.png`}
+                                                        href={`${API_BASE_URL}/storage/download/${activeCourse.imagen_portada}?originalName=portada_${encodeURIComponent(activeCourse.titulo)}.png`}
                                                         download
                                                         onClick={(e) => e.stopPropagation()}
                                                         className="p-2 bg-primary hover:bg-primary/90 text-white rounded-lg shadow-md transition-colors"
@@ -1177,7 +1174,7 @@ export default function ConstructorCursosRoot() {
                         <div className="h-32 bg-primary/10 relative flex items-center justify-center overflow-hidden">
                             {curso.imagen_portada ? (
                                // eslint-disable-next-line @next/next/no-img-element
-                               <img src={`${API_BASE_URL}/cursos/download/${curso.imagen_portada}`} alt={curso.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                               <img src={`${API_BASE_URL}/storage/download/${curso.imagen_portada}`} alt={curso.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                             ) : (
                                <BookOpen className="h-12 w-12 text-primary/30 group-hover:scale-110 transition-transform" />
                             )}

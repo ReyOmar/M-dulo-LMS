@@ -55,7 +55,7 @@ export default function TareaVisorPage() {
       setTarea(foundTarea);
       if (!isTeacher) {
         try {
-          const { data: ed } = await api.get(`/cursos/tareas/${tarea_id}/entregas/mine`);
+          const { data: ed } = await api.get(`/evaluaciones/tareas/${tarea_id}/entregas/mine`);
           if (ed?.respuesta_texto) {
             setEntregaData(ed);
             setSelectedFileName(ed.respuesta_texto);
@@ -71,7 +71,7 @@ export default function TareaVisorPage() {
   const fetchEntregas = async () => {
     setLoadingEntregas(true);
     try {
-      const res = await api.get(`/cursos/tareas/${tarea_id}/entregas`);
+      const res = await api.get(`/evaluaciones/tareas/${tarea_id}/entregas`);
       setEntregas(Array.isArray(res.data) ? res.data : []);
     } catch (e) { console.error(e); setEntregas([]); }
     finally { setLoadingEntregas(false); }
@@ -88,7 +88,7 @@ export default function TareaVisorPage() {
       setSelectedFileName(file.name);
       const formData = new FormData();
       formData.append('file', file);
-      const { data } = await api.post(`/cursos/tareas/${tarea_id}/entregas`, formData, {
+      const { data } = await api.post(`/evaluaciones/tareas/${tarea_id}/entregas`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         maxBodyLength: 50 * 1024 * 1024,
         maxContentLength: 50 * 1024 * 1024,
@@ -107,7 +107,7 @@ export default function TareaVisorPage() {
 
   const handleDownload = () => {
     if (!serverFileName) return;
-    const url = `${API_BASE_URL}/cursos/download/${encodeURIComponent(serverFileName)}?originalName=${encodeURIComponent(selectedFileName || serverFileName)}`;
+    const url = `${API_BASE_URL}/storage/download/${encodeURIComponent(serverFileName)}?originalName=${encodeURIComponent(selectedFileName || serverFileName)}`;
     window.open(url, '_blank');
   };
 
@@ -274,9 +274,12 @@ export default function TareaVisorPage() {
                             <td className="p-4 font-mono text-xs text-muted-foreground">{e.usuario_guid}</td>
                             <td className="p-4">
                               {e.respuesta_texto ? (
-                                <div className="flex items-center gap-2 text-primary font-semibold">
-                                  <FileIcon className="h-4 w-4 flex-shrink-0" />
-                                  <span className="truncate max-w-[200px]">{e.respuesta_texto}</span>
+                                <div className="flex items-center gap-2 font-semibold">
+                                  <FileIcon className={`h-4 w-4 flex-shrink-0 ${e.archivo_purgado ? 'text-muted-foreground' : 'text-primary'}`} />
+                                  <span className={`truncate max-w-[200px] ${e.archivo_purgado ? 'text-muted-foreground' : 'text-primary'}`}>{e.respuesta_texto}</span>
+                                  {e.archivo_purgado && (
+                                    <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded" title="El archivo fue eliminado automáticamente tras obtener el certificado">Liberado</span>
+                                  )}
                                 </div>
                               ) : <span className="text-muted-foreground italic">Sin archivo</span>}
                             </td>
@@ -339,7 +342,7 @@ export default function TareaVisorPage() {
                         : 'Subido recientemente'}
                     </p>
                   </div>
-                  {serverFileName && (
+                  {serverFileName && !entregaData?.archivo_purgado && (
                     <button
                       onClick={handleDownload}
                       className="p-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary transition-colors flex-shrink-0"
@@ -347,6 +350,11 @@ export default function TareaVisorPage() {
                     >
                       <Download className="h-5 w-5" />
                     </button>
+                  )}
+                  {entregaData?.archivo_purgado && (
+                    <span className="text-xs font-bold text-amber-600 bg-amber-500/10 px-2 py-1 rounded-md whitespace-nowrap" title="El archivo fue eliminado automáticamente tras obtener el certificado">
+                      Liberado
+                    </span>
                   )}
                 </div>
 
@@ -363,12 +371,14 @@ export default function TareaVisorPage() {
                   </div>
                 )}
 
+                {!entregaData?.archivo_purgado && (
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="mt-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1.5"
                 >
                   <UploadCloud className="h-4 w-4" /> Subir archivo diferente
                 </button>
+                )}
               </div>
             ) : uploadState === 'uploading' ? (
               /* ── Uploading state ── */
@@ -439,13 +449,16 @@ export default function TareaVisorPage() {
                 {uploadState === 'done' && selectedFileName ? (
                   <div className="flex items-center gap-3 mt-1">
                     <p className="text-sm font-bold text-foreground truncate">{selectedFileName}</p>
-                    {serverFileName && (
+                    {serverFileName && !entregaData?.archivo_purgado && (
                       <button
                         onClick={handleDownload}
                         className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors whitespace-nowrap"
                       >
                         <Download className="h-3.5 w-3.5" /> Descargar
                       </button>
+                    )}
+                    {entregaData?.archivo_purgado && (
+                      <span className="text-xs font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded" title="El archivo fue eliminado automáticamente tras obtener el certificado">Liberado</span>
                     )}
                   </div>
                 ) : (

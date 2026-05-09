@@ -7,7 +7,17 @@ import { useRole } from "@/contexts/RoleContext";
 import { useWS } from "@/contexts/WebSocketContext";
 import api from "@/lib/api";
 import { useDebounce } from "@/hooks/usePerformance";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from "recharts";
+import dynamic from 'next/dynamic';
+const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false });
+const Bar = dynamic(() => import('recharts').then(m => m.Bar), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then(m => m.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then(m => m.CartesianGrid), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false });
+const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
+const Cell = dynamic(() => import('recharts').then(m => m.Cell), { ssr: false });
+const LineChart = dynamic(() => import('recharts').then(m => m.LineChart), { ssr: false });
+const Line = dynamic(() => import('recharts').then(m => m.Line), { ssr: false });
 
 export default function MonitoreoEstudiantesPage() {
   const { user } = useRole();
@@ -49,7 +59,7 @@ export default function MonitoreoEstudiantesPage() {
   const fetchMonitoreo = async (showLoading = true) => {
     try {
       if (showLoading && estudiantes.length === 0) setLoading(true);
-      const res = await api.get(`/cursos/examiner/monitoreo?profesor_guid=${user?.guid}`);
+      const res = await api.get(`/dashboards/examiner/monitoreo?profesor_guid=${user?.guid}`);
       const data = res.data;
       setEstudiantes(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -279,7 +289,7 @@ export default function MonitoreoEstudiantesPage() {
 
         <div className="bg-card border border-border/50 rounded-2xl shadow-sm p-6">
           <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-            <Clock className="h-5 w-5 text-indigo-500" />
+            <Clock className="h-5 w-5 text-primary" />
             Días de Mayor Conexión
           </h3>
           {filtered.length === 0 ? (
@@ -499,7 +509,7 @@ export default function MonitoreoEstudiantesPage() {
                                   {isCourseExpanded && (
                                     <div className="border-t border-border/30 px-5 py-4 bg-muted/5 animate-in slide-in-from-top-1 duration-200">
                                       {/* Course summary stats */}
-                                      <div className="grid grid-cols-3 gap-3 mb-4">
+                                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                                         <div className="bg-card border border-border/40 rounded-lg p-3 text-center">
                                           <p className="text-lg font-bold text-primary">{totalModulos}</p>
                                           <p className="text-[10px] text-muted-foreground font-medium uppercase">Módulos</p>

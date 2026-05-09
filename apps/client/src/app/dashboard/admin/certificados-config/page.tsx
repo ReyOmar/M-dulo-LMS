@@ -273,7 +273,7 @@ export default function CertificadosConfigPage() {
           {previewProfesor && (
             <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
               <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2">Datos del Examinador del Curso</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <p className="text-[10px] text-muted-foreground">Nombre</p>
                   <p className="text-sm font-bold text-foreground">{previewProfesor.nombre} {previewProfesor.apellido}</p>

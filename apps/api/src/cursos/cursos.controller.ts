@@ -1,35 +1,42 @@
 import { Controller, Get, Post, Body, Param, Patch, Delete, Query, BadRequestException } from '@nestjs/common';
 import { CursosService } from './cursos.service';
-import { Public } from '../common/decorators/public.decorator';
+import { QuizService } from './quiz.service';
+import { BloqueService } from './bloque.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import { CreateCursoDto, AsignarCursoDto, UpdateCursoDto, CreateModuloDto, UpdateModuloDto } from './dto/cursos.dto';
 import { CreateBloqueDto, UpdateBloqueDto } from './dto/bloques.dto';
+import { SubmitQuizDto } from './dto/submit-quiz.dto';
 
 @Controller('cursos')
 export class CursosController {
-  constructor(private readonly cursosService: CursosService) {}
+  constructor(
+    private readonly cursosService: CursosService,
+    private readonly quizService: QuizService,
+    private readonly bloqueService: BloqueService,
+  ) {}
+
+  // ── Course Listing ──
 
   @Get()
-  async getCursos(
-    @CurrentUser() user: JwtPayload, 
-    @Query('role') roleParam?: string, 
-    @Query('usuario_guid') usuario_guid?: string,
-    @Query('profesor_guid') profesor_guid?: string
-  ) {
-    // When JWT user is available, use their role directly; otherwise use query params
-    const userRole = user?.role || (roleParam === 'admin' ? 'ADMINISTRADOR' : roleParam === 'teacher' ? 'PROFESOR' : roleParam === 'student' ? 'ESTUDIANTE' : null);
-    const userGuid = user?.sub || usuario_guid || profesor_guid;
+  async getCursos(@CurrentUser() user: JwtPayload) {
+    const userRole = user?.role;
+    const userGuid = user?.sub;
 
-    if (userRole === 'ESTUDIANTE' && userGuid) {
+    if (!userRole || !userGuid) {
+      throw new BadRequestException('Sesión inválida. Por favor inicia sesión nuevamente.');
+    }
+
+    if (userRole === 'ESTUDIANTE') {
       return this.cursosService.getCursosDeEstudiante(userGuid);
-    } else if (userRole === 'PROFESOR' && userGuid) {
+    } else if (userRole === 'PROFESOR') {
       return this.cursosService.getCursosDeProfesor(userGuid);
     } else if (userRole === 'ADMINISTRADOR') {
       return this.cursosService.getAllCursosParaAdmin();
     }
-    return this.cursosService.getCursosActivosParaEstudiante();
+
+    throw new BadRequestException(`Rol no reconocido: ${userRole}`);
   }
 
   @Get('/usuario-cursos')
@@ -48,12 +55,12 @@ export class CursosController {
     return this.cursosService.getProfesores();
   }
 
-
-
   @Get('/:guid')
   async getCurso(@Param('guid') guid: string) {
     return this.cursosService.getCursoDetalleCompleto(guid);
   }
+
+  // ── Course CRUD ──
 
   @Roles('ADMINISTRADOR')
   @Post()
@@ -87,46 +94,50 @@ export class CursosController {
     return this.cursosService.deleteCurso(guid);
   }
 
+  // ── Module management (delegated to BloqueService) ──
+
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Post('/:curso_guid/modulos')
   async createModulo(@Param('curso_guid') curso_guid: string, @Body() body: CreateModuloDto) {
-    return this.cursosService.createModuloParaCurso(curso_guid, body);
+    return this.bloqueService.createModuloParaCurso(curso_guid, body);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Patch('/modulos/:modulo_guid')
   async updateModulo(@Param('modulo_guid') modulo_guid: string, @Body() body: UpdateModuloDto) {
-    return this.cursosService.updateModulo(modulo_guid, body);
+    return this.bloqueService.updateModulo(modulo_guid, body);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Delete('/modulos/:modulo_guid')
   async deleteModulo(@Param('modulo_guid') modulo_guid: string) {
-    return this.cursosService.deleteModulo(modulo_guid);
+    return this.bloqueService.deleteModulo(modulo_guid);
   }
+
+  // ── Block (recurso) management (delegated to BloqueService) ──
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Post('/modulos/:modulo_guid/bloques')
   async addBloque(@Param('modulo_guid') modulo_guid: string, @Body() body: CreateBloqueDto) {
-    return this.cursosService.addBloqueToModulo(modulo_guid, body);
+    return this.bloqueService.addBloqueToModulo(modulo_guid, body);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Get('/bloques/:bloque_guid')
   async getBloque(@Param('bloque_guid') bloque_guid: string) {
-    return this.cursosService.getBloque(bloque_guid);
+    return this.bloqueService.getBloque(bloque_guid);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Patch('/bloques/:bloque_guid')
   async updateBloque(@Param('bloque_guid') bloque_guid: string, @Body() body: UpdateBloqueDto) {
-    return this.cursosService.updateBloque(bloque_guid, body);
+    return this.bloqueService.updateBloque(bloque_guid, body);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Delete('/bloques/:bloque_guid')
   async deleteBloque(@Param('bloque_guid') bloque_guid: string) {
-    return this.cursosService.deleteBloque(bloque_guid);
+    return this.bloqueService.deleteBloque(bloque_guid);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
@@ -135,21 +146,25 @@ export class CursosController {
     if (!body.recursos_guids || !Array.isArray(body.recursos_guids)) {
       throw new BadRequestException('recursos_guids debe ser un arreglo de strings.');
     }
-    return this.cursosService.reorderBloques(modulo_guid, body.recursos_guids);
+    return this.bloqueService.reorderBloques(modulo_guid, body.recursos_guids);
   }
+
+  // ── Quiz endpoints (delegated to QuizService) ──
 
   @Post('/student/quiz/:bloque_guid/start')
   async startQuiz(@Param('bloque_guid') bloque_guid: string, @CurrentUser() user: JwtPayload) {
-    return this.cursosService.startQuiz(bloque_guid, user.sub);
+    await this.quizService.verificarMatricula(bloque_guid, user.sub);
+    return this.quizService.startQuiz(bloque_guid, user.sub);
   }
 
   @Post('/student/quiz/:bloque_guid/submit')
-  async submitQuiz(@Param('bloque_guid') bloque_guid: string, @Body() body: any, @CurrentUser() user: JwtPayload) {
-    return this.cursosService.evaluarQuiz(bloque_guid, user.sub, body.respuestas || {});
+  async submitQuiz(@Param('bloque_guid') bloque_guid: string, @Body() body: SubmitQuizDto, @CurrentUser() user: JwtPayload) {
+    await this.quizService.verificarMatricula(bloque_guid, user.sub);
+    return this.quizService.evaluarQuiz(bloque_guid, user.sub, body.respuestas);
   }
 
   @Get('/student/quiz/:bloque_guid/status')
   async getQuizStatus(@Param('bloque_guid') bloque_guid: string, @CurrentUser() user: JwtPayload) {
-    return this.cursosService.getQuizStatus(bloque_guid, user.sub);
+    return this.quizService.getQuizStatus(bloque_guid, user.sub);
   }
 }

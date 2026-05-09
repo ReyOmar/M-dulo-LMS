@@ -58,7 +58,7 @@ export default function SolicitudesPendientes() {
 
   const fetchDefaultPassword = async () => {
     try {
-      const res = await api.get("/configuracion");
+      const res = await api.get("/configuracion/full");
       const data = res.data;
       setDefaultPassword(data?.contrasena_defecto || "pesvauth2026");
       setNewPassword(data?.contrasena_defecto || "pesvauth2026");

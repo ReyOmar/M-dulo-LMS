@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, MaxLength } from 'class-validator';
 import { lms_tipo_recurso } from '@prisma/client';
 
 export class CreateBloqueDto {
@@ -8,20 +8,24 @@ export class CreateBloqueDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   titulo?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(100000, { message: 'El contenido HTML no puede exceder 100KB.' })
   contenido_html?: string;
 }
 
 export class UpdateBloqueDto {
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   titulo?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(100000, { message: 'El contenido HTML no puede exceder 100KB.' })
   contenido_html?: string;
 
   @IsOptional()

@@ -5,7 +5,7 @@ import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import { Public } from '../common/decorators/public.decorator';
 import { MarcarRecursoDto } from './dto/marcar-recurso.dto';
 
-@Controller('cursos')
+@Controller('estudiantes')
 export class EstudiantesController {
   constructor(private readonly estudiantesService: EstudiantesService) {}
 
