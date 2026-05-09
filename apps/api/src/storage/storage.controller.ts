@@ -42,9 +42,11 @@ export class StorageController {
   }
 
   /**
-   * Download a file. Serves from local storage (legacy) or redirects to R2 public URL.
+   * Download a file. Three strategies:
+   * 1. R2 with public URL → 302 redirect to CDN
+   * 2. R2 without public URL → proxy stream from R2 through API
+   * 3. Local file → serve from filesystem
    * Supports folder-prefixed keys like 'portadas/123-abc.png'.
-   * SEC-03 FIX: Requires authentication — removed @Public() to prevent unauthorized access to uploads.
    */
   @Get('/download/*')
   async downloadFile(@Req() req: any, @Query('originalName') originalName: string, @Res({ passthrough: true }) res: any) {
@@ -68,27 +70,39 @@ export class StorageController {
     }
 
     const justFilename = path.basename(sanitizedKey);
+    const downloadName = originalName ? path.basename(originalName).replace(/"/g, '') : justFilename;
 
-    // If R2 is active and the file is not local, redirect to R2/API URL
-    if (this.storageService.isCloudStorageActive() && !this.storageService.existsLocally(justFilename)) {
+    // Strategy 1: R2 with public CDN URL → redirect
+    if (this.storageService.hasPublicUrl() && !this.storageService.existsLocally(justFilename)) {
       const publicUrl = this.storageService.getFileUrl(sanitizedKey);
       res.redirect(302, publicUrl);
       return;
     }
 
-    // Serve from local storage (legacy files or fallback mode)
+    // Strategy 2: R2 without public URL → proxy stream from R2
+    if (this.storageService.isCloudStorageActive() && !this.storageService.existsLocally(justFilename)) {
+      const r2File = await this.storageService.streamFromR2(sanitizedKey);
+      if (r2File) {
+        res.header('Content-Type', r2File.contentType);
+        res.header('Content-Disposition', `inline; filename="${downloadName}"`);
+        res.header('Cache-Control', 'public, max-age=86400'); // Cache for 24h
+        return new StreamableFile(Buffer.from(r2File.buffer));
+      }
+      // If R2 stream failed, fall through to local
+    }
+
+    // Strategy 3: Serve from local filesystem
     const filePath = this.storageService.getUploadPath(justFilename);
     const stream = fs.createReadStream(filePath);
     
     const ext = justFilename.split('.').pop()?.toLowerCase();
     let contentType = 'application/octet-stream';
     if (ext === 'pdf') contentType = 'application/pdf';
-    else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext || '')) contentType = `image/${ext}`;
+    else if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext || '')) contentType = `image/${ext === 'svg' ? 'svg+xml' : ext}`;
     
-    const downloadName = originalName ? path.basename(originalName).replace(/"/g, '') : justFilename;
-
     res.header('Content-Type', contentType);
-    res.header('Content-Disposition', `attachment; filename="${downloadName}"`);
+    res.header('Content-Disposition', `inline; filename="${downloadName}"`);
+    res.header('Cache-Control', 'public, max-age=86400');
     return new StreamableFile(stream);
   }
 }

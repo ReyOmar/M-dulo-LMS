@@ -165,6 +165,47 @@ export class StorageService {
   }
 
   /**
+   * Whether a public CDN URL is configured for direct browser access.
+   * If false, the API must proxy/stream files from R2.
+   */
+  hasPublicUrl(): boolean {
+    return this.useR2 && !!this.publicUrl;
+  }
+
+  /**
+   * Stream a file directly from R2 as a Buffer.
+   * Used when R2_PUBLIC_URL is not set — the API proxies the file.
+   */
+  async streamFromR2(key: string): Promise<{ buffer: Buffer; contentType: string } | null> {
+    if (!this.useR2 || !this.s3Client) return null;
+
+    try {
+      const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+      const response = await this.s3Client.send(new GetObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+      }));
+
+      if (!response.Body) return null;
+
+      // Convert readable stream to buffer
+      const chunks: Uint8Array[] = [];
+      const stream = response.Body as AsyncIterable<Uint8Array>;
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+      }
+
+      const ext = key.split('.').pop()?.toLowerCase() || '';
+      const contentType = response.ContentType || MIME_MAP[`.${ext}`] || 'application/octet-stream';
+
+      return { buffer: Buffer.concat(chunks), contentType };
+    } catch (err) {
+      this.logger.warn(`Failed to stream from R2: ${key}`, err);
+      return null;
+    }
+  }
+
+  /**
    * R2-02: Delete a file from storage (R2 or local filesystem).
    * Silently ignores if the file doesn't exist.
    */
