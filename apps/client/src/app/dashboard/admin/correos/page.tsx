@@ -33,7 +33,7 @@ export default function BaseCorreos() {
   const [loading, setLoading] = useState(true);
   const [editingPlantilla, setEditingPlantilla] = useState<{evento: Evento, plantilla: Plantilla} | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const { showAlert } = useAlert();
+  const { showAlert, showToast } = useAlert();
 
   useEffect(() => {
     if (realRole === "admin") {
@@ -67,7 +67,7 @@ export default function BaseCorreos() {
     setIsSaving(true);
     try {
       await api.put(`/mail-templates/${id}`, data);
-      showAlert.success("Éxito", "Plantilla guardada correctamente.");
+      showToast.success("Plantilla guardada correctamente.");
       setEditingPlantilla(null);
       fetchEventos();
     } catch (err) {

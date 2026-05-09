@@ -11,6 +11,7 @@ import { useRole, Role } from '@/contexts/RoleContext';
  */
 const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/dashboard/admin': ['admin'],
+  '/dashboard/constructor-cursos': ['admin', 'teacher'],
   '/dashboard/examiner': ['admin', 'teacher'],
   '/dashboard/student': ['admin', 'student'],
   '/dashboard/mensajes': ['admin', 'teacher', 'student'],

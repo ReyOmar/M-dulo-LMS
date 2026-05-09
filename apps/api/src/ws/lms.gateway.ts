@@ -55,7 +55,7 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
   ) {}
 
   onModuleInit() {
-    // Check for ghost connections every 30 seconds
+    // Check for ghost connections every 15 seconds (reduced from 30s for faster detection)
     setInterval(() => {
       this.clients.forEach(c => {
         if ((c.socket as any).isAlive === false) {
@@ -66,7 +66,7 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
         (c.socket as any).isAlive = false;
         c.socket.ping();
       });
-    }, 30000);
+    }, 15000);
   }
 
   async handleConnection(client: WebSocket, req: IncomingMessage): Promise<void> {
@@ -101,6 +101,19 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
         role: payload.role || 'ESTUDIANTE',
       };
 
+      // ── Enforce single session: revoke all previous connections for this user ──
+      const existingConnections = this.clients.filter(c => c.guid === payload.sub);
+      for (const existing of existingConnections) {
+        const revokeMsg = JSON.stringify({
+          event: 'session:revoked',
+          data: { reason: 'new_session' },
+          timestamp: Date.now(),
+        });
+        try { existing.socket.send(revokeMsg); } catch {}
+        try { existing.socket.close(4004, 'Nueva sesión iniciada'); } catch {}
+      }
+      this.clients = this.clients.filter(c => c.guid !== payload.sub);
+
       this.clients.push(connectedClient);
       this.broadcast('presence:update', {
         guid: payload.sub,
@@ -117,6 +130,14 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
         const syncMsg = JSON.stringify({ event: 'course:editing-sync', data: editingState, timestamp: Date.now() });
         try { client.send(syncMsg); } catch {}
       }
+
+      // Send full online users list to the newly connected client (presence sync)
+      const presenceSync = JSON.stringify({
+        event: 'presence:sync',
+        data: { onlineUsers: this.getOnlineUserGuids() },
+        timestamp: Date.now(),
+      });
+      try { client.send(presenceSync); } catch {}
 
       // Listen for incoming messages from this client (course:lock / course:unlock)
       client.on('message', async (raw: WebSocket.Data) => {
@@ -155,6 +176,9 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
       const disconnectedGuid = this.clients[index].guid;
       this.clients.splice(index, 1);
 
+      // Clean stale/closed sockets BEFORE checking stillConnected to avoid false positives
+      this.clients = this.clients.filter(c => c.socket.readyState === WebSocket.OPEN);
+
       // Only process presence for authenticated users (non-empty guid)
       if (disconnectedGuid) {
         // Check if user has other active connections
@@ -192,9 +216,6 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
         }
       }
     }
-
-    // Periodic cleanup: remove stale/closed sockets
-    this.clients = this.clients.filter(c => c.socket.readyState === WebSocket.OPEN);
   }
 
   /**

@@ -176,7 +176,7 @@ export default function Home() {
                   <div className="group relative bg-card/50 backdrop-blur-md border border-border/50 rounded-3xl p-8 hover:border-primary/50 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] transition-all duration-500 hover:-translate-y-2 overflow-hidden h-full">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <div className="relative z-10">
-                      <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${s.color} flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-lg animate-[float_6s_ease-in-out_infinite]`} style={{ animationDelay: `${i * 0.5}s` }}>
+                      <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${s.color} flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-lg`}>
                         <s.icon className="h-7 w-7 text-white" />
                       </div>
                       <h3 className="text-xl font-bold mb-3">{s.title}</h3>
@@ -205,7 +205,7 @@ export default function Home() {
                 <FadeIn key={i} delay={i * 0.1}>
                   <div className="group flex gap-5 p-6 rounded-2xl bg-card/50 backdrop-blur-md border border-border/50 hover:border-primary/50 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] transition-all duration-500 hover:-translate-y-1 relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-all duration-500 animate-[float_4s_ease-in-out_infinite]" style={{ animationDelay: `${i * 0.4}s` }}>
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-all duration-500">
                       <item.icon className="h-6 w-6 text-primary group-hover:text-white transition-colors duration-500" />
                     </div>
                     <div className="relative z-10">
@@ -235,7 +235,7 @@ export default function Home() {
                   <div className="group bg-card/50 backdrop-blur-md border border-border/50 rounded-3xl p-8 hover:border-primary/50 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] transition-all duration-500 hover:-translate-y-2 h-full flex flex-col relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <div className="relative z-10 flex flex-col h-full">
-                      <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-all duration-500 animate-[float_5s_ease-in-out_infinite]" style={{ animationDelay: `${i * 0.7}s` }}>
+                      <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-all duration-500">
                         <f.icon className="h-8 w-8 text-primary group-hover:text-white transition-colors duration-500" />
                       </div>
                       <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors duration-300">{f.title}</h3>
@@ -265,7 +265,7 @@ export default function Home() {
                   <div className="group text-center bg-card/50 backdrop-blur-md border border-border/50 rounded-3xl p-8 hover:border-primary/50 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] transition-all duration-500 hover:-translate-y-2 relative overflow-hidden h-full flex flex-col">
                     <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <div className="relative z-10 flex-1 flex flex-col items-center justify-center">
-                      <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5 group-hover:bg-primary group-hover:text-white transition-all duration-500 animate-[float_5s_ease-in-out_infinite]" style={{ animationDelay: `${i * 0.6}s` }}>
+                      <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5 group-hover:bg-primary group-hover:text-white transition-all duration-500">
                         <c.icon className="h-6 w-6 text-primary group-hover:text-white transition-colors duration-500" />
                       </div>
                       <h3 className="font-bold text-lg group-hover:text-primary transition-colors duration-300">{c.title}</h3>
@@ -324,27 +324,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* ══════════ CSS ANIMATIONS ══════════ */}
-      <style jsx global>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideRoad {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-112px); }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-        @keyframes floatBg {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-        }
-        html { scroll-behavior: smooth; }
-      `}</style>
+      {/* Animations defined in globals.css: fadeInUp, slideRoad, floatBg */}
     </div>
   );
 }

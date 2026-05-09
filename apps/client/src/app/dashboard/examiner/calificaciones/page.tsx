@@ -40,7 +40,7 @@ export default function CalificacionManualPage() {
   // Accordion state
   const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
-  const { showAlert } = useAlert();
+  const { showAlert, showToast } = useAlert();
 
   // Grading state
   const [gradingGuid, setGradingGuid] = useState<string | null>(null);
@@ -138,7 +138,7 @@ export default function CalificacionManualPage() {
       setGradingGuid(null);
       setGradeValue("");
       setGradeComment("");
-      showAlert.success("¡Calificado!", "La nota ha sido guardada y el estudiante notificado.");
+      showToast.success("La nota ha sido guardada y el estudiante notificado.");
     } catch (err) {
       console.error(err);
       showAlert.error("Error", "Error al calificar.");

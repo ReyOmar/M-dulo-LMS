@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
 import { AlertTriangle, CheckCircle, Info, XCircle, X } from 'lucide-react';
 
+let toastIdCounter = 0;
+
 type AlertType = 'success' | 'error' | 'warning' | 'info';
 type ConfirmVariant = 'danger' | 'warning' | 'info';
 
@@ -24,12 +26,27 @@ interface ConfirmState {
   onCancel: () => void;
 }
 
+interface ToastItem {
+  id: number;
+  type: AlertType;
+  title: string;
+  message: string;
+  duration: number; // ms
+  closing: boolean;
+}
+
 interface AlertContextType {
   showAlert: {
     success: (title: string, message?: string, autoClose?: number | false) => void;
     error: (title: string, message?: string, autoClose?: number | false) => void;
     warning: (title: string, message?: string, autoClose?: number | false) => void;
     info: (title: string, message?: string, autoClose?: number | false) => void;
+  };
+  showToast: {
+    success: (title: string, message?: string) => void;
+    error: (title: string, message?: string) => void;
+    warning: (title: string, message?: string) => void;
+    info: (title: string, message?: string) => void;
   };
   showConfirm: (title: string, message: string, confirmText?: string, variant?: ConfirmVariant) => Promise<boolean>;
 }
@@ -44,11 +61,22 @@ const AUTO_CLOSE_DEFAULTS: Record<AlertType, number | false> = {
   info: 4000,
 };
 
+const TOAST_DEFAULTS: Record<AlertType, number> = {
+  success: 3500,
+  error: 6000,
+  warning: 5000,
+  info: 4000,
+};
+
+const MAX_TOASTS = 3;
+
 export function AlertProvider({ children }: { children: ReactNode }) {
   const [alert, setAlert] = useState<AlertState>({ open: false, type: 'info', title: '', message: '', autoClose: false });
   const [confirm, setConfirm] = useState<ConfirmState>({ open: false, title: '', message: '', confirmText: 'Confirmar', variant: 'danger', onConfirm: () => {}, onCancel: () => {} });
   const [closing, setClosing] = useState(false);
   const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const toastTimersRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
   // Auto-close logic
   useEffect(() => {
@@ -80,6 +108,51 @@ export function AlertProvider({ children }: { children: ReactNode }) {
     error: useCallback((title: string, message?: string, autoClose?: number | false) => displayAlert('error', title, message, autoClose), [displayAlert]),
     warning: useCallback((title: string, message?: string, autoClose?: number | false) => displayAlert('warning', title, message, autoClose), [displayAlert]),
     info: useCallback((title: string, message?: string, autoClose?: number | false) => displayAlert('info', title, message, autoClose), [displayAlert]),
+  };
+
+  const dismissToast = useCallback((id: number) => {
+    setToasts(prev => prev.map(t => t.id === id ? { ...t, closing: true } : t));
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 250);
+    const timer = toastTimersRef.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      toastTimersRef.current.delete(id);
+    }
+  }, []);
+
+  const addToast = useCallback((type: AlertType, title: string, message?: string) => {
+    const id = ++toastIdCounter;
+    const duration = TOAST_DEFAULTS[type];
+    const newToast: ToastItem = { id, type, title, message: message || '', duration, closing: false };
+    
+    setToasts(prev => {
+      const updated = [...prev, newToast];
+      // Remove oldest if exceeding max
+      if (updated.length > MAX_TOASTS) {
+        const oldest = updated[0];
+        const oldTimer = toastTimersRef.current.get(oldest.id);
+        if (oldTimer) {
+          clearTimeout(oldTimer);
+          toastTimersRef.current.delete(oldest.id);
+        }
+        return updated.slice(1);
+      }
+      return updated;
+    });
+
+    const timer = setTimeout(() => {
+      dismissToast(id);
+    }, duration);
+    toastTimersRef.current.set(id, timer);
+  }, [dismissToast]);
+
+  const showToastObj = {
+    success: useCallback((title: string, message?: string) => addToast('success', title, message), [addToast]),
+    error: useCallback((title: string, message?: string) => addToast('error', title, message), [addToast]),
+    warning: useCallback((title: string, message?: string) => addToast('warning', title, message), [addToast]),
+    info: useCallback((title: string, message?: string) => addToast('info', title, message), [addToast]),
   };
 
   const showConfirm = useCallback((title: string, message: string, confirmText = 'Confirmar', variant: ConfirmVariant = 'danger'): Promise<boolean> => {
@@ -120,6 +193,33 @@ export function AlertProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const getToastBorderClass = (type: AlertType) => {
+    switch (type) {
+      case 'success': return 'border-l-emerald-500';
+      case 'error': return 'border-l-red-500';
+      case 'warning': return 'border-l-amber-500';
+      case 'info': return 'border-l-blue-500';
+    }
+  };
+
+  const getToastProgressClass = (type: AlertType) => {
+    switch (type) {
+      case 'success': return 'bg-emerald-500';
+      case 'error': return 'bg-red-500';
+      case 'warning': return 'bg-amber-500';
+      case 'info': return 'bg-blue-500';
+    }
+  };
+
+  const getToastIcon = (type: AlertType) => {
+    switch (type) {
+      case 'success': return <CheckCircle className="h-5 w-5 text-emerald-500" />;
+      case 'error': return <XCircle className="h-5 w-5 text-red-500" />;
+      case 'warning': return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+      case 'info': return <Info className="h-5 w-5 text-blue-500" />;
+    }
+  };
+
   const getAlertButtonClass = (type: AlertType) => {
     switch (type) {
       case 'success': return 'bg-emerald-500 hover:bg-emerald-600';
@@ -140,7 +240,7 @@ export function AlertProvider({ children }: { children: ReactNode }) {
   const confirmColors = getConfirmColors(confirm.variant);
 
   return (
-    <AlertContext.Provider value={{ showAlert: showAlertObj, showConfirm }}>
+    <AlertContext.Provider value={{ showAlert: showAlertObj, showToast: showToastObj, showConfirm }}>
       {children}
       
       {/* Alert Modal */}
@@ -228,13 +328,43 @@ export function AlertProvider({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      {/* CSS for auto-close progress bar animation */}
-      <style jsx global>{`
-        @keyframes shrink {
-          from { width: 100%; }
-          to { width: 0%; }
-        }
-      `}</style>
+      {/* Toast Stack */}
+      <div className="fixed top-4 right-4 z-[9998] flex flex-col gap-3 pointer-events-none" style={{ maxWidth: '420px', width: '100%' }}>
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`pointer-events-auto bg-card border border-border/60 rounded-xl shadow-2xl overflow-hidden border-l-4 ${getToastBorderClass(toast.type)} transition-all duration-250 ${
+              toast.closing ? 'opacity-0 translate-x-8 scale-95' : 'animate-in slide-in-from-right-4 duration-300'
+            }`}
+          >
+            <div className="flex items-start gap-3 p-4">
+              <div className="shrink-0 mt-0.5">{getToastIcon(toast.type)}</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-foreground leading-tight">{toast.title}</p>
+                {toast.message && (
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{toast.message}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => dismissToast(toast.id)}
+                className="shrink-0 p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            {/* Animated progress bar */}
+            <div className="h-1 bg-muted/30">
+              <div
+                className={`h-full rounded-r-full ${getToastProgressClass(toast.type)}`}
+                style={{ animation: `toast-shrink ${toast.duration}ms linear forwards` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Animations defined in globals.css: @keyframes shrink, @keyframes toast-shrink */}
     </AlertContext.Provider>
   );
 }

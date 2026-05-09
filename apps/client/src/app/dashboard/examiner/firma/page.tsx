@@ -8,7 +8,7 @@ import api, { API_BASE_URL } from "@/lib/api";
 
 export default function ExaminerFirmaPage() {
   const { user } = useRole();
-  const { showAlert } = useAlert();
+  const { showAlert, showToast } = useAlert();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -45,7 +45,7 @@ export default function ExaminerFirmaPage() {
         firma_nombre: firmaNombre || null,
         firma_cargo: firmaCargo || null,
       });
-      showAlert.success("Guardado", "Tu información de firma se actualizó correctamente.");
+      showToast.success("Tu información de firma se actualizó correctamente.");
     } catch {
       showAlert.error("Error", "No se pudieron guardar los cambios.");
     } finally {
@@ -69,7 +69,7 @@ export default function ExaminerFirmaPage() {
       const filename = res.data.filename || res.data.url;
       await api.post(`/configuracion/firma?usuario_guid=${user?.guid}`, { firma_url: filename });
       setFirmaUrl(filename);
-      showAlert.success("Firma subida", "Tu imagen de firma se cargó correctamente.");
+      showToast.success("Tu imagen de firma se cargó correctamente.");
     } catch {
       showAlert.error("Error", "No se pudo subir la imagen.");
     } finally {
@@ -81,7 +81,7 @@ export default function ExaminerFirmaPage() {
     try {
       await api.post(`/configuracion/firma?usuario_guid=${user?.guid}`, { firma_url: null });
       setFirmaUrl(null);
-      showAlert.info("Eliminada", "La imagen de firma fue eliminada.");
+      showToast.info("La imagen de firma fue eliminada.");
     } catch {
       showAlert.error("Error", "No se pudo eliminar la firma.");
     }

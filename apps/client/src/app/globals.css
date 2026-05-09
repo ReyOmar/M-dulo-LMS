@@ -274,6 +274,36 @@
   }
 }
 
+/* Alert/Toast auto-close progress bar countdown */
+@keyframes shrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+@keyframes toast-shrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+/* Landing page hero animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideRoad {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-112px); }
+}
+
+@keyframes floatBg {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+
+html { scroll-behavior: smooth; }
+
 /* ═══════════════════════════════════════════════════════════
    ANIMATION UTILITY CLASSES
    ═══════════════════════════════════════════════════════════ */

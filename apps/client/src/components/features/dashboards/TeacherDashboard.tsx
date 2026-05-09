@@ -102,7 +102,7 @@ export function TeacherDashboard() {
               key={curso.guid}
               onClick={() => {
                 if (isLockedByOther) return;
-                router.push(`/dashboard/admin/constructor-cursos?curso=${curso.guid}`);
+                router.push(`/dashboard/constructor-cursos?curso=${curso.guid}`);
               }}
               className={`flex flex-col bg-card border rounded-2xl overflow-hidden transition-all shadow-sm relative ${
                 isLockedByOther

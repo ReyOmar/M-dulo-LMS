@@ -28,7 +28,7 @@ interface Certificate {
 export default function CertificadosPage() {
   const { user } = useRole();
   const { subscribe } = useWS();
-  const { showAlert } = useAlert();
+  const { showAlert, showToast } = useAlert();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [certificados, setCertificados] = useState<Certificate[]>([]);
@@ -103,7 +103,7 @@ export default function CertificadosPage() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      showAlert.success('Certificado descargado', 'El archivo PDF se ha descargado correctamente.');
+      showToast.success('El archivo PDF se ha descargado correctamente.');
     } catch (err: any) {
       console.error('Download error:', err);
       showAlert.error('Error al descargar', 'No se pudo descargar el certificado. Intenta de nuevo.');

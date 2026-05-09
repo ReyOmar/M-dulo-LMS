@@ -165,7 +165,7 @@ export function AdminDashboard() {
             value: stats?.cursos?.publicados || 0,
             label: `${stats?.cursos?.publicados || 0} publicados · ${stats?.cursos?.borrador || 0} borrador`
           }}
-          href="/dashboard/admin/constructor-cursos"
+          href="/dashboard/constructor-cursos"
           className="stagger-2 animate-fade-slide-in"
         />
         <StatCard

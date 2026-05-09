@@ -36,7 +36,7 @@ interface ExaminerPreview {
 }
 
 export default function CertificadosConfigPage() {
-  const { showAlert } = useAlert();
+  const { showAlert, showToast } = useAlert();
   const [config, setConfig] = useState<CertConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -95,7 +95,7 @@ export default function CertificadosConfigPage() {
         cert_mostrar_firma: config.cert_mostrar_firma,
         cert_mostrar_fecha_ingreso: config.cert_mostrar_fecha_ingreso,
       });
-      showAlert.success("Guardado", "Configuración de certificados actualizada.");
+      showToast.success("Configuración de certificados actualizada.");
     } catch (err: any) {
       showAlert.error("Error", err?.response?.data?.message || "No se pudo guardar.");
     } finally {

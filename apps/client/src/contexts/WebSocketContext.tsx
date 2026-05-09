@@ -22,6 +22,7 @@ type WebSocketEvent =
   | 'submission:graded'
   | 'config:updated'
   | 'presence:update'
+  | 'presence:sync'
   | 'dashboard:refresh'
   | 'notification:new'
   | 'notification:read'
@@ -103,6 +104,13 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        // Handle presence sync on initial connection / reconnection
+        if (event === 'presence:sync') {
+          if (data?.onlineUsers) {
+            setOnlineUsers(data.onlineUsers);
+          }
+        }
+
         // Handle course editing lock events internally
         if (event === 'course:editing') {
           setEditingCourses(prev => ({ ...prev, [data.curso_guid]: data.editor }));
@@ -160,7 +168,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     ws.onclose = (event) => {
       setIsConnected(false);
-      setOnlineUsers([]); // Clear stale presence data
       wsRef.current = null;
       
       // If code is 4004 (session revoked), do not reconnect automatically as guest immediately,

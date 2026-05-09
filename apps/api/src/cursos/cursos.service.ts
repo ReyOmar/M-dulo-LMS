@@ -144,6 +144,18 @@ export class CursosService {
   }
 
   async updateCurso(curso_guid: string, data: { titulo?: string; estado?: string; imagen_portada?: string }, requestUser?: any) {
+    // GUARD: Professors can only edit their own assigned courses
+    if (requestUser?.role === 'PROFESOR') {
+      const cursoOwnership = await this.prisma.lms_cursos.findUnique({
+        where: { guid: curso_guid },
+        select: { profesor_guid: true }
+      });
+      if (!cursoOwnership) throw new NotFoundException('Curso no encontrado');
+      if (cursoOwnership.profesor_guid !== requestUser.sub) {
+        throw new BadRequestException('Solo puedes editar cursos asignados a ti.');
+      }
+    }
+
     // GUARD: If switching to BORRADOR, check for active quiz attempts
     if (data.estado === 'BORRADOR') {
       const curso = await this.prisma.lms_cursos.findUnique({ where: { guid: curso_guid } });

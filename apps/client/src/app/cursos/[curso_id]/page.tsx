@@ -96,7 +96,7 @@ export default function CursoVisorPage() {
     }
   }, [pendingCelebration, isQuizActive, curso]);
 
-  // Listen for maintenance events on this specific course
+  // Listen for maintenance events on this specific course (students only)
   useEffect(() => {
     if (maintenanceCourses[curso_id as string]) {
       setInMaintenance(true);
@@ -137,7 +137,7 @@ export default function CursoVisorPage() {
       const res = await api.get(`/cursos/${curso_id}`);
       const data = res.data;
       setCurso(data);
-      // If the course is in BORRADOR when loaded, show maintenance immediately
+      // If the course is in BORRADOR when loaded, show maintenance immediately (students only)
       if (data.estado === 'BORRADOR') {
         setInMaintenance(true);
       }

@@ -6,6 +6,7 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { useWS } from "@/contexts/WebSocketContext";
 import { useRole } from "@/contexts/RoleContext";
 import api from "@/lib/api";
+import { useAlert } from "@/contexts/AlertContext";
 
 interface Curso {
   guid: string;
@@ -65,11 +66,9 @@ export default function AsignacionCursosPage() {
   const [searchEstudiante, setSearchEstudiante] = useState('');
   const [searchProfesor, setSearchProfesor] = useState('');
 
-  // Feedback
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
-  
   const { subscribe } = useWS();
   const { role } = useRole();
+  const { showToast } = useAlert();
 
   useEffect(() => {
     fetchData();
@@ -146,10 +145,10 @@ export default function AsignacionCursosPage() {
     if (!selectedCursoId) return;
     try {
       await api.post(`/matriculas/${selectedCursoId}`, { usuario_guid });
-      showFeedback('success', 'Estudiante matriculado');
+      showToast.success('Estudiante matriculado');
       fetchMatriculas(selectedCursoId);
     } catch (err) {
-      showFeedback('error', 'Error al matricular');
+      showToast.error('Error al matricular');
     }
   };
 
@@ -157,10 +156,10 @@ export default function AsignacionCursosPage() {
     if (!selectedCursoId) return;
     try {
       await api.delete(`/matriculas/${selectedCursoId}/${usuario_guid}`);
-      showFeedback('success', 'Estudiante removido');
+      showToast.success('Estudiante removido');
       fetchMatriculas(selectedCursoId);
     } catch (err) {
-      showFeedback('error', 'Error al desmatricular');
+      showToast.error('Error al desmatricular');
     }
   };
 
@@ -168,10 +167,10 @@ export default function AsignacionCursosPage() {
     if (!selectedCursoId) return;
     try {
       await api.post(`/cursos/${selectedCursoId}/asignar`, { profesor_guid });
-      showFeedback('success', 'Examinador asignado');
+      showToast.success('Examinador asignado');
       setCursos(prev => prev.map(c => c.guid === selectedCursoId ? { ...c, profesor_guid } : c));
     } catch (err) {
-      showFeedback('error', 'Error al asignar');
+      showToast.error('Error al asignar');
     }
   };
 
@@ -179,16 +178,11 @@ export default function AsignacionCursosPage() {
     if (!selectedCursoId) return;
     try {
       await api.post(`/cursos/${selectedCursoId}/desasignar`);
-      showFeedback('success', 'Examinador removido');
+      showToast.success('Examinador removido');
       fetchData();
     } catch (err) {
-      showFeedback('error', 'Error al desasignar');
+      showToast.error('Error al desasignar');
     }
-  };
-
-  const showFeedback = (type: 'success' | 'error', msg: string) => {
-    setFeedback({ type, msg });
-    setTimeout(() => setFeedback(null), 3000);
   };
 
   // --- COMPUTED DATA ---
@@ -235,16 +229,6 @@ export default function AsignacionCursosPage() {
         </h1>
         <p className="text-muted-foreground mt-1">Selecciona un curso para matricular estudiantes o asignar un examinador.</p>
       </header>
-
-      {/* Feedback Toast */}
-      {feedback && (
-        <div className={`fixed top-6 right-6 z-50 flex items-center gap-2 px-5 py-3 rounded-2xl shadow-2xl text-sm font-bold animate-in slide-in-from-top-2 duration-300 ${
-          feedback.type === 'success' ? 'bg-primary text-white' : 'bg-red-500 text-white'
-        }`}>
-          {feedback.type === 'success' ? <CheckCircle className="h-5 w-5" /> : <X className="h-5 w-5" />} 
-          {feedback.msg}
-        </div>
-      )}
 
       <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-14rem)]">
 
@@ -494,96 +478,111 @@ export default function AsignacionCursosPage() {
 
                         {/* --- EXAMINADOR TAB --- */}
                         {activeTab === 'profesor' && (
-                            <div className="absolute inset-0 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300 p-6 overflow-y-auto">
+                            <div className="absolute inset-0 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
                                 
-                                <div className="max-w-2xl mx-auto w-full space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 h-full">
                                     
-                                    {/* Tarjeta del Examinador Actual */}
-                                    <div>
-                                        <h3 className="font-bold text-sm mb-4 text-muted-foreground uppercase tracking-wider">Examinador Asignado</h3>
-                                        {profesorActual ? (
-                                            <div className="relative overflow-hidden bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/30 rounded-3xl p-6 shadow-sm flex items-center justify-between group">
-                                                <div className="flex items-center gap-5 relative z-10">
-                                                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg ring-4 ring-white dark:ring-card">
-                                                        {profesorActual.nombre.charAt(0)}{profesorActual.apellido.charAt(0)}
+                                    {/* Examinador Asignado */}
+                                    <div className="flex flex-col h-full bg-background border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                                        <div className="p-4 border-b border-border/50 bg-blue-500/5 flex items-center justify-between">
+                                            <h3 className="font-bold text-sm flex items-center gap-2">
+                                                <Presentation className="h-4 w-4 text-blue-500" /> Examinador Asignado
+                                            </h3>
+                                            <span className="bg-blue-500/10 text-blue-600 font-bold px-2.5 py-0.5 rounded-full text-xs">
+                                                {profesorActual ? 1 : 0}
+                                            </span>
+                                        </div>
+                                        
+                                        <div className="flex-1 overflow-y-auto p-3">
+                                            {profesorActual ? (
+                                                <div className="flex items-center justify-between p-3 bg-card border border-blue-500/20 rounded-xl group hover:border-red-500/30 hover:shadow-sm transition-all">
+                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                        <div className="h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-inner">
+                                                            {profesorActual.nombre.charAt(0)}{profesorActual.apellido.charAt(0)}
+                                                        </div>
+                                                        <div className="truncate">
+                                                            <p className="text-sm font-bold truncate">{profesorActual.nombre} {profesorActual.apellido}</p>
+                                                            <p className="text-xs text-muted-foreground truncate">{profesorActual.email}</p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-lg font-bold text-blue-950 dark:text-blue-100">{profesorActual.nombre} {profesorActual.apellido}</p>
-                                                        <p className="text-sm text-blue-700 dark:text-blue-300">{profesorActual.email}</p>
-                                                    </div>
+                                                    <button
+                                                        onClick={desasignarProfesor}
+                                                        className="p-2 shrink-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                        title="Remover examinador"
+                                                    >
+                                                        <UserMinus className="h-4 w-4" />
+                                                    </button>
                                                 </div>
-                                                <button
-                                                    onClick={desasignarProfesor}
-                                                    className="relative z-10 flex items-center gap-2 px-4 py-2.5 bg-background hover:bg-red-500 text-red-500 hover:text-white font-bold text-sm rounded-xl transition-all shadow-sm"
-                                                >
-                                                    <UserMinus className="h-4 w-4" /> Remover
-                                                </button>
-                                                
-                                                {/* Decorative background blob */}
-                                                <div className="absolute -right-8 -top-8 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl"></div>
-                                            </div>
-                                        ) : (
-                                            <div className="p-8 text-center bg-muted/10 border border-dashed border-border rounded-3xl">
-                                                <Presentation className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                                                <p className="font-medium text-muted-foreground">Este curso no tiene un examinador asignado.</p>
-                                            </div>
-                                        )}
+                                            ) : (
+                                                <div className="h-full flex flex-col items-center justify-center text-center p-6">
+                                                    <Inbox className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                                                    <p className="text-sm font-medium text-muted-foreground">Sin examinador asignado</p>
+                                                    <p className="text-xs text-muted-foreground/60 mt-1">Busca y asigna un examinador desde el panel derecho.</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    <div className="h-px bg-border/50 w-full" />
-
-                                    {/* Buscador de Examinadores */}
-                                    <div>
-                                        <h3 className="font-bold text-sm mb-4 text-muted-foreground uppercase tracking-wider">
-                                            {profesorActual ? 'Reemplazar Examinador' : 'Elegir Examinador'}
-                                        </h3>
-                                        
-                                        <div className="relative mb-5">
-                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                            <input
-                                                type="text"
-                                                placeholder="Buscar por nombre..."
-                                                value={searchProfesor}
-                                                onChange={e => setSearchProfesor(e.target.value)}
-                                                className="w-full pl-12 pr-4 py-3.5 bg-background border border-border rounded-2xl text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm"
-                                            />
+                                    {/* Buscar y Asignar Examinador */}
+                                    <div className="flex flex-col h-full">
+                                        <div className="mb-4">
+                                            <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
+                                                <UserPlus className="h-4 w-4 text-primary" /> {profesorActual ? 'Reemplazar Examinador' : 'Asignar Examinador'}
+                                            </h3>
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar por nombre o correo..."
+                                                    value={searchProfesor}
+                                                    onChange={e => setSearchProfesor(e.target.value)}
+                                                    className="w-full pl-11 pr-4 py-3 bg-background border border-border rounded-xl text-sm font-medium focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all shadow-sm"
+                                                />
+                                            </div>
                                         </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-6">
-                                            {profesoresFiltrados.map(prof => {
-                                                const isCurrentProf = cursoSeleccionado.profesor_guid === prof.guid;
-                                                const avatarGrad = getAvatarGradient(prof.nombre);
-                                                return (
-                                                <div key={prof.guid} className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${
-                                                    isCurrentProf 
-                                                    ? 'bg-blue-500/5 border-blue-500/30' 
-                                                    : 'bg-card border-border/50 hover:border-blue-500/50 hover:shadow-md cursor-pointer'
-                                                }`} onClick={() => !isCurrentProf && asignarProfesor(prof.guid)}>
-                                                    <div className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center font-bold text-sm shadow-inner ${
-                                                        isCurrentProf ? 'bg-blue-500 text-white' : `text-white ${avatarGrad}`
+                                        
+                                        <div className="flex-1 overflow-y-auto space-y-2 pb-6">
+                                            {profesoresFiltrados.length === 0 ? (
+                                                <div className="text-center py-10 bg-muted/10 rounded-2xl border border-dashed border-border">
+                                                    <p className="text-sm text-muted-foreground font-medium">
+                                                        {searchProfesor ? 'No se encontraron examinadores' : 'No hay examinadores disponibles'}
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                profesoresFiltrados.map(prof => {
+                                                    const isCurrentProf = cursoSeleccionado.profesor_guid === prof.guid;
+                                                    const avatarGrad = getAvatarGradient(prof.nombre);
+                                                    return (
+                                                    <div key={prof.guid} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                                                        isCurrentProf 
+                                                        ? 'bg-blue-500/5 border-blue-500/30' 
+                                                        : 'bg-background border-border/50 hover:border-blue-500/50 hover:shadow-md'
                                                     }`}>
-                                                        {prof.nombre.charAt(0)}{prof.apellido.charAt(0)}
-                                                    </div>
-                                                    <div className="flex-1 truncate">
-                                                        <p className="text-sm font-bold truncate">{prof.nombre} {prof.apellido}</p>
-                                                        <p className="text-xs text-muted-foreground truncate">{prof.email}</p>
-                                                    </div>
-                                                    {isCurrentProf ? (
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500 bg-blue-500/10 px-2 py-1 rounded-md shrink-0">
-                                                            Actual
-                                                        </span>
-                                                    ) : (
-                                                        <div className="h-8 w-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                                                            <Plus className="h-4 w-4" />
+                                                        <div className="flex items-center gap-3 overflow-hidden">
+                                                            <div className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center font-bold text-sm shadow-inner ${
+                                                                isCurrentProf ? 'bg-blue-500 text-white' : `text-white ${avatarGrad}`
+                                                            }`}>
+                                                                {prof.nombre.charAt(0)}{prof.apellido.charAt(0)}
+                                                            </div>
+                                                            <div className="truncate">
+                                                                <p className="text-sm font-bold truncate">{prof.nombre} {prof.apellido}</p>
+                                                                <p className="text-xs text-muted-foreground truncate">{prof.email}</p>
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            )})}
-                                            
-                                            {profesoresFiltrados.length === 0 && (
-                                                <div className="col-span-1 sm:col-span-2 text-center py-6 text-muted-foreground text-sm font-medium">
-                                                    No se encontraron examinadores con ese nombre.
-                                                </div>
+                                                        {isCurrentProf ? (
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500 bg-blue-500/10 px-2 py-1 rounded-md shrink-0">
+                                                                Actual
+                                                            </span>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => asignarProfesor(prof.guid)}
+                                                                className="flex items-center gap-1 px-4 py-2 shrink-0 bg-blue-500/10 hover:bg-blue-500 text-blue-600 hover:text-white text-xs font-bold rounded-xl transition-colors"
+                                                            >
+                                                                <Plus className="h-4 w-4" /> Asignar
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )})
                                             )}
                                         </div>
                                     </div>

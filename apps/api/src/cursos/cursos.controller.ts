@@ -88,7 +88,7 @@ export class CursosController {
     return this.cursosService.updateCurso(guid, body, user);
   }
 
-  @Roles('ADMINISTRADOR', 'PROFESOR')
+  @Roles('ADMINISTRADOR')
   @Delete('/:guid')
   async deleteCurso(@Param('guid') guid: string) {
     return this.cursosService.deleteCurso(guid);
@@ -98,28 +98,28 @@ export class CursosController {
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Post('/:curso_guid/modulos')
-  async createModulo(@Param('curso_guid') curso_guid: string, @Body() body: CreateModuloDto) {
-    return this.bloqueService.createModuloParaCurso(curso_guid, body);
+  async createModulo(@Param('curso_guid') curso_guid: string, @Body() body: CreateModuloDto, @CurrentUser() user: JwtPayload) {
+    return this.bloqueService.createModuloParaCurso(curso_guid, body, user);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Patch('/modulos/:modulo_guid')
-  async updateModulo(@Param('modulo_guid') modulo_guid: string, @Body() body: UpdateModuloDto) {
-    return this.bloqueService.updateModulo(modulo_guid, body);
+  async updateModulo(@Param('modulo_guid') modulo_guid: string, @Body() body: UpdateModuloDto, @CurrentUser() user: JwtPayload) {
+    return this.bloqueService.updateModulo(modulo_guid, body, user);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Delete('/modulos/:modulo_guid')
-  async deleteModulo(@Param('modulo_guid') modulo_guid: string) {
-    return this.bloqueService.deleteModulo(modulo_guid);
+  async deleteModulo(@Param('modulo_guid') modulo_guid: string, @CurrentUser() user: JwtPayload) {
+    return this.bloqueService.deleteModulo(modulo_guid, user);
   }
 
   // ── Block (recurso) management (delegated to BloqueService) ──
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Post('/modulos/:modulo_guid/bloques')
-  async addBloque(@Param('modulo_guid') modulo_guid: string, @Body() body: CreateBloqueDto) {
-    return this.bloqueService.addBloqueToModulo(modulo_guid, body);
+  async addBloque(@Param('modulo_guid') modulo_guid: string, @Body() body: CreateBloqueDto, @CurrentUser() user: JwtPayload) {
+    return this.bloqueService.addBloqueToModulo(modulo_guid, body, user);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
@@ -130,23 +130,23 @@ export class CursosController {
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Patch('/bloques/:bloque_guid')
-  async updateBloque(@Param('bloque_guid') bloque_guid: string, @Body() body: UpdateBloqueDto) {
-    return this.bloqueService.updateBloque(bloque_guid, body);
+  async updateBloque(@Param('bloque_guid') bloque_guid: string, @Body() body: UpdateBloqueDto, @CurrentUser() user: JwtPayload) {
+    return this.bloqueService.updateBloque(bloque_guid, body, user);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Delete('/bloques/:bloque_guid')
-  async deleteBloque(@Param('bloque_guid') bloque_guid: string) {
-    return this.bloqueService.deleteBloque(bloque_guid);
+  async deleteBloque(@Param('bloque_guid') bloque_guid: string, @CurrentUser() user: JwtPayload) {
+    return this.bloqueService.deleteBloque(bloque_guid, user);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Patch('/modulos/:modulo_guid/recursos/reorder')
-  async reorderBloques(@Param('modulo_guid') modulo_guid: string, @Body() body: { recursos_guids: string[] }) {
+  async reorderBloques(@Param('modulo_guid') modulo_guid: string, @Body() body: { recursos_guids: string[] }, @CurrentUser() user: JwtPayload) {
     if (!body.recursos_guids || !Array.isArray(body.recursos_guids)) {
       throw new BadRequestException('recursos_guids debe ser un arreglo de strings.');
     }
-    return this.bloqueService.reorderBloques(modulo_guid, body.recursos_guids);
+    return this.bloqueService.reorderBloques(modulo_guid, body.recursos_guids, user);
   }
 
   // ── Quiz endpoints (delegated to QuizService) ──

@@ -42,7 +42,7 @@ export default function BaseUsuarios() {
   const [adminStats, setAdminStats] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<TabType>('PROFESOR');
   const [searchQuery, setSearchQuery] = useState("");
-  const { showAlert, showConfirm } = useAlert();
+  const { showAlert, showConfirm, showToast } = useAlert();
   const { subscribe, onlineUsers } = useWS();
 
   useEffect(() => {
@@ -64,10 +64,6 @@ export default function BaseUsuarios() {
         // and selectedUser is just state. Let's rely on dashboard:refresh for deep refresh.
       }
     });
-    const unsub3 = subscribe('presence:update', () => {
-      // Force re-render and get latest ultimo_acceso from database
-      fetchUsuarios(); 
-    });
     const unsub4 = subscribe('dashboard:refresh', () => {
       fetchUsuarios();
       if (selectedUser) {
@@ -79,15 +75,24 @@ export default function BaseUsuarios() {
         }
       }
     });
+    // Re-fetch users when presence changes so ultimo_acceso is fresh from the DB
+    const unsub_presence = subscribe('presence:update', fetchUsuarios);
     
     return () => {
       unsub1();
       unsub2();
       unsub_updated();
-      unsub3();
       unsub4();
+      unsub_presence();
     };
   }, [realRole, subscribe, selectedUser]);
+
+  // Tick every 60s to re-render relative time labels ("Hace X min")
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchUsuarios = async () => {
     try {
@@ -140,14 +145,25 @@ export default function BaseUsuarios() {
 
     if (!d) return <span className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Sin acceso</span>;
     const lastAccess = new Date(d);
+    const diffMs = Date.now() - lastAccess.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHrs = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffHrs / 24);
+
+    let relativeTime: string;
+    if (diffMin < 1) relativeTime = 'Hace un momento';
+    else if (diffMin < 60) relativeTime = `Hace ${diffMin} min`;
+    else if (diffHrs < 24) relativeTime = `Hace ${diffHrs}h`;
+    else if (diffDays < 7) relativeTime = `Hace ${diffDays}d`;
+    else relativeTime = lastAccess.toLocaleString("es-ES", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    });
 
     return (
-      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground" title={lastAccess.toLocaleString("es-ES")}>
         <Clock className="h-3 w-3" />
-        {lastAccess.toLocaleString("es-ES", {
-          day: "2-digit", month: "2-digit", year: "numeric",
-          hour: "2-digit", minute: "2-digit"
-        })}
+        {relativeTime}
       </span>
     );
   };
@@ -168,7 +184,7 @@ export default function BaseUsuarios() {
     
     try {
       await api.delete(`/auth/usuarios/${guid}`);
-      showAlert.success("Éxito", "Cuenta eliminada exitosamente.");
+      showToast.success("Cuenta eliminada exitosamente.");
       setSelectedUser(null);
       fetchUsuarios();
     } catch (err: any) {
@@ -397,7 +413,7 @@ export default function BaseUsuarios() {
                 <div className="text-center py-6 bg-muted/10 rounded-xl border border-border/50">
                   <p className="text-sm text-muted-foreground">Este usuario no tiene cursos {selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR' ? 'creados' : 'matriculados'}.</p>
                   {(selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR') && (
-                    <Link href="/dashboard/admin/constructor-cursos" className="text-xs text-primary font-bold hover:underline mt-2 inline-block">
+                    <Link href="/dashboard/constructor-cursos" className="text-xs text-primary font-bold hover:underline mt-2 inline-block">
                       Ir a Gestión de Cursos para {selectedUser.rol === 'ADMINISTRADOR' ? 'crear' : 'asignar'} →
                     </Link>
                   )}

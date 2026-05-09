@@ -130,7 +130,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                     quiz_config: isQuiz ? JSON.stringify(quizConfig) : null,
                 });
             
-            router.push(`/dashboard/admin/constructor-cursos?curso=${resolvedParams.curso_id}&resource=${resolvedParams.bloque_id}&module=${resolvedParams.modulo_id}`);
+            router.push(`/dashboard/constructor-cursos?curso=${resolvedParams.curso_id}&resource=${resolvedParams.bloque_id}&module=${resolvedParams.modulo_id}`);
         } catch (err: any) {
             const msg = err?.response?.data?.message || 'No se pudo guardar.';
             showAlert.warning('Error al guardar', msg);
@@ -230,7 +230,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
         <div className="animate-in slide-in-from-bottom-4 duration-700 max-w-4xl mx-auto h-[calc(100vh-6rem)] flex flex-col py-6">
             <header className="mb-6 flex items-center gap-4">
                 <button 
-                    onClick={() => router.push(`/dashboard/admin/constructor-cursos?curso=${resolvedParams.curso_id}&resource=${resolvedParams.bloque_id}&module=${resolvedParams.modulo_id}`)}
+                    onClick={() => router.push(`/dashboard/constructor-cursos?curso=${resolvedParams.curso_id}&resource=${resolvedParams.bloque_id}&module=${resolvedParams.modulo_id}`)}
                     className="p-3 bg-muted rounded-full hover:bg-border transition-colors"
                 >
                     <ArrowLeft className="h-5 w-5 text-muted-foreground" />
@@ -545,7 +545,7 @@ export default function EditBlockPage({ params }: { params: Promise<{ curso_id: 
                         <div className="px-6 pb-6">
                             <button 
                                 type="button"
-                                onClick={() => router.push(`/dashboard/admin/constructor-cursos?curso=${resolvedParams.curso_id}`)}
+                                onClick={() => router.push(`/dashboard/constructor-cursos?curso=${resolvedParams.curso_id}`)}
                                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 rounded-xl transition-colors shadow-md"
                             >
                                 Volver al apartado

@@ -183,6 +183,7 @@ export function Sidebar() {
         <div className="py-5 px-3 flex-1 overflow-y-auto">
           {/* --- EXAMINADOR BLOCK --- */}
           {role === "teacher" && (
+              <>
               <div className="space-y-0.5 mb-7">
                   <p className="sidebar-section-label">Gestión de Evaluaciones</p>
                   <Link prefetch={true} href="/dashboard" className={linkClass('/dashboard')}>
@@ -210,6 +211,13 @@ export function Sidebar() {
                       )}
                   </Link>
               </div>
+              <div className="space-y-0.5 mb-7">
+                  <p className="sidebar-section-label">Construcción</p>
+                  <Link prefetch={true} href="/dashboard/constructor-cursos" className={linkClass('/dashboard/constructor-cursos')}>
+                      <BookOpen className="h-4 w-4 shrink-0" /> Gestión de Cursos
+                  </Link>
+              </div>
+              </>
           )}
 
           {/* --- PERSONAL EN CAPACITACIÓN BLOCK --- */}
@@ -249,7 +257,7 @@ export function Sidebar() {
 
                   <div className="space-y-0.5 mb-6">
                       <p className="sidebar-section-label">Construcción</p>
-                      <Link prefetch={true} href="/dashboard/admin/constructor-cursos" className={linkClass('/dashboard/admin/constructor-cursos')}>
+                      <Link prefetch={true} href="/dashboard/constructor-cursos" className={linkClass('/dashboard/constructor-cursos')}>
                           <BookOpen className="h-4 w-4 shrink-0" /> Gestión de Cursos
                       </Link>
                       <Link prefetch={true} href="/dashboard/admin/asignacion-cursos" className={linkClass('/dashboard/admin/asignacion-cursos')}>

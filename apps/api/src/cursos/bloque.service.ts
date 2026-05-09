@@ -19,6 +19,19 @@ export class BloqueService {
     }
   }
 
+  /** Helper: ensures PROFESOR owns the course (admin bypasses) */
+  async ensureOwnership(curso_guid: string, requestUser?: any): Promise<void> {
+    if (!requestUser || requestUser.role !== 'PROFESOR') return; // Admin bypass
+    const curso = await this.prisma.lms_cursos.findUnique({
+      where: { guid: curso_guid },
+      select: { profesor_guid: true }
+    });
+    if (!curso) throw new NotFoundException('Curso no encontrado');
+    if (curso.profesor_guid !== requestUser.sub) {
+      throw new BadRequestException('Solo puedes modificar cursos asignados a ti.');
+    }
+  }
+
   /** Helper: gets the curso_guid from a resource guid */
   async getCursoGuidFromRecurso(recurso_guid: string): Promise<string> {
     const recurso = await this.prisma.lms_recursos.findUnique({
@@ -29,9 +42,10 @@ export class BloqueService {
     return recurso.leccion.modulo.curso_guid;
   }
 
-  async createModuloParaCurso(curso_guid: string, data: { titulo: string; orden?: number }) {
+  async createModuloParaCurso(curso_guid: string, data: { titulo: string; orden?: number }, requestUser?: any) {
     const curso = await this.prisma.lms_cursos.findUnique({ where: { guid: curso_guid } });
     if (!curso) throw new NotFoundException('Curso no encontrado');
+    await this.ensureOwnership(curso_guid, requestUser);
     await this.ensureDraft(curso_guid);
 
     const orden = data.orden ?? await this.prisma.lms_modulos.count({ where: { curso_guid } });
@@ -49,9 +63,10 @@ export class BloqueService {
     });
   }
 
-  async updateModulo(modulo_guid: string, data: { titulo: string }) {
+  async updateModulo(modulo_guid: string, data: { titulo: string }, requestUser?: any) {
     const modulo = await this.prisma.lms_modulos.findUnique({ where: { guid: modulo_guid }, select: { curso_guid: true } });
     if (!modulo) throw new NotFoundException('Módulo no encontrado');
+    await this.ensureOwnership(modulo.curso_guid, requestUser);
     await this.ensureDraft(modulo.curso_guid);
     return this.prisma.lms_modulos.update({
         where: { guid: modulo_guid },
@@ -67,13 +82,14 @@ export class BloqueService {
     return bloque;
   }
 
-  async addBloqueToModulo(modulo_guid: string, data: { tipo: lms_tipo_recurso; contenido_html?: string; titulo?: string }) {
+  async addBloqueToModulo(modulo_guid: string, data: { tipo: lms_tipo_recurso; contenido_html?: string; titulo?: string }, requestUser?: any) {
     const modulo = await this.prisma.lms_modulos.findUnique({
         where: { guid: modulo_guid },
         include: { lecciones: true }
     });
 
     if (!modulo) throw new NotFoundException('Módulo no encontrado');
+    await this.ensureOwnership(modulo.curso_guid, requestUser);
     await this.ensureDraft(modulo.curso_guid);
     if (!modulo.lecciones || modulo.lecciones.length === 0) {
         throw new BadRequestException('Módulo corrupto sin lección interna base.');
@@ -94,8 +110,9 @@ export class BloqueService {
     });
   }
 
-  async updateBloque(guid: string, data: { titulo?: string; contenido_html?: string; url_archivo?: string; url_referencia?: string; archivo_adjunto?: string; archivo_adjunto_nombre?: string; quiz_config?: string; archivo_max_size_mb?: number }) {
+  async updateBloque(guid: string, data: { titulo?: string; contenido_html?: string; url_archivo?: string; url_referencia?: string; archivo_adjunto?: string; archivo_adjunto_nombre?: string; quiz_config?: string; archivo_max_size_mb?: number }, requestUser?: any) {
     const cursoGuid = await this.getCursoGuidFromRecurso(guid);
+    await this.ensureOwnership(cursoGuid, requestUser);
     await this.ensureDraft(cursoGuid);
     return this.prisma.lms_recursos.update({
         where: { guid },
@@ -112,13 +129,14 @@ export class BloqueService {
     });
   }
 
-  async deleteBloque(guid: string) {
+  async deleteBloque(guid: string, requestUser?: any) {
     const cursoGuid = await this.getCursoGuidFromRecurso(guid);
+    await this.ensureOwnership(cursoGuid, requestUser);
     await this.ensureDraft(cursoGuid);
     return this.prisma.lms_recursos.delete({ where: { guid } });
   }
 
-  async reorderBloques(modulo_guid: string, recursos_guids: string[]) {
+  async reorderBloques(modulo_guid: string, recursos_guids: string[], requestUser?: any) {
     const modulo = await this.prisma.lms_modulos.findUnique({
       where: { guid: modulo_guid },
       include: { lecciones: true }
@@ -126,6 +144,7 @@ export class BloqueService {
     if (!modulo || !modulo.lecciones || modulo.lecciones.length === 0) {
       throw new NotFoundException('Módulo o lección no encontrada.');
     }
+    await this.ensureOwnership(modulo.curso_guid, requestUser);
     await this.ensureDraft(modulo.curso_guid);
     
     const queries = recursos_guids.map((guid, index) => {
@@ -138,9 +157,10 @@ export class BloqueService {
     return this.prisma.$transaction(queries);
   }
 
-  async deleteModulo(guid: string) {
+  async deleteModulo(guid: string, requestUser?: any) {
     const modulo = await this.prisma.lms_modulos.findUnique({ where: { guid }, select: { curso_guid: true } });
     if (!modulo) throw new NotFoundException('Módulo no encontrado');
+    await this.ensureOwnership(modulo.curso_guid, requestUser);
     await this.ensureDraft(modulo.curso_guid);
     return this.prisma.lms_modulos.delete({ where: { guid } });
   }

@@ -17,7 +17,7 @@ export default function TareaVisorPage() {
   const { curso_id, tarea_id } = useParams();
   const { role } = useRole();
   const router = useRouter();
-  const { showAlert } = useAlert();
+  const { showAlert, showToast } = useAlert();
 
   const [curso, setCurso] = useState<any>(null);
   const [tarea, setTarea] = useState<any>(null);
@@ -97,7 +97,7 @@ export default function TareaVisorPage() {
       setServerFileName(data.url_archivo_adjunto || null);
       setEntregaData(data);
       setUploadState('done');
-      showAlert.success('¡Listo!', 'Tu entrega se ha enviado correctamente.');
+      showToast.success('Tu entrega se ha enviado correctamente.');
     } catch (err) {
       console.error(err);
       showAlert.error('Error', 'Hubo un error al enviar tu archivo.');
@@ -218,7 +218,7 @@ export default function TareaVisorPage() {
                     : <><Users className="h-5 w-5" /> {showEntregas ? 'Ocultar entregas' : 'Revisar entregas'}</>}
                 </button>
                 <button
-                  onClick={() => router.push(`/dashboard/admin/constructor-cursos/${curso_id}/tareas/${tarea_id}`)}
+                  onClick={() => router.push(`/dashboard/constructor-cursos/${curso_id}/tareas/${tarea_id}`)}
                   className="flex items-center gap-2 font-bold px-6 py-3 rounded-xl bg-card border border-border hover:bg-muted text-foreground transition-all shadow-sm hover:scale-105"
                 >
                   <Edit3 className="h-5 w-5 text-primary" /> {isQuiz ? 'Editar Cuestionario' : 'Editar Tarea'}

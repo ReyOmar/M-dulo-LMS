@@ -41,12 +41,15 @@ export function StudentDashboard() {
     const unsub2 = subscribe('submission:graded', fetchData);
     const unsub3 = subscribe('enrollment:changed', fetchData);
     const unsub4 = subscribe('dashboard:refresh', fetchData);
+    // Re-fetch when a course enters maintenance so the widget updates immediately
+    const unsub5 = subscribe('course:maintenance', fetchData);
     
     return () => {
       unsub1();
       unsub2();
       unsub3();
       unsub4();
+      unsub5();
     };
   }, [user?.guid, subscribe]);
 
@@ -93,9 +96,18 @@ export function StudentDashboard() {
 
   // Pick next active (non-completed, non-maintenance) course
   const activeCursos = cursos.filter(c => c.estado === 'PUBLICADO' && !maintenanceCourses[c.guid] && !completedCourseGuids.has(c.guid));
+  
+  // Courses assigned but in maintenance (BORRADOR or WS-flagged maintenance) and NOT completed
+  const cursosEnMantenimiento = cursos.filter(c => 
+    (c.estado === 'BORRADOR' || maintenanceCourses[c.guid]) && !completedCourseGuids.has(c.guid)
+  );
+  
+  // All courses that the student hasn't completed yet (regardless of state)
+  const cursosNoCompletados = cursos.filter(c => !completedCourseGuids.has(c.guid));
+  
   const lastCurso = activeCursos.length > 0 ? activeCursos[0] : null;
-  const lastCursoInMaintenance = false; // Already filtered out
-  const allCoursesCompleted = cursos.length > 0 && activeCursos.length === 0;
+  const hayMantenimiento = cursosEnMantenimiento.length > 0;
+  const allCoursesCompleted = cursos.length > 0 && cursosNoCompletados.length === 0;
 
   // --- Calendar helpers ---
   const calYear = calendarDate.getFullYear();
@@ -183,18 +195,27 @@ export function StudentDashboard() {
                 <p className="text-primary-foreground/70 mb-6">
                   {lastCurso.modulos?.length || 0} módulos · {progreso.completados}/{progreso.total} recursos completados
                 </p>
-                {lastCursoInMaintenance ? (
-                  <div className="flex items-center gap-2 bg-amber-500/20 text-amber-100 px-6 py-3 rounded-xl font-bold border border-amber-400/30">
-                    <AlertTriangle className="h-4 w-4" /> En Mantenimiento
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => router.push(`/cursos/${lastCurso.guid}`)}
-                    className="flex items-center gap-2 bg-white text-primary px-6 py-3 rounded-xl font-bold hover:scale-105 transition-transform shadow-md"
-                  >
-                    <Play className="h-4 w-4 fill-primary" /> Retomar Curso
-                  </button>
-                )}
+                <button
+                  onClick={() => router.push(`/cursos/${lastCurso.guid}`)}
+                  className="flex items-center gap-2 bg-white text-primary px-6 py-3 rounded-xl font-bold hover:scale-105 transition-transform shadow-md"
+                >
+                  <Play className="h-4 w-4 fill-primary" /> Retomar Curso
+                </button>
+              </>
+            ) : hayMantenimiento && !allCoursesCompleted ? (
+              <>
+                <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                  <AlertTriangle className="h-6 w-6" /> Curso en Mantenimiento
+                </h2>
+                <p className="text-primary-foreground/70 mb-4">
+                  {cursosEnMantenimiento.length === 1
+                    ? 'Tu curso activo está temporalmente en mantenimiento. Pronto tendrás acceso nuevamente.'
+                    : `Tus ${cursosEnMantenimiento.length} cursos activos están temporalmente en mantenimiento. Pronto tendrás acceso nuevamente.`
+                  }
+                </p>
+                <div className="flex items-center gap-2 bg-primary-foreground/10 border border-primary-foreground/20 px-4 py-2.5 rounded-xl text-sm font-bold text-primary-foreground/80">
+                  <Clock className="h-4 w-4" /> Volverán a estar disponibles pronto
+                </div>
               </>
             ) : allCoursesCompleted ? (
               <>

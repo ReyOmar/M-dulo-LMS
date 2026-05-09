@@ -30,7 +30,7 @@ export default function LoginPage() {
   const [view, setView] = useState<"LOGIN" | "SETUP_PASSWORD" | "REQUEST_ACCESS" | "REQUEST_SUCCESS" | "REVOKED">("LOGIN");
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const { showAlert } = useAlert();
+  const { showAlert, showToast } = useAlert();
 
   useEffect(() => {
     if (searchParams?.get("revoked") === "true") {
@@ -107,11 +107,11 @@ export default function LoginPage() {
         
         if (data.token && data.user) {
           syncSession(data.token, data.user);
-          showAlert.success("¡Contraseña establecida!", "Tu contraseña ha sido configurada exitosamente.");
+          showToast.success("Tu contraseña ha sido configurada exitosamente.");
           setRedirecting(true);
           router.push("/dashboard");
         } else {
-          showAlert.success("Contraseña establecida", data.message || "Ahora puedes iniciar sesión con tu nueva contraseña.");
+          showToast.success(data.message || "Ahora puedes iniciar sesión con tu nueva contraseña.");
           handleGoToLogin();
         }
 
@@ -145,7 +145,7 @@ export default function LoginPage() {
           } else {
               const msg = err.response?.data?.message || err.message;
               if (msg.toLowerCase().includes("ya existe")) {
-                  showAlert.info("Ya estás registrado", "El correo proporcionado ya se encuentra en el sistema. Por favor, inicia sesión.");
+                  showToast.info("El correo proporcionado ya se encuentra en el sistema. Inicia sesión.");
                   handleGoToLogin();
               } else {
                   setErrorMsg(msg);

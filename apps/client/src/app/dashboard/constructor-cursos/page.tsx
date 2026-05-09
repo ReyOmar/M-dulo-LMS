@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRole } from "@/contexts/RoleContext";
 import { useWS } from "@/contexts/WebSocketContext";
 import { PageLoader } from "@/components/ui/PageLoader";
@@ -14,7 +14,7 @@ import { sanitizeHTML } from "@/lib/sanitize";
 export default function ConstructorCursosRoot() {
   const { role, user } = useRole();
   const { subscribe, send, editingCourses } = useWS();
-  const { showAlert } = useAlert();
+  const { showAlert, showConfirm } = useAlert();
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -47,8 +47,7 @@ export default function ConstructorCursosRoot() {
   const [savingBlock, setSavingBlock] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Custom confirmation modal state
-  const [confirmModal, setConfirmModal] = useState<{open: boolean; title: string; message: string; onConfirm: () => void}>({open: false, title: '', message: '', onConfirm: () => {}});
+
 
   // Published course warning modal
   const [publishedWarning, setPublishedWarning] = useState<{open: boolean; onSwitchDraft: () => void}>({open: false, onSwitchDraft: () => {}});
@@ -96,24 +95,7 @@ export default function ConstructorCursosRoot() {
     }
   };
 
-  const showConfirm = useCallback((title: string, message: string): Promise<boolean> => {
-      return new Promise((resolve) => {
-          setConfirmModal({
-              open: true,
-              title,
-              message,
-              onConfirm: () => {
-                  setConfirmModal(prev => ({...prev, open: false}));
-                  resolve(true);
-              }
-          });
-          // Store reject for cancel
-          (window as any).__confirmReject = () => {
-              setConfirmModal(prev => ({...prev, open: false}));
-              resolve(false);
-          };
-      });
-  }, []);
+
 
   useEffect(() => {
     fetchData();
@@ -573,7 +555,7 @@ export default function ConstructorCursosRoot() {
           try {
               const res = await api.post(`/cursos/modulos/${moduleId}/bloques`, { tipo: finalTipo, titulo: finalTitulo, contenido_html: '' });
               const newBlock = res.data;
-              router.push(`/dashboard/admin/constructor-cursos/${activeCourse.guid}/modulos/${moduleId}/bloques/${newBlock.guid}`);
+              router.push(`/dashboard/constructor-cursos/${activeCourse.guid}/modulos/${moduleId}/bloques/${newBlock.guid}`);
           } catch (e) {
               console.error(e);
           }
@@ -608,12 +590,20 @@ export default function ConstructorCursosRoot() {
         {cursos.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center bg-card rounded-2xl border border-border/50 shadow-sm border-dashed">
                 <BookOpen className="h-16 w-16 text-muted-foreground/30 mb-6" />
-                <h3 className="text-xl font-bold text-foreground mb-2">No hay cursos creados</h3>
-                <p className="text-muted-foreground mb-8 text-center max-w-sm">Comienza agregando tu primer curso a la plataforma para empezar a estructurar el conocimiento.</p>
-                
-                <button type="button" onClick={handleCrearCurso} className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 py-4 rounded-xl shadow-md transition-transform hover:-translate-y-1">
-                    <Plus className="h-5 w-5" /> Crear Primer Curso
-                </button>
+                {role === 'admin' ? (
+                    <>
+                        <h3 className="text-xl font-bold text-foreground mb-2">No hay cursos creados</h3>
+                        <p className="text-muted-foreground mb-8 text-center max-w-sm">Comienza agregando tu primer curso a la plataforma para empezar a estructurar el conocimiento.</p>
+                        <button type="button" onClick={handleCrearCurso} className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 py-4 rounded-xl shadow-md transition-transform hover:-translate-y-1">
+                            <Plus className="h-5 w-5" /> Crear Primer Curso
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <h3 className="text-xl font-bold text-foreground mb-2">Sin cursos asignados</h3>
+                        <p className="text-muted-foreground mb-4 text-center max-w-sm">Aún no tienes cursos asignados. Contacta con un administrador para que te asigne cursos para supervisar y editar.</p>
+                    </>
+                )}
             </div>
         ) : activeCourse ? (
             <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
@@ -661,6 +651,7 @@ export default function ConstructorCursosRoot() {
                             </div>
                         </div>
                         
+                        {role === 'admin' && (
                         <button 
                             type="button"
                             disabled={isReadOnly}
@@ -693,6 +684,7 @@ export default function ConstructorCursosRoot() {
                             <Trash2 className="h-5 w-5" />
                             Eliminar curso
                         </button>
+                        )}
                     </div>
                 </div>
 
@@ -820,7 +812,7 @@ export default function ConstructorCursosRoot() {
                                                 onClick={async (e) => {
                                                     e.preventDefault();
                                                     if (isReadOnly) return;
-                                                    router.push(`/dashboard/admin/constructor-cursos/${activeCourse.guid}/modulos/${selectedItem.moduloId}/bloques/${editingBlockId}`);
+                                                    router.push(`/dashboard/constructor-cursos/${activeCourse.guid}/modulos/${selectedItem.moduloId}/bloques/${editingBlockId}`);
                                                 }}
                                                 className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors ${isReadOnly ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}
                                             >
@@ -1296,36 +1288,7 @@ export default function ConstructorCursosRoot() {
             </div>
         </div>
     )}
-    {/* Custom Confirmation Modal */}
-    {confirmModal.open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 duration-200">
-                <div className="p-6 flex flex-col items-center text-center">
-                    <div className="w-16 h-16 bg-red-500/15 rounded-full flex items-center justify-center mb-4">
-                        <AlertTriangle className="h-8 w-8 text-red-500" />
-                    </div>
-                    <h3 className="text-xl font-bold text-foreground mb-2">{confirmModal.title}</h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">{confirmModal.message}</p>
-                </div>
-                <div className="px-6 pb-6 flex items-center gap-3">
-                    <button 
-                        type="button"
-                        onClick={() => (window as any).__confirmReject?.()}
-                        className="flex-1 bg-muted hover:bg-border text-foreground font-bold py-3 rounded-xl transition-colors"
-                    >
-                        Cancelar
-                    </button>
-                    <button 
-                        type="button"
-                        onClick={() => confirmModal.onConfirm()}
-                        className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition-colors shadow-md"
-                    >
-                        Sí, eliminar
-                    </button>
-                </div>
-            </div>
-        </div>
-    )}
+
 
     {/* ===== KICK OUT MODAL ===== */}
     {isLockedByOtherActive && activeCourse && (
