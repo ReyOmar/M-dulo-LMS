@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Lock, Mail, ArrowRight, GraduationCap, ShieldCheck, User, Info, Eye, EyeOff, ShieldAlert } from 'lucide-react';
+import { Lock, Mail, ArrowRight, GraduationCap, ShieldCheck, User, Info, Eye, EyeOff, ShieldAlert, Clock, Monitor } from 'lucide-react';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useRole } from '@/contexts/RoleContext';
@@ -27,7 +27,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
-  const [view, setView] = useState<'LOGIN' | 'SETUP_PASSWORD' | 'REQUEST_ACCESS' | 'REQUEST_SUCCESS' | 'REVOKED'>(
+  const [view, setView] = useState<'LOGIN' | 'SETUP_PASSWORD' | 'REQUEST_ACCESS' | 'REQUEST_SUCCESS' | 'REVOKED' | 'EXPIRED' | 'DISPLACED'>(
     'LOGIN',
   );
   const [errorMsg, setErrorMsg] = useState('');
@@ -37,7 +37,12 @@ export default function LoginPage() {
   useEffect(() => {
     if (searchParams?.get('revoked') === 'true') {
       setView('REVOKED');
-      // Clean up the URL without triggering a full reload
+      router.replace('/login');
+    } else if (searchParams?.get('displaced') === 'true') {
+      setView('DISPLACED');
+      router.replace('/login');
+    } else if (searchParams?.get('expired') === 'true') {
+      setView('EXPIRED');
       router.replace('/login');
     }
   }, [searchParams, router]);
@@ -197,6 +202,10 @@ export default function LoginPage() {
             <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-2 ring-1 ring-primary/20">
               {view === 'SETUP_PASSWORD' ? (
                 <ShieldCheck className="h-7 w-7 text-emerald-500" />
+              ) : view === 'EXPIRED' ? (
+                <Clock className="h-7 w-7 text-primary" />
+              ) : view === 'DISPLACED' ? (
+                <Monitor className="h-7 w-7 text-primary" />
               ) : (
                 <GraduationCap className="h-7 w-7 text-primary" />
               )}
@@ -208,6 +217,8 @@ export default function LoginPage() {
               {view === 'SETUP_PASSWORD' && 'Aprobado: Setup Guardián'}
               {view === 'REQUEST_ACCESS' && 'Solicitar Acceso Privado'}
               {view === 'REQUEST_SUCCESS' && 'Petición en Tránsito'}
+              {view === 'EXPIRED' && 'Sesión Expirada'}
+              {view === 'DISPLACED' && 'Sesión Activa en Otro Dispositivo'}
             </h1>
             <p className="text-sm text-muted-foreground mt-2">
               {view === 'LOGIN' && 'Ingresa tus credenciales para ser validado en base de datos.'}
@@ -218,6 +229,8 @@ export default function LoginPage() {
               {view === 'REQUEST_SUCCESS' &&
                 'Tu petición se ha registrado y está en espera de aprobación, contacta al administrador.'}
               {view === 'REVOKED' && 'No tienes autorización para acceder al sistema.'}
+              {view === 'EXPIRED' && 'Tu sesión anterior ha expirado. Inicia sesión de nuevo para continuar.'}
+              {view === 'DISPLACED' && 'Se inició sesión con tu cuenta en otro dispositivo. Solo puedes tener una sesión activa a la vez.'}
             </p>
           </div>
         </div>
@@ -421,6 +434,46 @@ export default function LoginPage() {
               className="h-11 w-full rounded-xl bg-red-600 text-white hover:bg-red-700 font-bold text-sm shadow-sm transition-colors"
             >
               Volver al Inicio Seguro
+            </button>
+          </div>
+        )}
+
+        {/* ===================== VIEW: EXPIRED (friendly re-login) ===================== */}
+        {view === 'EXPIRED' && (
+          <div className="flex flex-col items-center text-center animate-in zoom-in-95">
+            <div className="h-16 w-16 rounded-3xl bg-primary/10 flex items-center justify-center mb-6 ring-1 ring-primary/20">
+              <Clock className="h-8 w-8 text-primary" />
+            </div>
+            <div className="text-muted-foreground p-2 mb-6">
+              Tu sesión anterior ha <span className="font-bold text-foreground">expirado</span>.
+              <br />
+              Esto es normal — inicia sesión de nuevo para continuar.
+            </div>
+            <button
+              onClick={handleGoToLogin}
+              className="h-11 w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm shadow-sm transition-colors"
+            >
+              Iniciar Sesión
+            </button>
+          </div>
+        )}
+
+        {/* ===================== VIEW: DISPLACED (single-session policy) ===================== */}
+        {view === 'DISPLACED' && (
+          <div className="flex flex-col items-center text-center animate-in zoom-in-95">
+            <div className="h-16 w-16 rounded-3xl bg-primary/10 flex items-center justify-center mb-6 ring-1 ring-primary/20">
+              <Monitor className="h-8 w-8 text-primary" />
+            </div>
+            <div className="text-muted-foreground p-2 mb-6">
+              Se detectó un <span className="font-bold text-foreground">inicio de sesión en otro dispositivo</span>.
+              <br />
+              Por seguridad, solo se permite <span className="font-bold text-foreground">una sesión activa</span> a la vez.
+            </div>
+            <button
+              onClick={handleGoToLogin}
+              className="h-11 w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm shadow-sm transition-colors"
+            >
+              Volver a Iniciar Sesión
             </button>
           </div>
         )}

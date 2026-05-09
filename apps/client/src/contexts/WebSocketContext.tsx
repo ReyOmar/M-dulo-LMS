@@ -94,7 +94,16 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           console.warn('⚠️ Sesión revocada por el servidor:', data?.reason);
           localStorage.removeItem('lms_token');
           localStorage.removeItem('lms_user');
-          window.location.href = '/login?revoked=true';
+
+          // Route to the correct login view based on revocation reason
+          const reason = data?.reason || '';
+          if (reason === 'new_session') {
+            window.location.href = '/login?displaced=true';
+          } else if (reason === 'account_deleted' || reason === 'password_reset') {
+            window.location.href = '/login?revoked=true';
+          } else {
+            window.location.href = '/login?revoked=true';
+          }
           return;
         }
 

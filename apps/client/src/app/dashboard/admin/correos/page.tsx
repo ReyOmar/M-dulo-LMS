@@ -7,7 +7,7 @@ import { useRole } from '@/contexts/RoleContext';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
-import MailTemplateEditor from './components/MailTemplateEditor';
+import MailTemplateEditor, { SubjectWithPills } from './components/MailTemplateEditor';
 
 interface Plantilla {
   id: number;
@@ -154,7 +154,9 @@ export default function BaseCorreos() {
                     className="flex items-center justify-between p-3 bg-muted/20 border border-border/30 rounded-xl"
                   >
                     <div className="min-w-0">
-                      <p className="font-bold text-sm truncate">{plantilla.asunto}</p>
+                      <p className="font-bold text-sm truncate">
+                        <SubjectWithPills text={plantilla.asunto} variables={JSON.parse(evento.variables || '[]')} />
+                      </p>
                       <p className="text-xs text-muted-foreground truncate">{plantilla.nombre_interno}</p>
                     </div>
                     <div className="flex items-center gap-2 ml-4 shrink-0">

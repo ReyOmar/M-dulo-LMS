@@ -34,7 +34,20 @@ api.interceptors.response.use(
       if (!window.location.pathname.includes('/login')) {
         localStorage.removeItem('lms_token');
         localStorage.removeItem('lms_user');
-        window.location.href = '/login?revoked=true';
+
+        // Differentiate between active revocation and normal token expiry.
+        // Backend sends specific messages for revoked/deleted accounts.
+        const serverMessage = (error.response?.data?.message || '').toLowerCase();
+        const isActiveRevocation = serverMessage.includes('revocada')
+          || serverMessage.includes('eliminada')
+          || serverMessage.includes('desactivada');
+
+        if (isActiveRevocation) {
+          window.location.href = '/login?revoked=true';
+        } else {
+          // Normal token expiry (server restart, 24h expiry, etc.)
+          window.location.href = '/login?expired=true';
+        }
       }
     }
     return Promise.reject(error);

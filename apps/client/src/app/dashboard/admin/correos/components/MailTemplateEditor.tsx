@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Save, X, Eye, EyeOff, FileCode2, AtSign } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Save, X, Eye, EyeOff, FileCode2, AtSign, Sparkles, Plus } from 'lucide-react';
 import { sanitizeHTML } from '@/lib/sanitize';
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
@@ -31,6 +31,96 @@ interface MailTemplateEditorProps {
   isSaving: boolean;
 }
 
+/**
+ * Maps variable names to human-friendly labels and sample preview values.
+ * This avoids showing raw {{variable}} syntax to the user.
+ */
+const VARIABLE_META: Record<string, { label: string; sample: string; color: string }> = {
+  nombre: { label: 'Nombre', sample: 'Juan', color: 'bg-blue-500/15 text-blue-700 border-blue-200' },
+  apellido: { label: 'Apellido', sample: 'Pérez', color: 'bg-blue-500/15 text-blue-700 border-blue-200' },
+  email: { label: 'Correo', sample: 'juan@correo.com', color: 'bg-violet-500/15 text-violet-700 border-violet-200' },
+  contrasena: { label: 'Contraseña', sample: '••••••••', color: 'bg-red-500/15 text-red-700 border-red-200' },
+  curso: { label: 'Curso', sample: 'Módulo PESV Básico', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-200' },
+  tarea: { label: 'Tarea', sample: 'Evaluación Final', color: 'bg-amber-500/15 text-amber-700 border-amber-200' },
+  calificacion: { label: 'Calificación', sample: '4.5', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-200' },
+  mensaje_aprobacion: { label: 'Resultado', sample: '¡Aprobado! Excelente trabajo.', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-200' },
+  emoji: { label: 'Emoji', sample: '🎓', color: 'bg-pink-500/15 text-pink-700 border-pink-200' },
+  enlace: { label: 'Enlace', sample: 'https://plataforma.com/...', color: 'bg-cyan-500/15 text-cyan-700 border-cyan-200' },
+  fecha: { label: 'Fecha', sample: '09/05/2026', color: 'bg-slate-500/15 text-slate-700 border-slate-200' },
+  modulo: { label: 'Módulo', sample: 'Módulo 1', color: 'bg-indigo-500/15 text-indigo-700 border-indigo-200' },
+  codigo: { label: 'Código', sample: 'CERT-2026-ABC', color: 'bg-orange-500/15 text-orange-700 border-orange-200' },
+};
+
+const DEFAULT_COLOR = 'bg-slate-500/15 text-slate-700 border-slate-200';
+
+function getVariableMeta(v: string) {
+  return VARIABLE_META[v] || { label: v.replace(/_/g, ' '), sample: `[${v}]`, color: DEFAULT_COLOR };
+}
+
+/**
+ * Renders a small pill/badge for a template variable.
+ */
+function VariablePill({ variable, size = 'sm' }: { variable: string; size?: 'sm' | 'md' }) {
+  const meta = getVariableMeta(variable);
+  const sizeClasses = size === 'md' ? 'text-xs px-2.5 py-1' : 'text-[10px] px-2 py-0.5';
+  return (
+    <span className={`inline-flex items-center gap-1 font-bold rounded-full border ${meta.color} ${sizeClasses} whitespace-nowrap`}>
+      <AtSign className={size === 'md' ? 'h-3 w-3' : 'h-2.5 w-2.5'} />
+      {meta.label}
+    </span>
+  );
+}
+
+/**
+ * Replaces {{variable}} in text with pill-badge HTML for preview rendering.
+ */
+function renderPreviewHtml(html: string, variables: string[]): string {
+  let result = html;
+  for (const v of variables) {
+    const meta = getVariableMeta(v);
+    const badge = `<span style="display:inline-flex;align-items:center;gap:2px;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:700;background:hsl(var(--primary) / 0.12);color:hsl(var(--primary));border:1px solid hsl(var(--primary) / 0.2)">${meta.sample}</span>`;
+    result = result.replace(new RegExp(`\\{\\{${v}\\}\\}`, 'g'), badge);
+  }
+  return result;
+}
+
+/**
+ * Renders a subject string replacing {{var}} with inline pill components.
+ */
+function SubjectWithPills({ text, variables }: { text: string; variables: string[] }) {
+  const parts: (string | { variable: string })[] = [];
+  let remaining = text;
+  const regex = /\{\{(\w+)\}\}/g;
+  let match;
+  let lastIndex = 0;
+
+  regex.lastIndex = 0;
+  while ((match = regex.exec(remaining)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(remaining.slice(lastIndex, match.index));
+    }
+    parts.push({ variable: match[1] });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < remaining.length) {
+    parts.push(remaining.slice(lastIndex));
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 flex-wrap">
+      {parts.map((part, i) =>
+        typeof part === 'string' ? (
+          <span key={i}>{part}</span>
+        ) : (
+          <VariablePill key={i} variable={part.variable} size="sm" />
+        )
+      )}
+    </span>
+  );
+}
+
+export { SubjectWithPills, VariablePill, getVariableMeta };
+
 export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel, isSaving }: MailTemplateEditorProps) {
   const [asunto, setAsunto] = useState(plantilla.asunto);
   const [cuerpoHtml, setCuerpoHtml] = useState(plantilla.cuerpo_html);
@@ -38,12 +128,21 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
 
   const variablesArray: string[] = JSON.parse(evento.variables || '[]');
 
+  const previewHtml = useMemo(() => renderPreviewHtml(cuerpoHtml, variablesArray), [cuerpoHtml, variablesArray]);
+  const previewAsunto = useMemo(() => {
+    let result = asunto;
+    for (const v of variablesArray) {
+      const meta = getVariableMeta(v);
+      result = result.replace(new RegExp(`\\{\\{${v}\\}\\}`, 'g'), meta.sample);
+    }
+    return result;
+  }, [asunto, variablesArray]);
+
   const handleSave = () => {
     onSave(plantilla.id, { asunto, cuerpo_html: cuerpoHtml });
   };
 
   const insertVariable = (variable: string) => {
-    // Basic append to HTML body (could be improved with cursor position if needed)
     setCuerpoHtml(prev => prev + ` {{${variable}}}`);
   };
 
@@ -61,7 +160,11 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setShowPreview(!showPreview)}
-            className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 rounded-lg text-sm font-bold transition-colors"
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+              showPreview 
+                ? 'bg-primary text-primary-foreground shadow-sm' 
+                : 'bg-muted hover:bg-muted/80'
+            }`}
           >
             {showPreview ? <><EyeOff className="h-4 w-4"/> Editar</> : <><Eye className="h-4 w-4"/> Previsualizar</>}
           </button>
@@ -111,13 +214,16 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
           {showPreview ? (
             <div className="flex-1">
               <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-                <Eye className="h-4 w-4"/> Vista Previa
+                <Sparkles className="h-4 w-4 text-amber-500"/> Vista Previa con Datos de Ejemplo
               </h3>
+              <p className="text-[11px] text-muted-foreground mb-4 leading-relaxed">
+                Así se verá el correo cuando llegue al destinatario. Las etiquetas se reemplazan automáticamente con datos reales.
+              </p>
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden text-slate-800">
                 <div className="bg-primary p-4 text-white font-bold text-sm">
-                  Asunto: {asunto || 'Sin Asunto'}
+                  Asunto: {previewAsunto || 'Sin Asunto'}
                 </div>
-                <div className="p-4 prose prose-sm max-w-none" dangerouslySetInnerHTML={sanitizeHTML(cuerpoHtml)} />
+                <div className="p-4 prose prose-sm max-w-none" dangerouslySetInnerHTML={sanitizeHTML(previewHtml)} />
               </div>
             </div>
           ) : (
@@ -127,28 +233,33 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
               </h3>
               <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-4">
                 <p className="text-xs text-foreground mb-1 font-bold">
-                  ¿Qué es esto?
+                  ¿Cómo funcionan?
                 </p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Haz clic en estos botones para añadir "etiquetas especiales" a tu correo. Al enviar el mensaje, el sistema reemplazará automáticamente la etiqueta por la información real de cada persona (por ejemplo, su nombre).
+                  Haz clic en una etiqueta para insertarla en el cuerpo del correo. Al enviar, el sistema reemplaza cada etiqueta con la información real del destinatario.
                 </p>
               </div>
               <div className="space-y-2">
-                {variablesArray.map(v => (
-                  <button 
-                    key={v}
-                    onClick={() => insertVariable(v)}
-                    className="w-full text-left p-3 bg-card border border-border/50 rounded-xl hover:border-primary hover:bg-primary/5 transition-all group flex flex-col gap-1 shadow-sm hover:shadow"
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="font-bold text-sm text-foreground capitalize">{v.replace(/_/g, ' ')}</span>
-                      <span className="text-[10px] uppercase font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                        Insertar
+                {variablesArray.map(v => {
+                  const meta = getVariableMeta(v);
+                  return (
+                    <button 
+                      key={v}
+                      onClick={() => insertVariable(v)}
+                      className="w-full text-left p-3 bg-card border border-border/50 rounded-xl hover:border-primary hover:bg-primary/5 transition-all group flex items-center gap-3 shadow-sm hover:shadow"
+                    >
+                      <VariablePill variable={v} size="md" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[11px] text-muted-foreground block truncate">
+                          Ej: {meta.sample}
+                        </span>
+                      </div>
+                      <span className="text-[10px] uppercase font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0">
+                        <Plus className="h-3 w-3" /> Insertar
                       </span>
-                    </div>
-                    <span className="text-xs text-muted-foreground font-mono opacity-50 group-hover:opacity-100 transition-opacity">{`{{${v}}}`}</span>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

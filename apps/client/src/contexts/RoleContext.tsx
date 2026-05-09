@@ -54,11 +54,18 @@ export function RoleProvider({ children }: { children: ReactNode }) {
               localStorage.setItem("lms_user", JSON.stringify(freshUser));
             }
           }).catch(err => {
-            // If 401 Unauthorized, the token is revoked or user deleted
+            // If 401 Unauthorized, check whether it's active revocation or simple expiry
             if (err.response?.status === 401) {
+              const msg = (err.response?.data?.message || '').toLowerCase();
+              const isActiveRevocation = msg.includes('revocada')
+                || msg.includes('eliminada')
+                || msg.includes('desactivada');
+
               logout();
               if (window.location.pathname !== '/login') {
-                window.location.href = '/login?revoked=true';
+                window.location.href = isActiveRevocation
+                  ? '/login?revoked=true'
+                  : '/login?expired=true';
               }
             }
           });
