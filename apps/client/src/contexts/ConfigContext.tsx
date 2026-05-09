@@ -180,17 +180,18 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       ${fontRule}
     `;
 
-    // ── Favicon ──
+    // ── Favicon (safe update — never remove React-managed nodes) ──
     const targetFavicon = cfg.favicon_url || `/favicon.ico?v=${Date.now()}`;
     
-    // Remove all existing icon links to force browser refresh
-    document.querySelectorAll("link[rel~='icon'], link[rel='shortcut icon'], link[rel='apple-touch-icon']").forEach(e => e.remove());
-    
-    // Create and append the new favicon link
-    const newLink = document.createElement('link');
-    newLink.rel = 'icon';
-    newLink.href = targetFavicon;
-    document.head.appendChild(newLink);
+    // Find or create a single managed favicon link (avoid removing React-controlled nodes)
+    let faviconLink = document.getElementById('lms-favicon') as HTMLLinkElement | null;
+    if (!faviconLink) {
+      faviconLink = document.createElement('link');
+      faviconLink.id = 'lms-favicon';
+      faviconLink.rel = 'icon';
+      document.head.appendChild(faviconLink);
+    }
+    faviconLink.href = targetFavicon;
   };
 
   const updateLocalTheme = (primary: string, secondary: string) => {
@@ -212,7 +213,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   const showToast = (message: string, type: 'success' | 'error') => {
     const existing = document.getElementById('lms-toast');
-    if (existing) existing.remove();
+    if (existing) existing.parentNode?.removeChild(existing);
 
     const toast = document.createElement('div');
     toast.id = 'lms-toast';
@@ -244,7 +245,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     setTimeout(() => {
       toast.style.opacity = '0';
       toast.style.transform = 'translateX(-50%) translateY(-20px)';
-      setTimeout(() => toast.remove(), 400);
+      setTimeout(() => toast.parentNode?.removeChild(toast), 400);
     }, 3000);
   };
 
