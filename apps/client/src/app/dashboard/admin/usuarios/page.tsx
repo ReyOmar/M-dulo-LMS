@@ -291,7 +291,8 @@ export default function BaseUsuarios() {
               onClick={() => setActiveTab('ADMINISTRADOR')}
             >
               <Shield className="h-4 w-4 text-red-500 shrink-0" />
-              <span className="hidden sm:inline">Admins</span> ({usuarios.filter((u) => u.rol === 'ADMINISTRADOR').length})
+              <span className="hidden sm:inline">Admins</span> (
+              {usuarios.filter((u) => u.rol === 'ADMINISTRADOR').length})
             </button>
             <button
               className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'PROFESOR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
