@@ -112,8 +112,8 @@ export default function BaseCorreos() {
     <div className="animate-in fade-in duration-700">
       <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Mail className="h-8 w-8 text-primary" />
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+            <Mail className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             Gestión de Correos
           </h1>
           <p className="text-muted-foreground mt-2">
@@ -154,7 +154,7 @@ export default function BaseCorreos() {
                     className="flex items-center justify-between p-3 bg-muted/20 border border-border/30 rounded-xl"
                   >
                     <div className="min-w-0">
-                      <p className="font-bold text-sm truncate">
+                      <p className="font-bold text-sm truncate overflow-hidden">
                         <SubjectWithPills text={plantilla.asunto} variables={JSON.parse(evento.variables || '[]')} />
                       </p>
                       <p className="text-xs text-muted-foreground truncate">{plantilla.nombre_interno}</p>

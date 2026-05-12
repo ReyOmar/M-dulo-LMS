@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { lms_estado_curso } from '@prisma/client';
 import { LmsGateway } from '../ws/lms.gateway';
+import { StorageService } from '../storage/storage.service';
 
 /**
  * CursosService — Core course management (CRUD, assignment, listing).
@@ -14,6 +15,7 @@ export class CursosService {
   constructor(
     private prisma: PrismaService,
     private lmsGateway: LmsGateway,
+    private storageService: StorageService,
   ) {}
 
   async getCursosActivosParaEstudiante() {
@@ -231,9 +233,29 @@ export class CursosService {
     if (curso.estado !== 'BORRADOR') {
       throw new BadRequestException('El curso debe estar en estado Borrador para realizar cambios.');
     }
+
+    // Clean up associated certificate PDFs from R2 before cascade delete
+    const certs = await this.prisma.lms_certificados.findMany({
+      where: { curso_guid: guid },
+      select: { archivo_pdf: true },
+    });
+    for (const cert of certs) {
+      if (cert.archivo_pdf) {
+        try {
+          await this.storageService.deleteFile(cert.archivo_pdf);
+          this.logger.log(`Deleted certificate file: ${cert.archivo_pdf}`);
+        } catch (err) {
+          this.logger.warn(`Failed to delete certificate file ${cert.archivo_pdf}: ${err.message}`);
+        }
+      }
+    }
+
     const result = await this.prisma.lms_cursos.delete({ where: { guid } });
     this.lmsGateway.broadcast('course:deleted', { guid });
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_deleted' });
+    if (certs.length > 0) {
+      this.logger.log(`Cleaned up ${certs.length} certificate(s) from R2 for course ${guid}`);
+    }
     return result;
   }
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Header } from '@nestjs/common';
 import { ConfiguracionService } from './configuracion.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -14,6 +14,7 @@ export class ConfiguracionController {
 
   @Public() // Theme/branding config is needed before login
   @Get()
+  @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
   getConfig() {
     return this.configuracionService.getConfig();
   }

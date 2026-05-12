@@ -34,7 +34,7 @@ import Link from 'next/link';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { UserSettingsModal } from '@/components/features/UserSettingsModal';
 import { useState, useRef, useEffect } from 'react';
-import api from '@/lib/api';
+import api, { API_BASE_URL, resolveFileUrl as resolveFile } from '@/lib/api';
 import { useWS } from '@/contexts/WebSocketContext';
 import { NotificationCenter } from '@/components/features/NotificationCenter';
 
@@ -219,13 +219,14 @@ export function Sidebar() {
             <>
               <div className="space-y-0.5 mb-7">
                 <p className="sidebar-section-label">Gestión de Evaluaciones</p>
-                <Link prefetch={true} href="/dashboard" className={linkClass('/dashboard')}>
+                <Link prefetch={true} href="/dashboard" className={linkClass('/dashboard')} onClick={() => setMobileOpen(false)}>
                   <Presentation className="h-4 w-4 shrink-0" /> Asignaciones
                 </Link>
                 <Link
                   prefetch={true}
                   href="/dashboard/examiner/monitoreo"
                   className={linkClass('/dashboard/examiner/monitoreo')}
+                  onClick={() => setMobileOpen(false)}
                 >
                   <Users className="h-4 w-4 shrink-0" /> Monitoreo de Estudiantes
                 </Link>
@@ -233,6 +234,7 @@ export function Sidebar() {
                   prefetch={true}
                   href="/dashboard/examiner/pruebas"
                   className={linkClass('/dashboard/examiner/pruebas')}
+                  onClick={() => setMobileOpen(false)}
                 >
                   <ClipboardCheck className="h-4 w-4 shrink-0" /> Monitoreo de Pruebas
                 </Link>
@@ -240,6 +242,7 @@ export function Sidebar() {
                   prefetch={true}
                   href="/dashboard/examiner/calificaciones"
                   className={linkClass('/dashboard/examiner/calificaciones')}
+                  onClick={() => setMobileOpen(false)}
                 >
                   <BookCheck className="h-4 w-4 shrink-0" /> Calificación Manual
                 </Link>
@@ -247,10 +250,11 @@ export function Sidebar() {
                   prefetch={true}
                   href="/dashboard/examiner/firma"
                   className={linkClass('/dashboard/examiner/firma')}
+                  onClick={() => setMobileOpen(false)}
                 >
                   <FileSignature className="h-4 w-4 shrink-0" /> Mi Firma
                 </Link>
-                <Link prefetch={true} href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')}>
+                <Link prefetch={true} href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')} onClick={() => setMobileOpen(false)}>
                   <MessageSquare className="h-4 w-4 shrink-0" />
                   <span>Mensajes</span>
                   {unreadMessagesCount > 0 && !pathname.startsWith('/dashboard/mensajes') && (
@@ -260,16 +264,6 @@ export function Sidebar() {
                   )}
                 </Link>
               </div>
-              <div className="space-y-0.5 mb-7">
-                <p className="sidebar-section-label">Construcción</p>
-                <Link
-                  prefetch={true}
-                  href="/dashboard/constructor-cursos"
-                  className={linkClass('/dashboard/constructor-cursos')}
-                >
-                  <BookOpen className="h-4 w-4 shrink-0" /> Gestión de Cursos
-                </Link>
-              </div>
             </>
           )}
 
@@ -277,20 +271,21 @@ export function Sidebar() {
           {role === 'student' && (
             <div className="space-y-0.5 mb-7">
               <p className="sidebar-section-label">Área de Aprendizaje</p>
-              <Link prefetch={true} href="/dashboard" className={linkClass('/dashboard')}>
+              <Link prefetch={true} href="/dashboard" className={linkClass('/dashboard')} onClick={() => setMobileOpen(false)}>
                 <Compass className="h-4 w-4 shrink-0" /> Mi Tablero
               </Link>
-              <Link prefetch={true} href="/dashboard/student/cursos" className={linkClass('/dashboard/student/cursos')}>
+              <Link prefetch={true} href="/dashboard/student/cursos" className={linkClass('/dashboard/student/cursos')} onClick={() => setMobileOpen(false)}>
                 <BookOpen className="h-4 w-4 shrink-0" /> Mis Cursos Activos
               </Link>
               <Link
                 prefetch={true}
                 href="/dashboard/student/certificados"
                 className={linkClass('/dashboard/student/certificados')}
+                onClick={() => setMobileOpen(false)}
               >
                 <Award className="h-4 w-4 shrink-0" /> Mis Certificados PDF
               </Link>
-              <Link prefetch={true} href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')}>
+              <Link prefetch={true} href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')} onClick={() => setMobileOpen(false)}>
                 <MessageSquare className="h-4 w-4 shrink-0" />
                 <span>Mensajes</span>
                 {unreadMessagesCount > 0 && !pathname.startsWith('/dashboard/mensajes') && (
@@ -307,7 +302,7 @@ export function Sidebar() {
             <>
               <div className="space-y-0.5 mb-6">
                 <p className="sidebar-section-label">Visión Global</p>
-                <Link prefetch={true} href="/dashboard" className={linkClass('/dashboard')}>
+                <Link prefetch={true} href="/dashboard" className={linkClass('/dashboard')} onClick={() => setMobileOpen(false)}>
                   <BarChart3 className="h-4 w-4 shrink-0" /> Panel Administrativo
                 </Link>
               </div>
@@ -318,6 +313,7 @@ export function Sidebar() {
                   prefetch={true}
                   href="/dashboard/constructor-cursos"
                   className={linkClass('/dashboard/constructor-cursos')}
+                  onClick={() => setMobileOpen(false)}
                 >
                   <BookOpen className="h-4 w-4 shrink-0" /> Gestión de Cursos
                 </Link>
@@ -325,6 +321,7 @@ export function Sidebar() {
                   prefetch={true}
                   href="/dashboard/admin/asignacion-cursos"
                   className={linkClass('/dashboard/admin/asignacion-cursos')}
+                  onClick={() => setMobileOpen(false)}
                 >
                   <ClipboardList className="h-4 w-4 shrink-0" /> Asignación de Cursos
                 </Link>
@@ -336,6 +333,7 @@ export function Sidebar() {
                   prefetch={true}
                   href="/dashboard/admin/usuarios"
                   className={linkClass('/dashboard/admin/usuarios')}
+                  onClick={() => setMobileOpen(false)}
                 >
                   <Users className="h-4 w-4 shrink-0" /> Base de Usuarios
                 </Link>
@@ -343,6 +341,7 @@ export function Sidebar() {
                   prefetch={true}
                   href="/dashboard/admin/solicitudes"
                   className={linkClass('/dashboard/admin/solicitudes')}
+                  onClick={() => setMobileOpen(false)}
                 >
                   <ShieldAlert className="h-4 w-4 shrink-0" />
                   <span>Solicitudes</span>
@@ -356,20 +355,22 @@ export function Sidebar() {
                   prefetch={true}
                   href="/dashboard/admin/certificados-config"
                   className={linkClass('/dashboard/admin/certificados-config')}
+                  onClick={() => setMobileOpen(false)}
                 >
                   <FileSignature className="h-4 w-4 shrink-0" /> Certificados
                 </Link>
-                <Link prefetch={true} href="/dashboard/admin/tema" className={linkClass('/dashboard/admin/tema')}>
+                <Link prefetch={true} href="/dashboard/admin/tema" className={linkClass('/dashboard/admin/tema')} onClick={() => setMobileOpen(false)}>
                   <Palette className="h-4 w-4 shrink-0" /> Tema y Apariencia
                 </Link>
                 <Link
                   prefetch={true}
                   href="/dashboard/admin/landing-config"
                   className={linkClass('/dashboard/admin/landing-config')}
+                  onClick={() => setMobileOpen(false)}
                 >
                   <Globe className="h-4 w-4 shrink-0" /> Landing Page
                 </Link>
-                <Link prefetch={true} href="/dashboard/admin/correos" className={linkClass('/dashboard/admin/correos')}>
+                <Link prefetch={true} href="/dashboard/admin/correos" className={linkClass('/dashboard/admin/correos')} onClick={() => setMobileOpen(false)}>
                   <Mail className="h-4 w-4 shrink-0" /> Correos y Eventos
                 </Link>
               </div>
@@ -385,6 +386,7 @@ export function Sidebar() {
               <button
                 onClick={() => {
                   setShowUserMenu(false);
+                  setMobileOpen(false);
                   setShowSettings(true);
                 }}
                 className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
@@ -409,8 +411,26 @@ export function Sidebar() {
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center gap-3 overflow-hidden flex-1 rounded-xl px-2 py-2 hover:bg-muted/50 transition-colors group"
             >
-              <div className="h-9 w-9 shrink-0 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shadow-sm">
-                {initials}
+              <div className="h-9 w-9 shrink-0 rounded-xl overflow-hidden shadow-sm">
+                {user?.foto_url ? (
+                  <img
+                    src={resolveFile(user.foto_url) || ''}
+                    alt={`${userName} ${userLastName}`}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      img.style.display = 'none';
+                      const fallback = img.nextElementSibling;
+                      if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <div
+                  className="h-full w-full bg-primary text-primary-foreground items-center justify-center font-bold text-sm"
+                  style={{ display: user?.foto_url ? 'none' : 'flex' }}
+                >
+                  {initials}
+                </div>
               </div>
               <div className="truncate flex-1 text-left">
                 <p className="text-sm font-semibold leading-none">

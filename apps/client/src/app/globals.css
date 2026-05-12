@@ -230,6 +230,11 @@
   100% { background-position: 200% 0; }
 }
 
+@keyframes pageLoaderShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 @keyframes pulseGlow {
   0%, 100% {
     box-shadow: 0 0 4px currentColor;

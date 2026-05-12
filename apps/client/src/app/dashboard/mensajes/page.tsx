@@ -196,7 +196,6 @@ export default function MensajesPage() {
   // Search for users in the same courses
   const handleSearch = async (term: string) => {
     setUserSearch(term);
-    if (term.length < 2) { setSearchResults([]); return; }
     setSearching(true);
     try {
       const res = await api.get(`/notificaciones/chat/buscar?q=${encodeURIComponent(term)}`);
@@ -259,8 +258,8 @@ export default function MensajesPage() {
   return (
     <div className="animate-in fade-in duration-500 h-[calc(100vh-6rem)]">
       <header className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <MessageSquare className="h-8 w-8 text-primary" />
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+          <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
           Mensajes
         </h1>
         <p className="text-muted-foreground mt-1.5">Comunicación exclusiva entre participantes del curso.</p>
@@ -283,7 +282,7 @@ export default function MensajesPage() {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => { setShowNewChat(true); setShowRequests(false); }}
+                onClick={() => { setShowNewChat(true); setShowRequests(false); handleSearch(''); }}
                 className="flex-1 bg-primary text-white rounded-xl py-2.5 text-sm font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
               >
                 <UserPlus className="h-4 w-4" /> Nuevo Contacto
@@ -366,10 +365,8 @@ export default function MensajesPage() {
                   <div className="flex items-center justify-center py-4">
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   </div>
-                ) : userSearch.length < 2 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">Escribe al menos 2 caracteres para buscar.</p>
                 ) : searchResults.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">No se encontraron usuarios en tus cursos.</p>
+                  <p className="text-xs text-muted-foreground text-center py-3">No se encontraron participantes en tus cursos. Verifica que estés inscrito o asignado a un curso.</p>
                 ) : (
                   searchResults.map(u => (
                     <div
@@ -526,7 +523,7 @@ export default function MensajesPage() {
                     onChange={e => setNewMsg(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                     placeholder="Escribe un mensaje..."
-                    className="flex-1 bg-muted/50 border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                    className="flex-1 bg-muted/50 border border-border rounded-xl px-4 py-3 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                     disabled={sending}
                   />
                   <button

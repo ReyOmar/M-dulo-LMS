@@ -243,18 +243,18 @@ export default function AsignacionCursosPage() {
 
   return (
     <div className="animate-in fade-in duration-700 max-w-7xl mx-auto">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-          <BookMarked className="h-8 w-8 text-primary" /> Gestión de Asignaciones
+      <header className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+          <BookMarked className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /> Gestión de Asignaciones
         </h1>
         <p className="text-muted-foreground mt-1">
           Selecciona un curso para matricular estudiantes o asignar un examinador.
         </p>
       </header>
 
-      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-14rem)]">
+      <div className="flex flex-col lg:flex-row gap-6 min-h-[calc(100vh-14rem)] lg:h-[calc(100vh-14rem)]">
         {/* = = = = = LEFT PANEL: COURSE LIST = = = = = */}
-        <div className="w-full lg:w-[350px] shrink-0 bg-card border border-border shadow-sm rounded-3xl flex flex-col overflow-hidden">
+        <div className={`w-full lg:w-[350px] shrink-0 bg-card border border-border shadow-sm rounded-3xl flex flex-col overflow-hidden ${selectedCursoId ? 'hidden lg:flex' : 'flex'}`}>
           <div className="p-5 border-b border-border/50 bg-muted/20">
             <h2 className="font-bold text-lg flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" /> Directorio de Cursos
@@ -362,6 +362,12 @@ export default function AsignacionCursosPage() {
             <div className="flex-1 flex flex-col h-full animate-in fade-in zoom-in-95 duration-300">
               {/* Header & Tabs */}
               <div className="p-6 border-b border-border bg-gradient-to-br from-card to-muted/20 shrink-0">
+                <button
+                  onClick={() => setSelectedCursoId('')}
+                  className="lg:hidden flex items-center gap-2 text-sm font-bold text-primary mb-3 hover:underline"
+                >
+                  <ChevronRight className="h-4 w-4 rotate-180" /> Volver a cursos
+                </button>
                 <h2 className="text-2xl font-bold text-foreground mb-1">{cursoSeleccionado.titulo}</h2>
                 <p className="text-sm text-muted-foreground mb-6">Gestiona quién participa en este curso.</p>
 
@@ -444,7 +450,7 @@ export default function AsignacionCursosPage() {
                                   </div>
                                   <button
                                     onClick={() => desmatricularEstudiante(u?.guid)}
-                                    className="p-2 shrink-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                    className="p-2 shrink-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors lg:opacity-0 lg:group-hover:opacity-100"
                                     title="Desmatricular"
                                   >
                                     <UserMinus className="h-4 w-4" />

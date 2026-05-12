@@ -63,6 +63,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const retryCountRef = useRef(0);
   const debounceTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const isRevokedRef = useRef(false);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) return;
@@ -92,6 +93,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         // Handle system-level events automatically
         if (event === 'session:revoked') {
           console.warn('⚠️ Sesión revocada por el servidor:', data?.reason);
+          // Set revocation flag to prevent auto-reconnect loop
+          isRevokedRef.current = true;
           localStorage.removeItem('lms_token');
           localStorage.removeItem('lms_user');
 
@@ -179,9 +182,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       setIsConnected(false);
       wsRef.current = null;
 
-      // If code is 4004 (session revoked), do not reconnect automatically as guest immediately,
-      // wait until login redirect happens to avoid loop.
-      if (event.code === 4004) return;
+      // If code is 4004 (session revoked) or if revoked flag is set, do not reconnect
+      if (event.code === 4004 || isRevokedRef.current) return;
 
       // Exponential backoff for reconnection
       const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000);
@@ -224,7 +226,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     // Check periodically to ensure connection
     const connectionCheck = setInterval(() => {
-      if (!wsRef.current) {
+      if (!wsRef.current && !isRevokedRef.current) {
         connect();
       }
     }, 10000);

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Patch, ForbiddenException, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Patch, ForbiddenException, Delete, BadRequestException, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { UserService } from './user.service';
@@ -110,6 +110,12 @@ export class AuthController {
     return this.userService.deleteUser(guid, currentUser?.sub);
   }
 
+  @Roles('ADMINISTRADOR')
+  @Post('usuarios/crear')
+  async createUser(@Body() body: { nombre: string; apellido: string; email: string; rol: string; contrasena_temporal: string }) {
+    return this.userService.createUser(body);
+  }
+
   // ── Access request management ──
 
   @Roles('ADMINISTRADOR')
@@ -132,5 +138,53 @@ export class AuthController {
     const result = await this.authService.rejectRequest(parseInt(id, 10));
     this.authService.notifyRequestResolved('rejected', { id: parseInt(id, 10) });
     return result;
+  }
+
+  // ── Profile photo management (Fastify multipart) ──
+
+  @Post('perfil/:guid/foto')
+  async uploadPhoto(
+    @Param('guid') guid: string,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: any,
+  ) {
+    if (user && user.sub !== guid && user.role !== 'ADMINISTRADOR') {
+      throw new ForbiddenException('No tienes permiso para modificar este perfil.');
+    }
+    const data = await req.file();
+    if (!data) throw new BadRequestException('No se recibió ningún archivo.');
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of data.file) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+    if (buffer.length === 0) throw new BadRequestException('El archivo está vacío.');
+
+    return this.userService.uploadProfilePhoto(guid, buffer, data.filename || 'avatar.png');
+  }
+
+  @Delete('perfil/:guid/foto')
+  async deletePhoto(@Param('guid') guid: string, @CurrentUser() user: JwtPayload) {
+    if (user && user.sub !== guid && user.role !== 'ADMINISTRADOR') {
+      throw new ForbiddenException('No tienes permiso para modificar este perfil.');
+    }
+    return this.userService.deleteProfilePhoto(guid);
+  }
+
+  // ── Email verification (for access requests) ──
+
+  @Public()
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
+  @Post('verificar-email')
+  async verifyEmail(@Body() body: { email: string }) {
+    return this.authService.sendEmailVerification(body.email);
+  }
+
+  @Public()
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  @Post('confirmar-email')
+  async confirmEmail(@Body() body: { email: string; codigo: string }) {
+    return this.authService.confirmEmailVerification(body.email, body.codigo);
   }
 }

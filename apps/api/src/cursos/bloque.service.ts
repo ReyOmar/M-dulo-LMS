@@ -5,48 +5,37 @@ import { lms_tipo_recurso } from '@prisma/client';
 /**
  * BloqueService — Manages course content blocks (recursos) and modules.
  * Extracted from CursosService to follow Single Responsibility Principle.
+ *
+ * Performance: Validation helpers use combined queries to minimize round-trips.
  */
 @Injectable()
 export class BloqueService {
   constructor(private prisma: PrismaService) {}
 
-  /** Helper: ensures the course is in BORRADOR before allowing mutations */
-  async ensureDraft(curso_guid: string): Promise<void> {
-    const curso = await this.prisma.lms_cursos.findUnique({ where: { guid: curso_guid }, select: { estado: true } });
+  /**
+   * Combined validation: checks course exists, is BORRADOR, and ownership in ONE query.
+   * Replaces the old 3-query pattern (ensureDraft + ensureOwnership + find).
+   */
+  private assertDraftAndOwnership(
+    curso: { estado: string; profesor_guid: string } | null,
+    requestUser?: any,
+  ): void {
     if (!curso) throw new NotFoundException('Curso no encontrado');
     if (curso.estado !== 'BORRADOR') {
       throw new BadRequestException('El curso debe estar en estado Borrador para realizar cambios.');
     }
-  }
-
-  /** Helper: ensures PROFESOR owns the course (admin bypasses) */
-  async ensureOwnership(curso_guid: string, requestUser?: any): Promise<void> {
-    if (!requestUser || requestUser.role !== 'PROFESOR') return; // Admin bypass
-    const curso = await this.prisma.lms_cursos.findUnique({
-      where: { guid: curso_guid },
-      select: { profesor_guid: true },
-    });
-    if (!curso) throw new NotFoundException('Curso no encontrado');
-    if (curso.profesor_guid !== requestUser.sub) {
+    if (requestUser?.role === 'PROFESOR' && curso.profesor_guid !== requestUser.sub) {
       throw new BadRequestException('Solo puedes modificar cursos asignados a ti.');
     }
   }
 
-  /** Helper: gets the curso_guid from a resource guid */
-  async getCursoGuidFromRecurso(recurso_guid: string): Promise<string> {
-    const recurso = await this.prisma.lms_recursos.findUnique({
-      where: { guid: recurso_guid },
-      select: { leccion: { select: { modulo: { select: { curso_guid: true } } } } },
-    });
-    if (!recurso) throw new NotFoundException('Recurso no encontrado');
-    return recurso.leccion.modulo.curso_guid;
-  }
-
   async createModuloParaCurso(curso_guid: string, data: { titulo: string; orden?: number }, requestUser?: any) {
-    const curso = await this.prisma.lms_cursos.findUnique({ where: { guid: curso_guid } });
-    if (!curso) throw new NotFoundException('Curso no encontrado');
-    await this.ensureOwnership(curso_guid, requestUser);
-    await this.ensureDraft(curso_guid);
+    // Single query: fetch course + validate
+    const curso = await this.prisma.lms_cursos.findUnique({
+      where: { guid: curso_guid },
+      select: { estado: true, profesor_guid: true },
+    });
+    this.assertDraftAndOwnership(curso, requestUser);
 
     const orden = data.orden ?? (await this.prisma.lms_modulos.count({ where: { curso_guid } }));
 
@@ -64,13 +53,14 @@ export class BloqueService {
   }
 
   async updateModulo(modulo_guid: string, data: { titulo: string }, requestUser?: any) {
+    // Single query: fetch module + course state + ownership
     const modulo = await this.prisma.lms_modulos.findUnique({
       where: { guid: modulo_guid },
-      select: { curso_guid: true },
+      select: { curso_guid: true, curso: { select: { estado: true, profesor_guid: true } } },
     });
     if (!modulo) throw new NotFoundException('Módulo no encontrado');
-    await this.ensureOwnership(modulo.curso_guid, requestUser);
-    await this.ensureDraft(modulo.curso_guid);
+    this.assertDraftAndOwnership(modulo.curso, requestUser);
+
     return this.prisma.lms_modulos.update({
       where: { guid: modulo_guid },
       data: { titulo: data.titulo },
@@ -90,14 +80,18 @@ export class BloqueService {
     data: { tipo: lms_tipo_recurso; contenido_html?: string; titulo?: string },
     requestUser?: any,
   ) {
+    // Single query: fetch module + lessons + course validation data
     const modulo = await this.prisma.lms_modulos.findUnique({
       where: { guid: modulo_guid },
-      include: { lecciones: true },
+      include: {
+        lecciones: { select: { guid: true }, take: 1, orderBy: { orden: 'asc' } },
+        curso: { select: { estado: true, profesor_guid: true } },
+      },
     });
 
     if (!modulo) throw new NotFoundException('Módulo no encontrado');
-    await this.ensureOwnership(modulo.curso_guid, requestUser);
-    await this.ensureDraft(modulo.curso_guid);
+    this.assertDraftAndOwnership(modulo.curso, requestUser);
+
     if (!modulo.lecciones || modulo.lecciones.length === 0) {
       throw new BadRequestException('Módulo corrupto sin lección interna base.');
     }
@@ -131,9 +125,17 @@ export class BloqueService {
     },
     requestUser?: any,
   ) {
-    const cursoGuid = await this.getCursoGuidFromRecurso(guid);
-    await this.ensureOwnership(cursoGuid, requestUser);
-    await this.ensureDraft(cursoGuid);
+    // Single query: fetch resource + course state via joins
+    const recurso = await this.prisma.lms_recursos.findUnique({
+      where: { guid },
+      select: {
+        guid: true,
+        leccion: { select: { modulo: { select: { curso: { select: { estado: true, profesor_guid: true } } } } } },
+      },
+    });
+    if (!recurso) throw new NotFoundException('Recurso no encontrado');
+    this.assertDraftAndOwnership(recurso.leccion.modulo.curso, requestUser);
+
     return this.prisma.lms_recursos.update({
       where: { guid },
       data: {
@@ -150,22 +152,34 @@ export class BloqueService {
   }
 
   async deleteBloque(guid: string, requestUser?: any) {
-    const cursoGuid = await this.getCursoGuidFromRecurso(guid);
-    await this.ensureOwnership(cursoGuid, requestUser);
-    await this.ensureDraft(cursoGuid);
+    // Single query: fetch resource + course state via joins
+    const recurso = await this.prisma.lms_recursos.findUnique({
+      where: { guid },
+      select: {
+        guid: true,
+        leccion: { select: { modulo: { select: { curso: { select: { estado: true, profesor_guid: true } } } } } },
+      },
+    });
+    if (!recurso) throw new NotFoundException('Recurso no encontrado');
+    this.assertDraftAndOwnership(recurso.leccion.modulo.curso, requestUser);
+
     return this.prisma.lms_recursos.delete({ where: { guid } });
   }
 
   async reorderBloques(modulo_guid: string, recursos_guids: string[], requestUser?: any) {
+    // Single query: module + course validation
     const modulo = await this.prisma.lms_modulos.findUnique({
       where: { guid: modulo_guid },
-      include: { lecciones: true },
+      select: {
+        curso_guid: true,
+        curso: { select: { estado: true, profesor_guid: true } },
+        lecciones: { select: { guid: true }, take: 1 },
+      },
     });
     if (!modulo || !modulo.lecciones || modulo.lecciones.length === 0) {
       throw new NotFoundException('Módulo o lección no encontrada.');
     }
-    await this.ensureOwnership(modulo.curso_guid, requestUser);
-    await this.ensureDraft(modulo.curso_guid);
+    this.assertDraftAndOwnership(modulo.curso, requestUser);
 
     const queries = recursos_guids.map((guid, index) => {
       return this.prisma.lms_recursos.update({
@@ -178,10 +192,14 @@ export class BloqueService {
   }
 
   async deleteModulo(guid: string, requestUser?: any) {
-    const modulo = await this.prisma.lms_modulos.findUnique({ where: { guid }, select: { curso_guid: true } });
+    // Single query: module + course validation
+    const modulo = await this.prisma.lms_modulos.findUnique({
+      where: { guid },
+      select: { curso_guid: true, curso: { select: { estado: true, profesor_guid: true } } },
+    });
     if (!modulo) throw new NotFoundException('Módulo no encontrado');
-    await this.ensureOwnership(modulo.curso_guid, requestUser);
-    await this.ensureDraft(modulo.curso_guid);
+    this.assertDraftAndOwnership(modulo.curso, requestUser);
+
     return this.prisma.lms_modulos.delete({ where: { guid } });
   }
 }

@@ -14,6 +14,10 @@ import {
   ShieldAlert,
   Clock,
   Monitor,
+  CheckCircle2,
+  Send,
+  Loader2,
+  Home,
 } from 'lucide-react';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -47,18 +51,27 @@ export default function LoginPage() {
   const [successMsg, setSuccessMsg] = useState('');
   const { showAlert, showToast } = useAlert();
 
+  // Email verification state
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationStep, setVerificationStep] = useState<'email' | 'code' | 'form'>('email');
+  const [codeSending, setCodeSending] = useState(false);
+  const [codeVerifying, setCodeVerifying] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+
   useEffect(() => {
-    if (searchParams?.get('revoked') === 'true') {
-      setView('REVOKED');
-      router.replace('/login');
-    } else if (searchParams?.get('displaced') === 'true') {
-      setView('DISPLACED');
-      router.replace('/login');
-    } else if (searchParams?.get('expired') === 'true') {
-      setView('EXPIRED');
-      router.replace('/login');
+    const revoked = searchParams?.get('revoked') === 'true';
+    const displaced = searchParams?.get('displaced') === 'true';
+    const expired = searchParams?.get('expired') === 'true';
+
+    if (revoked || displaced || expired) {
+      if (revoked) setView('REVOKED');
+      else if (displaced) setView('DISPLACED');
+      else if (expired) setView('EXPIRED');
+      // Clean the URL params so a page refresh won't re-trigger
+      window.history.replaceState({}, '', '/login');
     }
-  }, [searchParams, router]);
+  }, [searchParams]);
 
   const handleGoToLogin = () => {
     setEmail('');
@@ -177,6 +190,51 @@ export default function LoginPage() {
     }
   };
 
+  const handleSendVerification = async () => {
+    if (!email || !email.includes('@')) {
+      setErrorMsg('Ingresa un correo electrónico válido.');
+      return;
+    }
+    setCodeSending(true);
+    setErrorMsg('');
+    try {
+      await api.post('/auth/verificar-email', { email });
+      setVerificationStep('code');
+      setSuccessMsg('Código enviado. Revisa tu bandeja de entrada.');
+      setCountdown(60);
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.message || 'Error al enviar el código.');
+    } finally {
+      setCodeSending(false);
+    }
+  };
+
+  const handleConfirmCode = async () => {
+    if (verificationCode.length !== 6) {
+      setErrorMsg('Ingresa el código de 6 dígitos.');
+      return;
+    }
+    setCodeVerifying(true);
+    setErrorMsg('');
+    try {
+      await api.post('/auth/confirmar-email', { email, codigo: verificationCode });
+      setEmailVerified(true);
+      setVerificationStep('form');
+      setSuccessMsg('¡Correo verificado!');
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.message || 'Código inválido.');
+    } finally {
+      setCodeVerifying(false);
+    }
+  };
+
+  // Countdown timer for resend
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
   if (redirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30">
@@ -190,7 +248,7 @@ export default function LoginPage() {
       {/* Dynamic Background - custom image or abstract blobs */}
       {config?.login_fondo_url ? (
         <img
-          src={config.login_fondo_url}
+          src={resolveFileUrl(config.login_fondo_url) || ''}
           alt=""
           className="absolute inset-0 w-full h-full object-cover z-0 opacity-100"
         />
@@ -351,71 +409,173 @@ export default function LoginPage() {
 
         {/* ===================== VIEW: REQUEST ACCESS ===================== */}
         {view === 'REQUEST_ACCESS' && (
-          <form onSubmit={handleRequestAccess} className="space-y-4 animate-in fade-in">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-muted-foreground">Nombre</label>
-                <input
-                  type="text"
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  required
-                  className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary"
-                />
+          <div className="space-y-4 animate-in fade-in">
+            {/* Step indicator */}
+            <div className="flex items-center gap-2 mb-2">
+              {['email', 'code', 'form'].map((step, i) => (
+                <div key={step} className="flex items-center gap-2">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                    verificationStep === step
+                      ? 'bg-primary text-primary-foreground scale-110'
+                      : (i < ['email', 'code', 'form'].indexOf(verificationStep))
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {i < ['email', 'code', 'form'].indexOf(verificationStep)
+                      ? <CheckCircle2 className="h-4 w-4" />
+                      : i + 1}
+                  </div>
+                  {i < 2 && <div className={`w-8 h-0.5 rounded transition-colors ${i < ['email', 'code', 'form'].indexOf(verificationStep) ? 'bg-emerald-500' : 'bg-muted'}`} />}
+                </div>
+              ))}
+              <span className="text-xs text-muted-foreground ml-auto">
+                {verificationStep === 'email' ? 'Verificar correo' : verificationStep === 'code' ? 'Ingresar código' : 'Completar solicitud'}
+              </span>
+            </div>
+
+            {/* Step 1: Email */}
+            {verificationStep === 'email' && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-muted-foreground">Correo Electrónico</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="correo@ejemplo.com"
+                    className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleGoToLogin}
+                    className="h-10 px-4 text-xs font-bold text-muted-foreground rounded-lg border border-border hover:bg-muted"
+                  >
+                    Volver
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSendVerification}
+                    disabled={codeSending || !email}
+                    className="flex-1 h-10 rounded-lg bg-primary text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-70 flex items-center justify-center gap-2"
+                  >
+                    {codeSending ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</> : <><Send className="h-4 w-4" /> Verificar Correo</>}
+                  </button>
+                </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-muted-foreground">Apellido</label>
-                <input
-                  type="text"
-                  value={apellido}
-                  onChange={(e) => setApellido(e.target.value)}
-                  required
-                  className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary"
-                />
+            )}
+
+            {/* Step 2: Code */}
+            {verificationStep === 'code' && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 text-center">
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                    Enviamos un código de 6 dígitos a <strong>{email}</strong>
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-muted-foreground">Código de Verificación</label>
+                  <input
+                    type="text"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    maxLength={6}
+                    className="w-full h-12 rounded-lg border border-input text-center text-2xl font-mono font-bold tracking-[0.5em] focus-visible:ring-2 focus-visible:ring-primary"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setVerificationStep('email'); setErrorMsg(''); setSuccessMsg(''); }}
+                    className="h-10 px-4 text-xs font-bold text-muted-foreground rounded-lg border border-border hover:bg-muted"
+                  >
+                    Cambiar correo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmCode}
+                    disabled={codeVerifying || verificationCode.length !== 6}
+                    className="flex-1 h-10 rounded-lg bg-primary text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-70 flex items-center justify-center gap-2"
+                  >
+                    {codeVerifying ? <><Loader2 className="h-4 w-4 animate-spin" /> Verificando...</> : <><CheckCircle2 className="h-4 w-4" /> Confirmar Código</>}
+                  </button>
+                </div>
+                <div className="text-center">
+                  {countdown > 0 ? (
+                    <span className="text-xs text-muted-foreground">Reenviar en {countdown}s</span>
+                  ) : (
+                    <button type="button" onClick={handleSendVerification} disabled={codeSending} className="text-xs text-primary font-bold hover:underline">
+                      Reenviar código
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-muted-foreground">Correo Electrónico a Validar</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary"
-              />
-            </div>
+            {/* Step 3: Full form */}
+            {verificationStep === 'form' && (
+              <form onSubmit={handleRequestAccess} className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400"><strong>{email}</strong> verificado correctamente</p>
+                </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-muted-foreground">Cargo Pedido (Para Asignaciones)</label>
-              <select
-                value={rolPedido}
-                onChange={(e) => setRolPedido(e.target.value)}
-                className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary bg-background"
-              >
-                <option value="ESTUDIANTE">Capacitante</option>
-                <option value="PROFESOR">Examinador</option>
-                <option value="ADMINISTRADOR">Administrador</option>
-              </select>
-            </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-muted-foreground">Nombre</label>
+                    <input
+                      type="text"
+                      value={nombre}
+                      onChange={(e) => setNombre(e.target.value)}
+                      required
+                      className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-muted-foreground">Apellido</label>
+                    <input
+                      type="text"
+                      value={apellido}
+                      onChange={(e) => setApellido(e.target.value)}
+                      required
+                      className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary"
+                    />
+                  </div>
+                </div>
 
-            <div className="flex gap-2 mt-6">
-              <button
-                type="button"
-                onClick={handleGoToLogin}
-                className="h-10 px-4 text-xs font-bold text-muted-foreground rounded-lg border border-border hover:bg-muted"
-              >
-                Cerrar
-              </button>
-              <button
-                type="submit"
-                disabled={loading || rateLimited}
-                className="flex-1 h-10 rounded-lg bg-primary text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-70"
-              >
-                {loading ? 'Elevando Petición...' : rateLimited ? 'Bloqueado Temporalmente' : 'Solicitar a Prevención'}
-              </button>
-            </div>
-          </form>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-muted-foreground">Cargo Pedido (Para Asignaciones)</label>
+                  <select
+                    value={rolPedido}
+                    onChange={(e) => setRolPedido(e.target.value)}
+                    className="w-full h-10 rounded-lg border border-input pl-3 text-sm focus-visible:ring-2 focus-visible:ring-primary bg-background"
+                  >
+                    <option value="ESTUDIANTE">Capacitante</option>
+                    <option value="PROFESOR">Examinador</option>
+                  </select>
+                </div>
+
+                <div className="flex gap-2 mt-6">
+                  <button
+                    type="button"
+                    onClick={handleGoToLogin}
+                    className="h-10 px-4 text-xs font-bold text-muted-foreground rounded-lg border border-border hover:bg-muted"
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading || rateLimited}
+                    className="flex-1 h-10 rounded-lg bg-primary text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-70"
+                  >
+                    {loading ? 'Elevando Petición...' : rateLimited ? 'Bloqueado Temporalmente' : 'Solicitar a Prevención'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         )}
 
         {/* ===================== VIEW: SUCCESS REQUEST ===================== */}
@@ -508,6 +668,12 @@ export default function LoginPage() {
             >
               <User className="h-4 w-4" /> Registrar Petición de Monitoreo
             </button>
+            <a
+              href="/"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 mt-1"
+            >
+              <Home className="h-3.5 w-3.5" /> Volver al Inicio
+            </a>
           </div>
         )}
       </div>

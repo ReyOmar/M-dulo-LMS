@@ -84,8 +84,25 @@ export default function AssignmentPlayer({
         return unsub;
     }, [recurso_guid, subscribe]);
 
+    const ALLOWED_EXTENSIONS = [
+        '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx',
+        '.txt', '.zip', '.rar', '.png', '.jpg', '.jpeg', '.gif', '.webp',
+        '.mp4', '.mp3', '.svg',
+    ];
+
     const processFile = async (file: File) => {
         setUploadError(null);
+
+        // Validate file extension before uploading
+        const ext = file.name.includes('.') ? `.${file.name.split('.').pop()?.toLowerCase()}` : '';
+        if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
+            const friendlyList = ALLOWED_EXTENSIONS.map(e => e.replace('.', '').toUpperCase()).join(', ');
+            setUploadError(
+                `El tipo de archivo "${ext || 'desconocido'}" no es compatible. Formatos permitidos: ${friendlyList}.`
+            );
+            return;
+        }
+
         const maxBytes = archivo_max_size_mb * 1024 * 1024;
         if (file.size > maxBytes) { 
             setUploadError(`El archivo pesa demasiado. El límite es de ${archivo_max_size_mb} MB.`); 
@@ -109,7 +126,9 @@ export default function AssignmentPlayer({
             onFinish();
         } catch (err: any) { 
             console.error(err); 
-            setUploadError(err.response?.data?.message || 'Ocurrió un problema de conexión. Intenta de nuevo.'); 
+            // Show the backend error message if available, otherwise a friendly fallback
+            const backendMsg = err.response?.data?.message;
+            setUploadError(backendMsg || 'Ocurrió un problema al subir el archivo. Verifica tu conexión e intenta de nuevo.'); 
             setUploadState('idle'); 
         }
     };
@@ -132,11 +151,14 @@ export default function AssignmentPlayer({
 
     let notaStr = '';
     let comentarioStr = '';
+    let notaNum = 0;
     if (entrega?.estado === 'CALIFICADA' && entrega.contenido_texto) {
         const parts = entrega.contenido_texto.replace('NOTA: ', '').split(' | ');
         notaStr = parts[0];
         comentarioStr = parts.length > 1 ? parts[1] : '';
+        notaNum = parseFloat(notaStr) || 0;
     }
+    const isApproved = entrega?.estado === 'CALIFICADA' && notaNum >= 3.0;
 
     if (loading) {
         return <div className="p-12 text-center text-muted-foreground animate-pulse font-medium">Cargando detalles de la tarea...</div>;
@@ -221,11 +243,17 @@ export default function AssignmentPlayer({
                 {/* Zona de Subida / Entrega Realizada */}
                 <div 
                     className={`relative p-8 transition-all duration-300 
-                        ${isDragging ? 'bg-primary/5 border-dashed border-2 border-primary' : uploadState === 'done' ? 'bg-emerald-500/5 border-b border-emerald-500/20' : 'bg-card'}
+                        ${isDragging && !isApproved ? 'bg-primary/5 border-dashed border-2 border-primary' : uploadState === 'done' ? 'bg-emerald-500/5 border-b border-emerald-500/20' : 'bg-card'}
                     `}
-                    onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+                    onDragOver={isApproved ? undefined : handleDragOver} onDragLeave={isApproved ? undefined : handleDragLeave} onDrop={isApproved ? undefined : handleDrop}
                 >
-                    <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+                    <input 
+                        type="file" 
+                        className="hidden" 
+                        ref={fileInputRef} 
+                        onChange={handleFileChange}
+                        accept={ALLOWED_EXTENSIONS.join(',')}
+                    />
                     
                     {uploadState === 'done' && entrega ? (
                         /* ── Estado Entregado ── */
@@ -268,13 +296,18 @@ export default function AssignmentPlayer({
                                 )}
                             </div>
 
-                            {!readOnly && !entrega.archivo_purgado && (
+                            {!readOnly && !entrega.archivo_purgado && !isApproved && (
                               <button
                                   onClick={() => fileInputRef.current?.click()}
                                   className="mt-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1.5"
                               >
                                   <UploadCloud className="h-4 w-4" /> Subir archivo diferente (reemplazar)
                               </button>
+                            )}
+                            {isApproved && (
+                              <div className="mt-3 flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-500/10 px-3 py-1.5 rounded-lg">
+                                  <Trophy className="h-4 w-4" /> Tarea aprobada — no se permite reemplazar
+                              </div>
                             )}
                         </div>
                     ) : uploadState === 'uploading' ? (

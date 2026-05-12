@@ -16,6 +16,7 @@ interface ConnectedClient {
   socket: WebSocket;
   guid: string;
   role: string;
+  token: string;
 }
 
 /**
@@ -99,22 +100,34 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
         socket: client,
         guid: payload.sub,
         role: payload.role || 'ESTUDIANTE',
+        token,
       };
 
-      // ── Enforce single session: revoke all previous connections for this user ──
+      // ── Enforce single session: revoke previous connections only on REAL new logins ──
       const existingConnections = this.clients.filter((c) => c.guid === payload.sub);
+      // Check if this is a page refresh (same token) or a genuine new login (different token)
+      const isNewLogin = existingConnections.length > 0 && existingConnections.some((c) => c.token !== token);
+
       for (const existing of existingConnections) {
-        const revokeMsg = JSON.stringify({
-          event: 'session:revoked',
-          data: { reason: 'new_session' },
-          timestamp: Date.now(),
-        });
-        try {
-          existing.socket.send(revokeMsg);
-        } catch {}
-        try {
-          existing.socket.close(4004, 'Nueva sesión iniciada');
-        } catch {}
+        if (isNewLogin && existing.token !== token) {
+          // Different token = real new login → revoke old session
+          const revokeMsg = JSON.stringify({
+            event: 'session:revoked',
+            data: { reason: 'new_session' },
+            timestamp: Date.now(),
+          });
+          try {
+            existing.socket.send(revokeMsg);
+          } catch {}
+          try {
+            existing.socket.close(4004, 'Nueva sesión iniciada');
+          } catch {}
+        } else {
+          // Same token = page refresh / reconnect → close silently without revocation
+          try {
+            existing.socket.close(1000, 'Reconnecting');
+          } catch {}
+        }
       }
       this.clients = this.clients.filter((c) => c.guid !== payload.sub);
 

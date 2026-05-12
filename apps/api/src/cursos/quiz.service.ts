@@ -33,9 +33,31 @@ export class QuizService {
       });
       if (enProgreso) return { success: true, guid: enProgreso.guid, fecha_inicio: enProgreso.fecha_inicio };
 
-      const prevAttempts = await tx.lms_entregas.count({
-        where: { tarea_guid: recurso_guid, usuario_guid, estado: { in: ['CALIFICADA', 'ENTREGADA', 'ENTREGADA_TARDE'] } }
-      });
+      // Clean up stale attempts from a previous module reset.
+      // When a student fails a quiz, their module progress is reset (lms_progreso_recurso deleted)
+      // but old CALIFICADA delivery records may still exist. These stale records would incorrectly
+      // count towards the attempt limit, blocking the student from retrying.
+      // Detection: if there are graded attempts but NO progress record, the module was reset.
+      const [existingAttempts, progressRecord] = await Promise.all([
+        tx.lms_entregas.count({
+          where: { tarea_guid: recurso_guid, usuario_guid, estado: { in: ['CALIFICADA', 'ENTREGADA', 'ENTREGADA_TARDE'] } }
+        }),
+        tx.lms_progreso_recurso.findFirst({
+          where: { usuario_guid, recurso_guid }
+        }),
+      ]);
+
+      if (existingAttempts > 0 && !progressRecord) {
+        // Stale state detected: old attempts exist but quiz hasn't been passed.
+        // This means the module was reset — clean up old delivery records.
+        this.logger.log(`Cleaning up ${existingAttempts} stale quiz attempt(s) for user ${usuario_guid} on resource ${recurso_guid} after module reset`);
+        await tx.lms_entregas.deleteMany({
+          where: { tarea_guid: recurso_guid, usuario_guid, estado: { in: ['CALIFICADA', 'ENTREGADA', 'ENTREGADA_TARDE'] } }
+        });
+      }
+
+      // Count valid attempts (after cleanup)
+      const prevAttempts = existingAttempts > 0 && !progressRecord ? 0 : existingAttempts;
 
       const maxIntentos = quizConfig.intentos_permitidos || 0;
       if (maxIntentos > 0 && prevAttempts >= maxIntentos) {
@@ -217,6 +239,7 @@ export class QuizService {
             .map(r => r.guid);
 
           const [, estudiante] = await Promise.all([
+            // Delete progress records for the module's resources (non-task resources + quizzes)
             resetGuids.length > 0
               ? this.prisma.lms_progreso_recurso.deleteMany({
                   where: { usuario_guid, recurso_guid: { in: resetGuids } },
@@ -225,6 +248,16 @@ export class QuizService {
             this.prisma.usuarios.findUnique({
               where: { guid: usuario_guid },
               select: { nombre: true, apellido: true, email: true },
+            }),
+            // Delete old graded quiz attempts so the student's attempt counter resets.
+            // Without this, startQuiz() still counts the old CALIFICADA attempts
+            // and blocks the student from retrying when intentos_permitidos is reached.
+            this.prisma.lms_entregas.deleteMany({
+              where: {
+                tarea_guid: recurso_guid,
+                usuario_guid,
+                estado: { in: ['CALIFICADA', 'ENTREGADA', 'ENTREGADA_TARDE'] },
+              },
             }),
           ]);
 
@@ -273,6 +306,11 @@ export class QuizService {
         where: { usuario_guid, recurso_guid }
     });
 
+    // Detect stale state: if there are graded attempts but no progress record,
+    // the module was reset after a quiz failure. Treat attempt count as 0.
+    const effectiveAttempts = (validAttempts > 0 && !progreso) ? 0 : validAttempts;
+    const effectiveBestNota = (validAttempts > 0 && !progreso) ? 0 : mejor_nota;
+
     let maxIntentos = 0;
     try {
       const bloque = await this.prisma.lms_recursos.findUnique({ where: { guid: recurso_guid }, select: { quiz_config: true } });
@@ -282,12 +320,12 @@ export class QuizService {
       }
     } catch {}
 
-    const limitReached = maxIntentos > 0 && validAttempts >= maxIntentos;
+    const limitReached = maxIntentos > 0 && effectiveAttempts >= maxIntentos;
 
     return {
-      intentos_realizados: validAttempts,
+      intentos_realizados: effectiveAttempts,
       max_intentos: maxIntentos,
-      mejor_nota,
+      mejor_nota: effectiveBestNota,
       completado: !!progreso,
       in_progress: !!inProgressAttempt,
       fecha_inicio: inProgressAttempt?.fecha_inicio,

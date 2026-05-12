@@ -50,7 +50,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
             .then((res) => {
               // Update local storage with fresh user data in case roles changed
               if (res.data) {
-                const freshUser = { ...u, role: res.data.rol };
+                const freshUser = { ...u, role: res.data.rol, foto_url: res.data.foto_url };
                 setUser(freshUser);
                 setRoleState(mapDbRole(res.data.rol));
                 localStorage.setItem('lms_user', JSON.stringify(freshUser));
@@ -64,7 +64,10 @@ export function RoleProvider({ children }: { children: ReactNode }) {
                   msg.includes('revocada') || msg.includes('eliminada') || msg.includes('desactivada');
 
                 logout();
-                if (window.location.pathname !== '/login') {
+                // Only show expired/revoked message if the user was actively inside the dashboard.
+                // If they're on /login or just opening the app with a stale token, silently clear.
+                const isOnDashboard = window.location.pathname.startsWith('/dashboard');
+                if (isOnDashboard) {
                   window.location.href = isActiveRevocation ? '/login?revoked=true' : '/login?expired=true';
                 }
               }

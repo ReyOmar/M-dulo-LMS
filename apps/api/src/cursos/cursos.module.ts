@@ -4,9 +4,10 @@ import { QuizService } from './quiz.service';
 import { BloqueService } from './bloque.service';
 import { CursosController } from './cursos.controller';
 import { PrismaModule } from '../prisma/prisma.module';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, StorageModule],
   controllers: [CursosController],
   providers: [CursosService, QuizService, BloqueService],
   exports: [CursosService, QuizService, BloqueService],

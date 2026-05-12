@@ -263,9 +263,9 @@ export default function MonitoreoPruebasPage() {
     if (cursosAgrupados.length === 0) {
       return (
         <div className="animate-in fade-in duration-700">
-          <header className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <BarChart3 className="h-8 w-8 text-primary" />
+          <header className="mb-6 sm:mb-8">
+            <h1 className="text-xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+              <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
               Analítica de Pruebas
             </h1>
             <p className="text-muted-foreground mt-2">
@@ -319,9 +319,9 @@ export default function MonitoreoPruebasPage() {
 
     return (
       <div className="animate-in fade-in duration-700">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <BarChart3 className="h-8 w-8 text-primary" />
+        <header className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+            <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             Analítica de Pruebas
           </h1>
           <p className="text-muted-foreground mt-2">
@@ -540,9 +540,9 @@ export default function MonitoreoPruebasPage() {
         <ArrowLeft className="h-4 w-4" /> Volver al panel analítico
       </button>
 
-      <header className="mb-8">
+      <header className="mb-6 sm:mb-8">
         <h1 className="text-3xl font-black tracking-tight text-foreground flex items-center gap-3 mb-6">
-          <BookMarked className="h-8 w-8 text-primary" />
+          <BookMarked className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
           {selectedCourse?.titulo}
         </h1>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -786,18 +786,18 @@ export default function MonitoreoPruebasPage() {
                                 {isEstExpanded && (
                                     <div className="bg-muted/10 border-t border-border/50 p-4 animate-in slide-in-from-top-2 duration-300">
                                         <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-4 px-2">Historial de Intentos</h5>
-                                        <div className="space-y-3 relative before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border/50 before:to-transparent">
+                                        <div className="space-y-3 relative ml-4 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border/50 before:to-transparent">
                                             {estItem.intentos.map((intento: any, idx: number) => {
                                                 const intentoNota = extractNota(intento);
                                                 const isIntAprobado = intentoNota !== null && intentoNota >= 3.0;
                                                 const isIntReprobado = intentoNota !== null && intentoNota < 3.0;
                                                 
                                                 return (
-                                                <div key={intento.guid} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group/intento">
-                                                    <div className="flex items-center justify-center w-8 h-8 rounded-full border-4 border-card bg-background text-muted-foreground shrink-0 md:order-1 md:group-odd/intento:-translate-x-1/2 md:group-even/intento:translate-x-1/2 shadow-sm z-10 text-[10px] font-bold">
+                                                <div key={intento.guid} className="relative flex items-center gap-3 pl-4">
+                                                    <div className="absolute left-0 -translate-x-1/2 flex items-center justify-center w-8 h-8 rounded-full border-4 border-card bg-background text-muted-foreground shadow-sm z-10 text-[10px] font-bold">
                                                         #{estItem.cantidadIntentos - idx}
                                                     </div>
-                                                    <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2rem)] p-3 rounded-xl bg-card border border-border/50 shadow-sm flex items-center justify-between hover:border-primary/30 transition-colors">
+                                                    <div className="flex-1 ml-4 p-3 rounded-xl bg-card border border-border/50 shadow-sm flex items-center justify-between hover:border-primary/30 transition-colors">
                                                         <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
                                                             {intento.fecha_entrega ? new Date(intento.fecha_entrega).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "Sin fecha"}
                                                         </span>

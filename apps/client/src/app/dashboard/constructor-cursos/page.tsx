@@ -37,6 +37,7 @@ import {
   Search,
   Loader2,
   Download,
+  Menu,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -95,6 +96,9 @@ export default function ConstructorCursosRoot() {
   // DND States
   const [draggedItem, setDraggedItem] = useState<{ guid: string; moduloId: string; index: number } | null>(null);
   const [dragOverItem, setDragOverItem] = useState<{ guid: string; moduloId: string; index: number } | null>(null);
+
+  // Mobile temario toggle
+  const [showTemario, setShowTemario] = useState(false);
 
   // Active course locking state
   const editorInfo = activeCourse?.guid ? editingCourses[activeCourse.guid] : null;
@@ -652,8 +656,8 @@ export default function ConstructorCursosRoot() {
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-700 h-[calc(100vh-6rem)] flex flex-col">
       {!activeCourse && (
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+        <header className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
             Constructor Maestro{' '}
             <span className="px-3 py-1 bg-primary/10 text-primary text-xs rounded-full font-bold uppercase tracking-wider">
               Edición Estructurada
@@ -1054,12 +1058,37 @@ export default function ConstructorCursosRoot() {
               ) : null}
             </div>
 
+            {/* Mobile Temario Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setShowTemario(!showTemario)}
+              className="lg:hidden fixed bottom-6 right-6 z-30 h-14 w-14 bg-primary text-primary-foreground rounded-full shadow-xl flex items-center justify-center hover:bg-primary/90 transition-all active:scale-95"
+              title="Temario del curso"
+            >
+              <Layers className="h-6 w-6" />
+            </button>
+
+            {/* Mobile Temario Backdrop */}
+            {showTemario && (
+              <div
+                className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40 animate-in fade-in duration-200"
+                onClick={() => setShowTemario(false)}
+              />
+            )}
+
             {/* Right Sidebar (Temario del curso) */}
-            <div className="w-[350px] bg-card border-l border-border overflow-y-auto flex flex-col shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-10">
-              <div className="p-5 border-b border-border sticky top-0 bg-inherit z-10">
+            <div className={`w-[350px] max-w-[85vw] bg-card border-l border-border overflow-y-auto flex flex-col shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-50 fixed lg:relative right-0 top-0 h-full lg:h-auto transition-transform duration-300 ease-in-out ${showTemario ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
+              <div className="p-5 border-b border-border sticky top-0 bg-inherit z-10 flex items-center justify-between">
                 <h2 className="font-bold text-lg tracking-tight flex items-center gap-2 uppercase text-muted-foreground">
                   <Layers className="h-5 w-5" /> Temario del Curso
                 </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowTemario(false)}
+                  className="lg:hidden p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
 
               <div className="p-4 flex-1 space-y-4">

@@ -44,6 +44,21 @@ model usuarios {
   firma_url         String?
   firma_nombre      String?
   firma_cargo       String?
+
+  // Foto de perfil del usuario
+  foto_url          String?
+}
+
+// ── VERIFICACIÓN DE EMAIL (para solicitudes de acceso) ──
+model lms_verificacion_email {
+  id         Int      @id @default(autoincrement())
+  email      String
+  codigo     String   // Código de 6 dígitos
+  verificado Boolean  @default(false)
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  @@index([email])
 }
 
 // ── ENUMS LMS ──

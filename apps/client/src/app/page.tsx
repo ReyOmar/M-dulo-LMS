@@ -168,9 +168,8 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-background relative overflow-hidden">
       {/* ══════════ ANIMATED BACKGROUND ══════════ */}
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-primary/10 blur-[120px] animate-[floatBg_12s_ease-in-out_infinite]" />
-        <div className="absolute bottom-[-15%] right-[-10%] w-[500px] h-[500px] rounded-full bg-primary/10 blur-[100px] animate-[floatBg_15s_ease-in-out_infinite_reverse]" />
-        <div className="absolute top-[40%] left-[50%] w-[400px] h-[400px] rounded-full bg-emerald-500/10 blur-[100px] animate-[floatBg_10s_ease-in-out_infinite_2s]" />
+        <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-primary/8 blur-[80px] animate-[floatBg_12s_ease-in-out_infinite] will-change-transform" />
+        <div className="absolute bottom-[-15%] right-[-10%] w-[400px] h-[400px] rounded-full bg-primary/8 blur-[80px] animate-[floatBg_15s_ease-in-out_infinite_reverse] will-change-transform" />
       </div>
 
       {/* ══════════ NAVBAR ══════════ */}

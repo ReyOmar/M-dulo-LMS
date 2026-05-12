@@ -192,9 +192,8 @@ export class DashboardsService {
 
     // Course distribution from pre-fetched data
     const colors = [
-      'hsl(210, 80%, 55%)', 'hsl(150, 65%, 45%)', 'hsl(280, 65%, 55%)',
-      'hsl(35, 85%, 55%)', 'hsl(350, 70%, 55%)', 'hsl(190, 70%, 50%)',
-      'hsl(60, 70%, 50%)', 'hsl(0, 0%, 60%)',
+      '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+      '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#64748b',
     ];
     const courseDistribution = cursos.map((c, i) => ({
       name: c.titulo.length > 25 ? c.titulo.substring(0, 25) + '...' : c.titulo,

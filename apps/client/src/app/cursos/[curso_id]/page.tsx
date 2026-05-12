@@ -21,6 +21,12 @@ import {
   Download,
   Clock,
   Eye,
+  PanelLeftClose,
+  PanelLeft,
+  ChevronDown,
+  ChevronRight,
+  Layers,
+  X,
 } from 'lucide-react';
 import { PageLoader } from '@/components/ui/PageLoader';
 import Link from 'next/link';
@@ -42,6 +48,7 @@ export default function CursoVisorPage() {
   const [progresoLoaded, setProgresoLoaded] = useState(false);
   const [inMaintenance, setInMaintenance] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showCelebrationActions, setShowCelebrationActions] = useState(false);
   const [celebrationData, setCelebrationData] = useState<{ curso_titulo: string } | null>(null);
   const [tareasPendientes, setTareasPendientes] = useState<
     { recurso_guid: string; tarea_titulo: string; fecha_entrega: string }[]
@@ -55,6 +62,41 @@ export default function CursoVisorPage() {
   const [pendingCelebration, setPendingCelebration] = useState<any>(null);
   const celebrationShownRef = useRef(false);
   const { subscribe, maintenanceCourses } = useWS();
+
+  // Sidebar toggle state — remembers preference, defaults closed on mobile
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const saved = localStorage.getItem('lms_sidebar_open');
+    if (saved !== null) return saved === 'true';
+    return window.innerWidth >= 1024; // default open on desktop, closed on mobile
+  });
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < 1024;
+  });
+
+  // Track viewport changes for responsive behavior
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      // Auto-close sidebar when switching TO mobile if it was open
+      if (mobile && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [sidebarOpen]);
+
+  // Persist sidebar preference (only for desktop)
+  const toggleSidebar = () => {
+    setSidebarOpen((prev) => {
+      const next = !prev;
+      if (!isMobile) localStorage.setItem('lms_sidebar_open', String(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     const savedUser = localStorage.getItem('lms_user');
@@ -112,12 +154,23 @@ export default function CursoVisorPage() {
           celebrationShownRef.current = true;
           setCelebrationData({ curso_titulo: pendingCelebration.curso_titulo || curso?.titulo || 'el curso' });
           setShowCelebration(true);
+          setShowCelebrationActions(false);
         }
         setPendingCelebration(null);
       }, 1000);
       return () => clearTimeout(timer);
     }
   }, [pendingCelebration, isQuizActive, curso]);
+
+  // Delay the certificate action buttons for 2s after the celebration appears
+  useEffect(() => {
+    if (showCelebration) {
+      const actionsTimer = setTimeout(() => setShowCelebrationActions(true), 2000);
+      return () => clearTimeout(actionsTimer);
+    } else {
+      setShowCelebrationActions(false);
+    }
+  }, [showCelebration]);
 
   // Listen for maintenance events on this specific course (students only)
   useEffect(() => {
@@ -260,6 +313,8 @@ export default function CursoVisorPage() {
     if (!isRecursoUnlocked(moduleIndex, resourceIndex)) return;
     setSelectedRecurso(recurso);
     setSelectedModuloGuid(moduloGuid);
+    // Auto-close sidebar on mobile for better content visibility
+    if (isMobile) setSidebarOpen(false);
   };
 
   // Auto-select first uncompleted resource (Retomar Curso)
@@ -398,7 +453,19 @@ export default function CursoVisorPage() {
   if (showCompletedOverlay && courseCompleted) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 animate-in fade-in duration-500">
-        <div className="max-w-lg w-full bg-card border border-emerald-500/30 rounded-3xl overflow-hidden shadow-xl">
+        <div className="max-w-lg w-full bg-card border border-emerald-500/30 rounded-3xl overflow-hidden shadow-xl relative">
+          {/* Close button */}
+          <button
+            onClick={() => {
+              setShowCompletedOverlay(false);
+              setViewOnlyMode(true);
+            }}
+            className="absolute top-4 right-4 z-20 p-2 rounded-xl bg-background/80 hover:bg-muted border border-border/50 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Cerrar"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
           {/* Gradient header */}
           <div className="relative bg-gradient-to-br from-emerald-500/15 via-primary/10 to-emerald-500/5 p-10 text-center overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-400 via-primary to-emerald-500" />
@@ -477,20 +544,98 @@ export default function CursoVisorPage() {
       )}
       {/* Top Navbar */}
       {!isQuizActive && (
-        <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50 h-16 flex items-center px-6 shrink-0">
-          <Link href="/dashboard/student/cursos" className="p-2 hover:bg-muted rounded-full transition-colors mr-4">
+        <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/50 h-14 flex items-center px-4 gap-3 shrink-0">
+          <Link href="/dashboard/student/cursos" className="p-2 hover:bg-muted rounded-xl transition-colors">
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <div className="flex-1 truncate font-bold text-lg">{curso.titulo}</div>
+
+          {/* Sidebar Toggle Button */}
+          <button
+            onClick={toggleSidebar}
+            className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-200 border shadow-sm
+              ${sidebarOpen
+                ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
+                : 'bg-muted/50 border-border hover:bg-muted hover:border-primary/30 text-muted-foreground hover:text-primary'
+              }
+            `}
+            title={sidebarOpen ? 'Ocultar temario' : 'Mostrar temario'}
+          >
+            <div className="relative h-5 w-5 flex items-center justify-center overflow-hidden">
+              <PanelLeft
+                className={`h-5 w-5 absolute transition-all duration-300 ${
+                  sidebarOpen
+                    ? 'opacity-0 rotate-180 scale-50'
+                    : 'opacity-100 rotate-0 scale-100'
+                }`}
+              />
+              <PanelLeftClose
+                className={`h-5 w-5 absolute transition-all duration-300 ${
+                  sidebarOpen
+                    ? 'opacity-100 rotate-0 scale-100'
+                    : 'opacity-0 -rotate-180 scale-50'
+                }`}
+              />
+            </div>
+            <span className="hidden sm:inline">
+              {sidebarOpen ? 'Ocultar' : 'Temario'}
+            </span>
+            {/* Pulsing dot indicator when sidebar is closed (hint there's content) */}
+            {!sidebarOpen && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary/60"></span>
+              </span>
+            )}
+          </button>
+
+          <div className="flex-1 truncate font-bold text-base">{curso.titulo}</div>
         </header>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile Sidebar Overlay Backdrop */}
+        {isMobile && sidebarOpen && !isQuizActive && (
+          <div
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* Left Sidebar — Module & Resource List */}
         {!isQuizActive && (
-          <div className="w-[320px] bg-card border-r border-border overflow-y-auto flex flex-col shrink-0">
-            <div className="p-4 border-b border-border">
-              <h2 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Temario del Curso</h2>
+          <div
+            className={`bg-card border-r border-border overflow-y-auto flex flex-col shrink-0 transition-all duration-300 ease-in-out z-50
+              ${
+                isMobile
+                  ? `fixed inset-y-0 left-0 w-[300px] shadow-2xl ${
+                      sidebarOpen
+                        ? 'translate-x-0'
+                        : '-translate-x-full'
+                    }`
+                  : `${
+                      sidebarOpen
+                        ? 'w-[320px] opacity-100'
+                        : 'w-0 opacity-0 overflow-hidden border-r-0'
+                    }`
+              }
+            `}
+          >
+            {/* Sidebar Header */}
+            <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <Layers className="h-4 w-4 text-primary" />
+                <h2 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Temario del Curso</h2>
+              </div>
+              {/* Close button inside sidebar (mobile) */}
+              {isMobile && (
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Cerrar temario"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
             <div className="p-3 space-y-2 flex-1">
               {modulos.map((mod: any, mi: number) => {
@@ -563,7 +708,7 @@ export default function CursoVisorPage() {
         )}
 
         {/* Main Content Panel */}
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {!selectedRecurso ? (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-60">
               <BookOpen className="h-24 w-24 mb-6" />
@@ -638,20 +783,20 @@ export default function CursoVisorPage() {
               {selectedRecurso.tipo === 'ENLACE' && (
                 <div className="space-y-6">
                   {selectedRecurso.contenido_html?.includes('youtube.com/watch?v=') && (
-                    <div className="w-full rounded-2xl overflow-hidden border border-border shadow-sm">
-                      {/* @ts-ignore */}
-                      <lite-youtube
-                        videoid={new URL(selectedRecurso.contenido_html).searchParams.get('v')}
-                      ></lite-youtube>
-                    </div>
+                    <div
+                      className="w-full rounded-2xl overflow-hidden border border-border shadow-sm"
+                      dangerouslySetInnerHTML={{
+                        __html: `<lite-youtube videoid="${new URL(selectedRecurso.contenido_html).searchParams.get('v')}"></lite-youtube>`,
+                      }}
+                    />
                   )}
                   {selectedRecurso.contenido_html?.includes('youtu.be/') && (
-                    <div className="w-full rounded-2xl overflow-hidden border border-border shadow-sm">
-                      {/* @ts-ignore */}
-                      <lite-youtube
-                        videoid={selectedRecurso.contenido_html.split('youtu.be/')[1].split('?')[0]}
-                      ></lite-youtube>
-                    </div>
+                    <div
+                      className="w-full rounded-2xl overflow-hidden border border-border shadow-sm"
+                      dangerouslySetInnerHTML={{
+                        __html: `<lite-youtube videoid="${selectedRecurso.contenido_html.split('youtu.be/')[1].split('?')[0]}"></lite-youtube>`,
+                      }}
+                    />
                   )}
                   {!selectedRecurso.contenido_html && (
                     <div className="w-full h-64 bg-muted/20 border border-dashed border-border rounded-2xl flex items-center justify-center text-muted-foreground">
@@ -810,7 +955,17 @@ export default function CursoVisorPage() {
               </div>
             </div>
 
-            <div className="p-6 text-center">
+            {/* Certificate actions — fade in after 2s delay for dramatic effect */}
+            <div
+              className="p-6 text-center transition-all duration-700 ease-out"
+              style={{
+                opacity: showCelebrationActions ? 1 : 0,
+                transform: showCelebrationActions ? 'translateY(0)' : 'translateY(12px)',
+                maxHeight: showCelebrationActions ? '300px' : '0px',
+                overflow: 'hidden',
+                padding: showCelebrationActions ? undefined : '0 1.5rem',
+              }}
+            >
               <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
                 Tu certificado de finalización ya ha sido generado y está disponible para descargar en formato PDF.
               </p>

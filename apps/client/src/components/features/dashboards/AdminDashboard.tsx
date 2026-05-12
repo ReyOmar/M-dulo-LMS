@@ -305,11 +305,12 @@ export function AdminDashboard() {
                         data={courseDistribution}
                         cx="50%"
                         cy="50%"
-                        innerRadius={55}
-                        outerRadius={80}
-                        paddingAngle={3}
+                        innerRadius={58}
+                        outerRadius={85}
+                        paddingAngle={2}
                         dataKey="value"
-                        stroke="none"
+                        stroke="hsl(var(--card))"
+                        strokeWidth={3}
                       >
                         {courseDistribution.map((entry: any, i: number) => (
                           <Cell key={i} fill={entry.color} />
@@ -324,6 +325,13 @@ export function AdminDashboard() {
                         }}
                         formatter={(value: any, name: any) => [`${value} estudiantes`, name]}
                       />
+                      {/* Center label */}
+                      <text x="50%" y="48%" textAnchor="middle" dominantBaseline="central" className="fill-foreground text-2xl font-black">
+                        {totalMatriculas}
+                      </text>
+                      <text x="50%" y="58%" textAnchor="middle" dominantBaseline="central" className="fill-muted-foreground text-[10px] font-medium">
+                        matrículas
+                      </text>
                     </PieChart>
                   </ResponsiveContainer>
                 </div>

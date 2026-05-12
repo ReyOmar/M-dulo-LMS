@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Award, Save, Loader2, ToggleLeft, Type, AlignLeft, Palette, Info, BookOpen } from 'lucide-react';
 import { useAlert } from '@/contexts/AlertContext';
-import api from '@/lib/api';
+import api, { API_BASE_URL } from '@/lib/api';
 
 interface CertConfig {
   cert_titulo_personalizado: string | null;
@@ -74,7 +74,8 @@ export default function CertificadosConfigPage() {
 
   const fetchExaminerPreview = async (cursoGuid: string) => {
     try {
-      const res = await api.get(`/configuracion/firma/curso/${cursoGuid}`);
+      // Add cache-bust to ensure fresh data after examiner updates their signature
+      const res = await api.get(`/configuracion/firma/curso/${cursoGuid}?_t=${Date.now()}`);
       setExaminerPreview(res.data);
     } catch {
       setExaminerPreview(null);
@@ -122,7 +123,7 @@ export default function CertificadosConfigPage() {
   return (
     <div className="p-6 lg:p-8 max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-black text-foreground flex items-center gap-3">
             <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center">
@@ -322,6 +323,18 @@ export default function CertificadosConfigPage() {
                   </p>
                 </div>
               </div>
+              {previewProfesor.firma_url && (
+                <div className="mt-3 flex items-center gap-3 p-3 bg-white dark:bg-background rounded-lg border border-border/50">
+                  <div className="h-12 w-28 bg-muted/30 rounded-lg border border-dashed border-border flex items-center justify-center overflow-hidden">
+                    <img
+                      src={`${API_BASE_URL}/storage/download/${previewProfesor.firma_url}`}
+                      alt="Firma"
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
+                  <p className="text-xs text-emerald-600 font-bold">✓ Imagen de firma cargada</p>
+                </div>
+              )}
               {!previewProfesor.firma_url && !previewProfesor.firma_nombre && (
                 <p className="text-xs text-amber-600 mt-2 font-medium">
                   ⚠ Este examinador aún no ha configurado su firma. Se usará su nombre por defecto.
@@ -330,91 +343,115 @@ export default function CertificadosConfigPage() {
             </div>
           )}
 
-          {/* Mini certificate preview */}
+          {/* Certificate preview — properly scaled */}
           <div
-            className="relative bg-white rounded-xl border border-border shadow-inner overflow-hidden"
-            style={{ aspectRatio: '842/595' }}
+            className="relative bg-white rounded-2xl border-2 border-border shadow-lg overflow-hidden mx-auto"
+            style={{ aspectRatio: '842/595', maxWidth: '100%', minHeight: '420px' }}
           >
-            <div className="absolute inset-0 p-[4%] flex flex-col items-center justify-center text-center">
+            <div className="absolute inset-0 p-[5%] flex flex-col items-center justify-between text-center">
+              {/* Top gradient bar */}
               <div
-                className="absolute top-0 left-0 right-0 h-[1.5%] rounded-t-xl"
+                className="absolute top-0 left-0 right-0 h-2 rounded-t-2xl"
                 style={{ background: `linear-gradient(90deg, ${config.color_primario}, ${config.color_secundario})` }}
               />
+              {/* Bottom gradient bar */}
               <div
-                className="absolute bottom-0 left-0 right-0 h-[1.5%] rounded-b-xl"
+                className="absolute bottom-0 left-0 right-0 h-2 rounded-b-2xl"
                 style={{ background: `linear-gradient(90deg, ${config.color_secundario}, ${config.color_primario})` }}
               />
 
-              <p className="text-[8px] tracking-[0.2em] font-medium" style={{ color: config.color_primario }}>
-                {config.nombre_plataforma.toUpperCase()}
-              </p>
-              <div
-                className="w-12 h-[1px] my-1.5"
-                style={{ background: `linear-gradient(90deg, #e2e8f0, ${config.color_primario}, #e2e8f0)` }}
-              />
-              <p className="text-sm font-black text-slate-800">{config.cert_titulo_personalizado || 'CERTIFICADO'}</p>
-              <p className="text-[7px] tracking-[0.3em] text-slate-500 mt-0.5">
-                {config.cert_subtitulo || 'DE FINALIZACIÓN'}
-              </p>
-              <p className="text-[6px] text-slate-400 mt-2">Se otorga a:</p>
-              <p className="text-[10px] font-bold mt-0.5" style={{ color: config.color_primario }}>
-                Juan Pérez
-              </p>
-              <div className="w-16 h-[1px] my-1" style={{ background: config.color_primario }} />
-              <p className="text-[6px] text-slate-500">Por haber completado exitosamente el curso:</p>
-              <p className="text-[8px] font-bold text-slate-800 mt-0.5">
-                "{examinerPreview?.titulo || 'Ejemplo de Curso'}"
-              </p>
-              <p className="text-[5px] text-slate-400 mt-1 max-w-[80%] leading-tight">
-                {config.cert_texto_legal
-                  ? config.cert_texto_legal.substring(0, 120) + '...'
-                  : 'El presente certificado acredita que el participante cumplió satisfactoriamente con la totalidad del programa de capacitación, el cual constó de X módulo(s)...'}
-              </p>
+              {/* Header Section */}
+              <div className="flex flex-col items-center gap-1 pt-2">
+                <p className="text-xs tracking-[0.25em] font-semibold uppercase" style={{ color: config.color_primario }}>
+                  {config.nombre_plataforma}
+                </p>
+                <div
+                  className="w-20 h-[2px] my-1"
+                  style={{ background: `linear-gradient(90deg, transparent, ${config.color_primario}, transparent)` }}
+                />
+                <p className="text-2xl font-black text-slate-800 tracking-wide">
+                  {config.cert_titulo_personalizado || 'CERTIFICADO'}
+                </p>
+                <p className="text-xs tracking-[0.3em] text-slate-500 font-medium">
+                  {config.cert_subtitulo || 'DE FINALIZACIÓN'}
+                </p>
+              </div>
 
-              <div className="flex items-center gap-3 mt-1.5">
+              {/* Body Section */}
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-xs text-slate-400">Se otorga a:</p>
+                <p className="text-xl font-bold" style={{ color: config.color_primario }}>
+                  Juan Pérez
+                </p>
+                <div className="w-32 h-[2px]" style={{ background: config.color_primario, opacity: 0.3 }} />
+                <p className="text-xs text-slate-500">Por haber completado exitosamente el curso:</p>
+                <p className="text-base font-bold text-slate-800">
+                  &ldquo;{examinerPreview?.titulo || 'Ejemplo de Curso'}&rdquo;
+                </p>
+                <p className="text-[11px] text-slate-400 max-w-[85%] leading-relaxed mt-1">
+                  {config.cert_texto_legal
+                    ? config.cert_texto_legal.substring(0, 200) + (config.cert_texto_legal.length > 200 ? '...' : '')
+                    : 'El presente certificado acredita que el participante cumplió satisfactoriamente con la totalidad del programa de capacitación...'}
+                </p>
+              </div>
+
+              {/* Metrics Row */}
+              <div className="flex items-center justify-center gap-6 flex-wrap">
                 {config.cert_mostrar_fecha_ingreso && (
                   <div className="text-center">
-                    <p className="text-[4px] text-slate-400">INSCRIPCIÓN</p>
-                    <p className="text-[5px] font-bold text-slate-600">1 de mayo de 2026</p>
+                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Inscripción</p>
+                    <p className="text-xs font-bold text-slate-600">1 de mayo de 2026</p>
                   </div>
                 )}
                 <div className="text-center">
-                  <p className="text-[4px] text-slate-400">FINALIZACIÓN</p>
-                  <p className="text-[5px] font-bold text-slate-600">5 de mayo de 2026</p>
+                  <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Finalización</p>
+                  <p className="text-xs font-bold text-slate-600">5 de mayo de 2026</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[4px] text-slate-400">DURACIÓN</p>
-                  <p className="text-[5px] font-bold text-slate-600">12.5 horas</p>
+                  <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Duración</p>
+                  <p className="text-xs font-bold text-slate-600">12.5 horas</p>
                 </div>
                 {config.cert_mostrar_modulos && (
                   <div className="text-center">
-                    <p className="text-[4px] text-slate-400">MÓDULOS</p>
-                    <p className="text-[5px] font-bold text-slate-600">3</p>
+                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Módulos</p>
+                    <p className="text-xs font-bold text-slate-600">3</p>
                   </div>
                 )}
                 {config.cert_mostrar_recursos && (
                   <div className="text-center">
-                    <p className="text-[4px] text-slate-400">RECURSOS</p>
-                    <p className="text-[5px] font-bold text-slate-600">15</p>
+                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Recursos</p>
+                    <p className="text-xs font-bold text-slate-600">15</p>
                   </div>
                 )}
                 {config.cert_mostrar_nota && (
                   <div className="text-center">
-                    <p className="text-[4px] text-slate-400">CALIFICACIÓN</p>
-                    <p className="text-[5px] font-bold text-slate-600">4.2 / 5.0</p>
+                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Calificación</p>
+                    <p className="text-xs font-bold text-slate-600">4.2 / 5.0</p>
                   </div>
                 )}
               </div>
 
+              {/* Signature Section */}
               {config.cert_mostrar_firma && (
-                <div className="mt-2">
-                  <div className="w-16 h-[1px] bg-slate-300 mx-auto" />
-                  <p className="text-[5px] font-bold text-slate-700 mt-0.5">
-                    {previewProfesor?.firma_nombre || previewProfesor
-                      ? `${previewProfesor.nombre} ${previewProfesor.apellido}`
-                      : 'Nombre del Instructor'}
+                <div className="flex flex-col items-center gap-1 pb-2">
+                  {previewProfesor?.firma_url && (
+                    <div className="h-14 w-32 flex items-center justify-center">
+                      <img
+                        src={`${API_BASE_URL}/storage/download/${previewProfesor.firma_url}`}
+                        alt="Firma del examinador"
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    </div>
+                  )}
+                  <div className="w-36 h-[1px] bg-slate-300" />
+                  <p className="text-xs font-bold text-slate-700 mt-1">
+                    {previewProfesor?.firma_nombre
+                      ? previewProfesor.firma_nombre
+                      : previewProfesor
+                        ? `${previewProfesor.nombre} ${previewProfesor.apellido}`
+                        : 'Nombre del Instructor'}
                   </p>
-                  <p className="text-[4px] text-slate-400">
+                  <p className="text-[11px] text-slate-400">
                     {previewProfesor?.firma_cargo || 'Instructor / Examinador del Curso'}
                   </p>
                 </div>

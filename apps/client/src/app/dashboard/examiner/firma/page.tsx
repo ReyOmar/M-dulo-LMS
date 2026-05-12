@@ -138,7 +138,7 @@ export default function ExaminerFirmaPage() {
           />
 
           {firmaUrl ? (
-            <div className="flex items-center gap-4 p-4 bg-background border border-border/50 rounded-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-background border border-border/50 rounded-xl">
               <div className="h-16 w-32 bg-muted/50 rounded-lg border border-dashed border-border flex items-center justify-center overflow-hidden">
                 <img
                   src={`${API_BASE_URL}/storage/download/${firmaUrl}`}

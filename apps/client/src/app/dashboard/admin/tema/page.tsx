@@ -49,10 +49,10 @@ export default function TemaPage() {
   };
 
   return (
-    <div className="animate-in fade-in duration-700 max-w-4xl">
+    <div className="animate-in fade-in duration-700 max-w-6xl mx-auto">
       <header className="mb-10">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-          <Palette className="h-8 w-8 text-primary" />
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+          <Palette className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
           Tema y Apariencia
         </h1>
         <p className="text-muted-foreground mt-2">Personaliza la identidad visual, colores, tipografía y experiencia de la plataforma.</p>
@@ -273,7 +273,7 @@ export default function TemaPage() {
           </div>
           
           {/* Live preview of radius */}
-          <div className="flex gap-4 items-center pt-2">
+          <div className="flex flex-wrap gap-4 items-center pt-2">
             <div className="h-16 w-32 bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-xs font-bold text-primary" style={{ borderRadius: `${config?.border_radius ?? 12}px` }}>
               Tarjeta
             </div>

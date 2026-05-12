@@ -45,6 +45,9 @@ export class CursosController {
       return this.cursosService.getCursosDeEstudianteConFecha(usuario_guid);
     } else if (rol === 'PROFESOR') {
       return this.cursosService.getCursosDeProfesorConFecha(usuario_guid);
+    } else if (rol === 'ADMINISTRADOR') {
+      // Admin "created" courses = courses where they are profesor_guid (the owner/assignee)
+      return this.cursosService.getCursosDeProfesorConFecha(usuario_guid);
     }
     return [];
   }

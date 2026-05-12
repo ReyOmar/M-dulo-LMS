@@ -194,9 +194,9 @@ export default function MonitoreoEstudiantesPage() {
 
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-700">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Users className="h-8 w-8 text-primary" />
+      <header className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+          <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
           Monitoreo de Estudiantes
         </h1>
         <p className="text-muted-foreground mt-2">
@@ -367,7 +367,7 @@ export default function MonitoreoEstudiantesPage() {
         </div>
       </div>
 
-      {/* Students Table */}
+      {/* Students List */}
       {filtered.length === 0 ? (
         <div className="bg-card border border-dashed border-border rounded-2xl p-16 text-center">
           <Users className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
@@ -377,7 +377,134 @@ export default function MonitoreoEstudiantesPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden">
+        <>
+        {/* === MOBILE CARD VIEW === */}
+        <div className="lg:hidden space-y-3">
+          {filtered.map(est => {
+            const isExpanded = expandedStudent === est.guid;
+            let tableProgress = 0;
+            if (cursoFiltro !== "todos") {
+               const cursoEspecífico = est.cursos.find((c: any) => c.curso_guid === cursoFiltro);
+               if (cursoEspecífico) tableProgress = cursoEspecífico.porcentaje;
+            } else {
+               tableProgress = est.cursos.length > 0
+                 ? Math.round(est.cursos.reduce((s: number, c: any) => s + c.porcentaje, 0) / est.cursos.length)
+                 : 0;
+            }
+            return (
+              <div key={est.guid} className="bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden">
+                <div
+                  onClick={() => setExpandedStudent(isExpanded ? null : est.guid)}
+                  className="p-4 cursor-pointer active:bg-muted/10 transition-colors"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    {isExpanded
+                      ? <ChevronDown className="h-4 w-4 text-primary shrink-0" />
+                      : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm truncate">{est.nombre} {est.apellido}</p>
+                      <p className="text-xs text-muted-foreground truncate">{est.email}</p>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 ${est.total_entregas > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
+                      {est.total_entregas}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="shrink-0">{renderUltimoAcceso(est.ultimo_acceso, est.guid)}</div>
+                    <div className="flex items-center gap-2 flex-1 max-w-[160px]">
+                      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${tableProgress >= 76 ? 'bg-emerald-500' : tableProgress >= 51 ? 'bg-blue-500' : tableProgress >= 26 ? 'bg-amber-500' : 'bg-red-400'}`}
+                          style={{ width: `${tableProgress}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-bold text-muted-foreground w-10 text-right">{tableProgress}%</span>
+                    </div>
+                  </div>
+                </div>
+                {isExpanded && (
+                  <div className="border-t border-border/30 px-4 py-4 bg-muted/5 animate-in fade-in duration-200">
+                    <div className="space-y-2">
+                      {est.cursos.filter((c: any) => cursoFiltro === "todos" || c.curso_guid === cursoFiltro).map((curso: any) => {
+                        const courseKey = `${est.guid}-${curso.curso_guid}`;
+                        const isCourseExpanded = expandedCourses.has(courseKey);
+                        const toggleCourse = (e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          setExpandedCourses(prev => {
+                            const next = new Set(prev);
+                            if (next.has(courseKey)) next.delete(courseKey);
+                            else next.add(courseKey);
+                            return next;
+                          });
+                        };
+                        const totalModulos = curso.modulos?.length || 0;
+                        const modulosCompletos = curso.modulos?.filter((m: any) => m.porcentaje >= 100).length || 0;
+                        const totalRecursos = curso.modulos?.reduce((s: number, m: any) => s + (m.total || 0), 0) || 0;
+                        const recursosCompletados = curso.modulos?.reduce((s: number, m: any) => s + (m.completados || 0), 0) || 0;
+
+                        return (
+                          <div key={curso.curso_guid} className="border border-border/50 rounded-xl overflow-hidden bg-background shadow-sm">
+                            <button
+                              onClick={toggleCourse}
+                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors text-left"
+                            >
+                              {isCourseExpanded
+                                ? <ChevronDown className="h-4 w-4 text-primary shrink-0" />
+                                : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+                              <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                              <span className="font-bold text-sm flex-1 truncate">{curso.curso_titulo}</span>
+                              <span className={`text-xs font-bold w-10 text-right ${
+                                curso.porcentaje >= 76 ? 'text-emerald-600' :
+                                curso.porcentaje >= 51 ? 'text-blue-600' :
+                                curso.porcentaje >= 26 ? 'text-amber-600' : 'text-red-500'
+                              }`}>{curso.porcentaje}%</span>
+                            </button>
+                            {isCourseExpanded && (
+                              <div className="border-t border-border/30 px-4 py-3 bg-muted/5 animate-in slide-in-from-top-1 duration-200">
+                                <div className="grid grid-cols-3 gap-2 mb-3">
+                                  <div className="bg-card border border-border/40 rounded-lg p-2 text-center">
+                                    <p className="text-sm font-bold text-primary">{totalModulos}</p>
+                                    <p className="text-[9px] text-muted-foreground font-medium uppercase">Módulos</p>
+                                  </div>
+                                  <div className="bg-card border border-border/40 rounded-lg p-2 text-center">
+                                    <p className="text-sm font-bold text-emerald-600">{recursosCompletados}</p>
+                                    <p className="text-[9px] text-muted-foreground font-medium uppercase">Hechos</p>
+                                  </div>
+                                  <div className="bg-card border border-border/40 rounded-lg p-2 text-center">
+                                    <p className="text-sm font-bold text-amber-600">{totalRecursos - recursosCompletados}</p>
+                                    <p className="text-[9px] text-muted-foreground font-medium uppercase">Pend.</p>
+                                  </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                  {curso.modulos.map((mod: any, i: number) => (
+                                    <div key={i} className="flex items-center gap-2 py-1.5 px-2 rounded-lg">
+                                      <div className={`w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold shrink-0 ${
+                                        mod.porcentaje >= 100 ? 'bg-emerald-500/10 text-emerald-600' :
+                                        mod.porcentaje > 0 ? 'bg-amber-500/10 text-amber-600' :
+                                        'bg-muted text-muted-foreground'
+                                      }`}>{i + 1}</div>
+                                      <span className="text-xs font-medium flex-1 truncate">{mod.titulo}</span>
+                                      <span className={`text-xs font-bold w-8 text-right ${
+                                        mod.porcentaje >= 100 ? 'text-emerald-600' : 'text-muted-foreground'
+                                      }`}>{mod.porcentaje}%</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* === DESKTOP TABLE VIEW === */}
+        <div className="hidden lg:block bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden">
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/30 border-b border-border/50 uppercase text-xs font-bold text-muted-foreground">
               <tr>
@@ -407,7 +534,6 @@ export default function MonitoreoEstudiantesPage() {
                 return (
                   <Fragment key={est.guid}>
                     <tr
-
                       onClick={() => setExpandedStudent(isExpanded ? null : est.guid)}
                       className="hover:bg-muted/10 transition-colors cursor-pointer"
                     >
@@ -438,7 +564,6 @@ export default function MonitoreoEstudiantesPage() {
                         </div>
                       </td>
                     </tr>
-                    {/* Expanded Detail */}
                     {/* Expanded Detail — Each course is expandable */}
                     {isExpanded && (
                       <tr className="bg-muted/5 animate-in fade-in duration-200">
@@ -572,6 +697,7 @@ export default function MonitoreoEstudiantesPage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

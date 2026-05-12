@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { X, User, Mail, Lock, Save, Loader2, CheckCircle, AlertCircle, Shield, Eye, EyeOff } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { X, User, Mail, Lock, Save, Loader2, CheckCircle, AlertCircle, Shield, Eye, EyeOff, Camera, Trash2 } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
-import api from "@/lib/api";
+import api, { API_BASE_URL, resolveFileUrl } from "@/lib/api";
 
 interface Props {
   open: boolean;
@@ -26,6 +26,9 @@ export function UserSettingsModal({ open, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [deletingPhoto, setDeletingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const handleClose = () => {
     onClose();
@@ -130,6 +133,54 @@ export function UserSettingsModal({ open, onClose }: Props) {
     return { label: 'Capacitante', color: 'text-emerald-500', bg: 'bg-emerald-500/10' };
   };
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowed.includes(file.type)) {
+      showFeedback('error', 'Solo se permiten imágenes (JPG, PNG, WebP, GIF).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showFeedback('error', 'La imagen no puede superar los 5 MB.');
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('foto', file);
+      const res = await api.post(`/auth/perfil/${user.guid}/foto`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const newFotoUrl = res.data.foto_url;
+      setProfileData((prev: any) => ({ ...prev, foto_url: newFotoUrl }));
+      // Sync session so sidebar updates immediately
+      const token = localStorage.getItem('lms_token') || '';
+      syncSession(token, { ...user, foto_url: newFotoUrl });
+      showFeedback('success', 'Foto de perfil actualizada.');
+    } catch (err: any) {
+      showFeedback('error', err.response?.data?.message || 'Error al subir la foto.');
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
+
+  const handlePhotoDelete = async () => {
+    setDeletingPhoto(true);
+    try {
+      await api.delete(`/auth/perfil/${user.guid}/foto`);
+      setProfileData((prev: any) => ({ ...prev, foto_url: null }));
+      const token = localStorage.getItem('lms_token') || '';
+      syncSession(token, { ...user, foto_url: null });
+      showFeedback('success', 'Foto de perfil eliminada.');
+    } catch (err: any) {
+      showFeedback('error', err.response?.data?.message || 'Error al eliminar la foto.');
+    } finally {
+      setDeletingPhoto(false);
+    }
+  };
+
   if (!open) return null;
 
   const rolInfo = getRolLabel(profileData?.rol || '');
@@ -183,6 +234,53 @@ export function UserSettingsModal({ open, onClose }: Props) {
               </span>
             </div>
 
+            {/* Profile photo */}
+            <div className="flex items-center gap-4">
+              <div className="relative group">
+                {profileData?.foto_url ? (
+                  <img
+                    src={resolveFileUrl(profileData.foto_url) || ''}
+                    alt="Foto de perfil"
+                    className="h-16 w-16 rounded-2xl object-cover border-2 border-border shadow-sm"
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
+                    {(nombre.charAt(0) + (apellido.charAt(0) || '')).toUpperCase() || '?'}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="absolute -bottom-1 -right-1 p-1.5 bg-primary text-primary-foreground rounded-lg shadow-md hover:bg-primary/90 transition-all active:scale-90 disabled:opacity-50"
+                >
+                  {uploadingPhoto ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
+                </button>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold">{nombre} {apellido}</p>
+                <p className="text-xs text-muted-foreground">{email}</p>
+                {profileData?.foto_url && (
+                  <button
+                    type="button"
+                    onClick={handlePhotoDelete}
+                    disabled={deletingPhoto}
+                    className="mt-1 text-xs text-destructive hover:underline flex items-center gap-1 disabled:opacity-50"
+                  >
+                    {deletingPhoto ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                    Eliminar foto
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Name fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -208,7 +306,7 @@ export function UserSettingsModal({ open, onClose }: Props) {
               </div>
             </div>
 
-            {/* Email */}
+            {/* Email (read-only) */}
             <div>
               <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Correo Electrónico</label>
               <div className="relative">
@@ -216,10 +314,12 @@ export function UserSettingsModal({ open, onClose }: Props) {
                 <input
                   type="email"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                  readOnly
+                  disabled
+                  className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-xl text-sm font-medium text-muted-foreground cursor-not-allowed outline-none"
                 />
               </div>
+              <p className="text-[10px] text-muted-foreground mt-1 ml-1">El correo electrónico no se puede modificar.</p>
             </div>
 
             {/* Password change section */}

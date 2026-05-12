@@ -5,6 +5,12 @@ const nextConfig = {
     removeConsole: process.env.NODE_ENV === "production",
   },
   reactStrictMode: true,
+  // Optimize chunk splitting for faster LCP
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+    ],
+  },
   images: {
     remotePatterns: [
       {

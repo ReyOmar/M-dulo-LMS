@@ -111,11 +111,11 @@ export default function SolicitudesPendientes() {
 
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-700">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          Solicitudes de Acceso <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-full text-sm font-bold">{solicitudes.length} Pendientes</span>
+      <header className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight flex items-center gap-2 sm:gap-3 flex-wrap">
+          Solicitudes de Acceso <span className="bg-amber-500/10 text-amber-500 px-2.5 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-bold">{solicitudes.length} Pendientes</span>
         </h1>
-        <p className="text-muted-foreground mt-2">Revise y valide las solicitudes de registro manualmente para mantener la integridad del sistema (JWT Control). <br/>Al aprobar, se asignará la clave temporal configurada abajo a la cuenta.</p>
+        <p className="text-muted-foreground mt-2 text-sm sm:text-base">Revise y valide las solicitudes de registro manualmente. <span className="hidden sm:inline">Al aprobar, se asignará la clave temporal configurada abajo a la cuenta.</span></p>
       </header>
 
       {/* ===== CONTRASEÑA POR DEFECTO ===== */}
@@ -194,14 +194,15 @@ export default function SolicitudesPendientes() {
         </div>
       ) : (
         <div className="bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden">
-          <table className="w-full text-left text-sm">
+          {/* Desktop table */}
+          <table className="hidden lg:table w-full text-left text-sm">
             <thead className="bg-muted/30 border-b border-border/50 uppercase text-xs font-bold text-muted-foreground">
               <tr>
                 <th className="px-6 py-4">Usuario</th>
                 <th className="px-6 py-4">Correo</th>
                 <th className="px-6 py-4">Rol Solicitado</th>
                 <th className="px-6 py-4">Fecha</th>
-                <th className="px-6 py-4 text-right">Acción P.E.S.V.</th>
+                <th className="px-6 py-4 text-right">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/30">
@@ -226,7 +227,7 @@ export default function SolicitudesPendientes() {
                       onClick={() => handleAction(sol.id, 'aprobar')}
                       disabled={processing === sol.id}
                       className="bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-lg transition-colors disabled:opacity-50"
-                      title="Aprobar y generar credenciales"
+                      title="Aprobar"
                     >
                       <Check className="h-4 w-4" />
                     </button>
@@ -234,7 +235,7 @@ export default function SolicitudesPendientes() {
                       onClick={() => handleAction(sol.id, 'rechazar')}
                       disabled={processing === sol.id}
                       className="bg-destructive hover:bg-destructive/90 text-white p-2 rounded-lg transition-colors disabled:opacity-50"
-                      title="Rechazar y purgar"
+                      title="Rechazar"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -243,6 +244,48 @@ export default function SolicitudesPendientes() {
               ))}
             </tbody>
           </table>
+
+          {/* Mobile card view */}
+          <div className="lg:hidden divide-y divide-border/30">
+            {solicitudes.map(sol => (
+              <div key={sol.id} className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm">{sol.nombre} {sol.apellido}</p>
+                    <p className="text-xs text-muted-foreground truncate">{sol.email}</p>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ml-2
+                      ${sol.rol_pedido === 'ADMINISTRADOR' ? 'bg-red-500/10 text-red-500' : 
+                        sol.rol_pedido === 'PROFESOR' ? 'bg-blue-500/10 text-blue-500' : 
+                        'bg-emerald-500/10 text-emerald-500'}
+                  `}>
+                      {sol.rol_pedido === 'PROFESOR' ? 'Examinador' : sol.rol_pedido === 'ESTUDIANTE' ? 'Capacitante' : 'Admin'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> {new Date(sol.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => handleAction(sol.id, 'aprobar')}
+                      disabled={processing === sol.id}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 text-xs font-bold flex items-center gap-1"
+                    >
+                      <Check className="h-3.5 w-3.5" /> Aprobar
+                    </button>
+                    <button 
+                      onClick={() => handleAction(sol.id, 'rechazar')}
+                      disabled={processing === sol.id}
+                      className="bg-destructive hover:bg-destructive/90 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 text-xs font-bold flex items-center gap-1"
+                    >
+                      <X className="h-3.5 w-3.5" /> Rechazar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

@@ -34,6 +34,15 @@ export class AuthService {
       throw new BadRequestException('El usuario ya existe en el sistema.');
     }
 
+    // Require email verification before accepting request
+    const verification = await this.prisma.lms_verificacion_email.findFirst({
+      where: { email: dto.email, verificado: true },
+      orderBy: { created_at: 'desc' },
+    });
+    if (!verification) {
+      throw new BadRequestException('Debes verificar tu correo electrónico antes de enviar la solicitud.');
+    }
+
     const existingReq = await this.prisma.lms_solicitudes_acceso.findUnique({ where: { email: dto.email } });
     if (existingReq) {
       if (existingReq.estado === 'PENDIENTE') {
@@ -118,7 +127,7 @@ export class AuthService {
     return {
       message: 'Inicio de sesión exitoso.',
       token,
-      user: { guid: user.guid, role: user.rol, nombre: user.nombre, apellido: user.apellido }
+      user: { guid: user.guid, role: user.rol, nombre: user.nombre, apellido: user.apellido, foto_url: user.foto_url }
     };
   }
 
@@ -293,5 +302,84 @@ export class AuthService {
     }
 
     return { message: 'Contraseña restablecida exitosamente. Ya puedes iniciar sesión.' };
+  }
+
+  // ── Email Verification for Access Requests ──
+
+  /**
+   * Generate and send a 6-digit verification code to the email.
+   * Code expires in 10 minutes.
+   */
+  async sendEmailVerification(email: string) {
+    if (!email || !email.includes('@')) {
+      throw new BadRequestException('Correo electrónico inválido.');
+    }
+
+    // Check if email is already in the system
+    const existingUser = await this.prisma.usuarios.findUnique({ where: { email } });
+    if (existingUser) {
+      throw new BadRequestException('Este correo ya está registrado en el sistema. Inicia sesión directamente.');
+    }
+
+    // Rate limit: max 1 code per minute per email
+    const recentCode = await this.prisma.lms_verificacion_email.findFirst({
+      where: {
+        email,
+        created_at: { gt: new Date(Date.now() - 60_000) },
+      },
+    });
+    if (recentCode) {
+      throw new BadRequestException('Ya se envió un código recientemente. Espera 1 minuto antes de solicitar otro.');
+    }
+
+    // Generate 6-digit code
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60_000); // 10 minutes
+
+    // Invalidate previous codes for this email
+    await this.prisma.lms_verificacion_email.deleteMany({ where: { email } });
+
+    await this.prisma.lms_verificacion_email.create({
+      data: {
+        email,
+        codigo,
+        expires_at: expiresAt,
+      },
+    });
+
+    // Send the code via email
+    await this.mailService.sendEmailVerificationCode(email, codigo);
+
+    this.logger.log(`Email verification code sent to ${email}`);
+    return { message: 'Se ha enviado un código de verificación a tu correo electrónico.' };
+  }
+
+  /**
+   * Confirm the 6-digit verification code for an email.
+   */
+  async confirmEmailVerification(email: string, codigo: string) {
+    const record = await this.prisma.lms_verificacion_email.findFirst({
+      where: { email, codigo },
+      orderBy: { created_at: 'desc' },
+    });
+
+    if (!record) {
+      throw new BadRequestException('Código incorrecto. Verifica e intenta de nuevo.');
+    }
+
+    if (record.expires_at < new Date()) {
+      throw new BadRequestException('El código ha expirado. Solicita uno nuevo.');
+    }
+
+    if (record.verificado) {
+      return { message: 'Este correo ya fue verificado.', verificado: true };
+    }
+
+    await this.prisma.lms_verificacion_email.update({
+      where: { id: record.id },
+      data: { verificado: true },
+    });
+
+    return { message: '¡Correo verificado exitosamente!', verificado: true };
   }
 }

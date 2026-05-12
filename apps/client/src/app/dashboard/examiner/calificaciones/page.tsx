@@ -358,18 +358,18 @@ export default function CalificacionManualPage() {
 
     return (
       <div className="animate-in fade-in duration-700">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <BookCheck className="h-8 w-8 text-primary" />
+        <header className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight flex items-center gap-2 sm:gap-3">
+            <BookCheck className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             Calificación Manual
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
             Selecciona un curso para ver y calificar las entregas de los estudiantes.
           </p>
         </header>
 
         {/* Global Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div className="bg-card border border-border/50 rounded-2xl p-5 shadow-sm">
             <div className="flex items-center gap-3 mb-1">
               <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center">
@@ -631,11 +631,11 @@ export default function CalificacionManualPage() {
       </button>
 
       <header className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3 mb-6">
+        <h1 className="text-lg sm:text-2xl font-bold tracking-tight flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
           <BookCheck className="h-6 w-6 text-primary" />
           {selectedCourse?.titulo}
         </h1>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
           <div className="bg-card border border-border/50 rounded-2xl p-5 shadow-sm">
             <div className="flex items-center gap-3 mb-1">
               <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center">

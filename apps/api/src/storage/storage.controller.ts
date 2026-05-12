@@ -65,7 +65,7 @@ export class StorageController {
 
     // Validate each path segment to prevent directory traversal
     const segments = rawKey.split('/');
-    const ALLOWED_FOLDERS = ['portadas', 'recursos', 'entregas', 'firmas', 'logos', 'certificados'];
+    const ALLOWED_FOLDERS = ['portadas', 'recursos', 'entregas', 'firmas', 'logos', 'certificados', 'avatars'];
     
     let sanitizedKey: string;
     if (segments.length === 1) {

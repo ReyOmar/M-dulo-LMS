@@ -43,11 +43,16 @@ api.interceptors.response.use(
           serverMessage.includes('eliminada') ||
           serverMessage.includes('desactivada');
 
-        if (isActiveRevocation) {
-          window.location.href = '/login?revoked=true';
-        } else {
-          // Normal token expiry (server restart, 24h expiry, etc.)
-          window.location.href = '/login?expired=true';
+        // Only redirect with expired/revoked params if user was on a protected page
+        const isOnDashboard = window.location.pathname.startsWith('/dashboard');
+        if (isOnDashboard) {
+          if (isActiveRevocation) {
+            window.location.href = '/login?revoked=true';
+          } else {
+            window.location.href = '/login?expired=true';
+          }
+        } else if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
         }
       }
     }

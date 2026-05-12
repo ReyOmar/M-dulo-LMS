@@ -332,8 +332,19 @@ export default function CertificadosPage() {
 
       {/* Certificate Detail Modal */}
       {selectedCert && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-4">
-          <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-4"
+          onClick={() => {
+            setSelectedCert(null);
+            if (searchParams.get('open')) {
+              router.replace('/dashboard/student/certificados', { scroll: false });
+            }
+          }}
+        >
+          <div
+            className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header - Certificate Preview */}
             <div className="relative bg-gradient-to-br from-primary/15 via-primary/5 to-secondary/10 p-8 text-center overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-primary/60 to-secondary" />
@@ -341,7 +352,13 @@ export default function CertificadosPage() {
               <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-secondary/5 rounded-full" />
 
               <button
-                onClick={() => setSelectedCert(null)}
+                onClick={() => {
+                  setSelectedCert(null);
+                  // Clear the ?open= query param to prevent the useEffect from re-opening
+                  if (searchParams.get('open')) {
+                    router.replace('/dashboard/student/certificados', { scroll: false });
+                  }
+                }}
                 className="absolute top-4 right-4 p-2 rounded-full bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground transition-colors z-10"
               >
                 <X className="h-4 w-4" />
@@ -400,6 +417,9 @@ export default function CertificadosPage() {
                 onClick={() => {
                   const cursoGuid = selectedCert.curso_guid;
                   setSelectedCert(null);
+                  if (searchParams.get('open')) {
+                    router.replace('/dashboard/student/certificados', { scroll: false });
+                  }
                   router.push(`/cursos/${cursoGuid}`);
                 }}
                 className="flex-1 bg-muted hover:bg-border text-foreground font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"

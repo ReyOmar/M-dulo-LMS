@@ -121,12 +121,12 @@ export default function LandingConfigPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 bg-muted/30 p-1.5 rounded-2xl border border-border/50">
+      <div className="flex gap-2 bg-muted/30 p-1.5 rounded-2xl border border-border/50 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
+            className={`flex-1 min-w-fit flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
               activeTab === tab.id
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50"

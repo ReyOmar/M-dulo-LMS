@@ -139,11 +139,24 @@ export default function ModuleEditorPage() {
       '¿Estás seguro de eliminar este bloque del contenido? Esta acción no se puede deshacer.',
     );
     if (!ok) return;
+    // Optimistic: remove from local state immediately
+    setModulo((prev: any) => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      if (updated.lecciones?.[0]?.recursos) {
+        updated.lecciones = [{
+          ...updated.lecciones[0],
+          recursos: updated.lecciones[0].recursos.filter((r: any) => r.guid !== id),
+        }];
+      }
+      return updated;
+    });
     try {
       await api.delete(`/cursos/bloques/${id}`);
-      await fetchData();
     } catch (err) {
       console.error(err);
+      // Revert on failure
+      fetchData();
     }
   };
 
@@ -177,8 +190,30 @@ export default function ModuleEditorPage() {
 
       if (editingBlockId) {
         await api.patch(`/cursos/bloques/${editingBlockId}`, { titulo: finalTitulo, contenido_html: htmlContent });
+        // Optimistic: update in local state
+        setModulo((prev: any) => {
+          if (!prev?.lecciones?.[0]?.recursos) return prev;
+          const updated = { ...prev };
+          updated.lecciones = [{
+            ...updated.lecciones[0],
+            recursos: updated.lecciones[0].recursos.map((r: any) =>
+              r.guid === editingBlockId ? { ...r, titulo: finalTitulo, contenido_html: htmlContent } : r
+            ),
+          }];
+          return updated;
+        });
       } else {
-        await api.post(`/cursos/modulos/${modulo_id}/bloques`, body);
+        const res = await api.post(`/cursos/modulos/${modulo_id}/bloques`, body);
+        // Optimistic: append to local state
+        setModulo((prev: any) => {
+          if (!prev?.lecciones?.[0]) return prev;
+          const updated = { ...prev };
+          updated.lecciones = [{
+            ...updated.lecciones[0],
+            recursos: [...(updated.lecciones[0].recursos || []), res.data],
+          }];
+          return updated;
+        });
       }
 
       // Reset modals
@@ -188,7 +223,8 @@ export default function ModuleEditorPage() {
       setBloqueHtml('');
       setBloqueBase64('');
       setMenuOpen(false);
-      await fetchData();
+      // Background sync (non-blocking)
+      fetchData();
     } catch (err) {
       console.error(err);
     } finally {

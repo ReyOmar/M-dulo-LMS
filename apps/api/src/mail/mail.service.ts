@@ -249,5 +249,26 @@ export class MailService implements OnModuleInit {
 </body>
 </html>`;
   }
+
+  /**
+   * Send a 6-digit email verification code for access requests.
+   */
+  async sendEmailVerificationCode(email: string, codigo: string) {
+    const content = `
+      <h2 style="color:#1e293b;font-size:20px;margin:0 0 12px">Verificación de Correo Electrónico</h2>
+      <p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 20px">
+        Has solicitado verificar tu correo electrónico para crear una solicitud de acceso a la plataforma.
+        Ingresa el siguiente código en la página de solicitud:
+      </p>
+      <div style="background:#f1f5f9;border-radius:12px;padding:24px;text-align:center;margin:0 0 20px">
+        <span style="font-size:36px;font-weight:800;letter-spacing:8px;color:#1e293b;font-family:monospace">${codigo}</span>
+      </div>
+      <p style="color:#94a3b8;font-size:12px;margin:0">
+        Este código expira en <strong>10 minutos</strong>. Si no solicitaste esta verificación, puedes ignorar este correo.
+      </p>
+    `;
+    const html = await this.wrapTemplate(content);
+    await this.sendMail(email, 'Código de Verificación — Campus Virtual', html);
+  }
 }
 

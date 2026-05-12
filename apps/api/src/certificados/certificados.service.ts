@@ -128,7 +128,15 @@ export class CertificadosService {
         usuario: { select: { nombre: true, apellido: true } },
       },
     });
-    if (existing) return existing;
+    if (existing) {
+      // Certificate already exists — but submission files may not have been purged
+      // (e.g., if the purge failed before, or was added after the certificate was generated).
+      // Run the purge defensively to ensure files are cleaned up.
+      this.purgeEntregaFiles(usuario_guid, curso_guid).catch((err) =>
+        this.logger.error('Retroactive purge on existing cert failed:', err),
+      );
+      return existing;
+    }
 
     // Verify course completion AND grading
     const verificacion = await this.verificarCursoCompleto(usuario_guid, curso_guid);
@@ -328,9 +336,14 @@ export class CertificadosService {
       ref_guid: certificado.guid,
     }).catch((err) => this.logger.error('Certificate notification error:', err));
 
-    // F7.5.2: Purge submission files to free storage (fire-and-forget)
-    this.purgeEntregaFiles(usuario_guid, curso_guid)
-      .catch((err) => this.logger.error('Entrega file purge error:', err));
+    // F7.5.2: Purge submission files to free storage after certificate generation.
+    // Awaited (not fire-and-forget) to ensure files are cleaned up before returning.
+    try {
+      this.logger.log(`🧹 Starting submission file purge for user ${usuario_guid} in course ${curso_guid}...`);
+      await this.purgeEntregaFiles(usuario_guid, curso_guid);
+    } catch (err) {
+      this.logger.error('Entrega file purge error:', err);
+    }
 
     return certificado;
   }
@@ -756,7 +769,10 @@ export class CertificadosService {
         },
       },
     });
-    if (!curso) return;
+    if (!curso) {
+      this.logger.warn(`Purge: course ${curso_guid} not found`);
+      return;
+    }
 
     // Collect all task GUIDs
     const taskGuids: string[] = [];
@@ -767,6 +783,7 @@ export class CertificadosService {
         }
       }
     }
+    this.logger.log(`Purge: found ${taskGuids.length} task(s) in course ${curso_guid}`);
     if (taskGuids.length === 0) return;
 
     // Find entregas with files that haven't been purged yet
@@ -780,6 +797,7 @@ export class CertificadosService {
       select: { guid: true, url_archivo_adjunto: true, respuesta_texto: true },
     });
 
+    this.logger.log(`Purge: found ${entregas.length} entrega(s) with files to purge`);
     if (entregas.length === 0) return;
 
     let purged = 0;
@@ -790,6 +808,7 @@ export class CertificadosService {
       // Delete file from R2 and/or local storage
       try {
         await this.storageService.deleteFile(filename);
+        this.logger.log(`Purge: deleted file ${filename}`);
       } catch (err) {
         this.logger.warn(`Failed to delete file ${filename}, marking as purged anyway:`, err);
       }

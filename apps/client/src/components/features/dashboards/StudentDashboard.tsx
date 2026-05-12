@@ -148,6 +148,7 @@ export function StudentDashboard() {
   // Fetch active days when calendar month changes
   useEffect(() => {
     if (user?.guid) {
+      setActiveDays([]); // Clear immediately to prevent stale data flash
       api
         .get(`/estudiantes/student/dias-activos?usuario_guid=${user.guid}&year=${calYear}&month=${calMonth}`)
         .then((r) => r.data)

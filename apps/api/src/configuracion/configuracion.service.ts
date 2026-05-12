@@ -52,16 +52,34 @@ export class ConfiguracionService implements OnModuleInit {
     }
   }
 
+  // In-memory cache for public config (avoids DB hit on every page load)
+  private configCache: any = null;
+  private configCacheExpiry = 0;
+  private static readonly CACHE_TTL_MS = 30_000; // 30 seconds
+
   async getConfig() {
+    const now = Date.now();
+    if (this.configCache && now < this.configCacheExpiry) {
+      return this.configCache;
+    }
+
     const config = await this.prisma.lms_configuracion.findUnique({
       where: { id: 1 },
     });
     if (config) {
       // Strip sensitive fields from public response
       const { contrasena_defecto, ...safeConfig } = config as any;
+      this.configCache = safeConfig;
+      this.configCacheExpiry = now + ConfiguracionService.CACHE_TTL_MS;
       return safeConfig;
     }
     return config;
+  }
+
+  /** Invalidate the in-memory cache (called after updates) */
+  private invalidateCache() {
+    this.configCache = null;
+    this.configCacheExpiry = 0;
   }
 
   async getFullConfig() {
@@ -96,6 +114,7 @@ export class ConfiguracionService implements OnModuleInit {
       data: dto,
     });
     
+    this.invalidateCache();
     this.lmsGateway.broadcast('config:updated', updated);
     return updated;
   }

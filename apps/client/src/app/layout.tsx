@@ -1,11 +1,19 @@
 import "./globals.css";
 import { type Metadata } from "next";
+import { Inter } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 import { AlertProvider } from "@/contexts/AlertContext";
 import { WebSocketProvider } from "@/contexts/WebSocketContext";
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   let platformName = "Campus Virtual";
@@ -14,8 +22,8 @@ export async function generateMetadata(): Promise<Metadata> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3200/api';
     const res = await fetch(`${apiUrl}/configuracion`, {
-      next: { revalidate: 60 }, // Cache for 60s — much faster than no-store
-      signal: AbortSignal.timeout(3000), // Don't block SSR more than 3s
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(1500), // Reduced from 3s — don't block SSR too long
     });
     if (res.ok) {
       const data = await res.json();
@@ -52,16 +60,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning className={inter.variable}>
       <head>
-        {/* Google Fonts — Inter (UI) + JetBrains Mono (data/IDs) */}
+        {/* Preconnect to Google Fonts for dynamic theme font loading (ConfigContext) */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
         {/* Blocking script to apply cached theme BEFORE any CSS/React renders — eliminates color flash */}
         <Script src="/theme-preload.js" strategy="beforeInteractive" />
       </head>
-      <body suppressHydrationWarning className="min-h-screen bg-background font-sans antialiased text-foreground transition-colors duration-300">
+      <body suppressHydrationWarning className={`min-h-screen bg-background font-sans antialiased text-foreground transition-colors duration-300 ${inter.className}`}>
         <ThemeProvider
             attribute="class"
             defaultTheme="light"

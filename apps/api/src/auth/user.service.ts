@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenBlacklistService } from './token-blacklist.service';
+import { StorageService } from '../storage/storage.service';
 import { LmsGateway } from '../ws/lms.gateway';
 import * as bcrypt from 'bcryptjs';
 
@@ -14,6 +15,7 @@ export class UserService {
   constructor(
     private prisma: PrismaService,
     private tokenBlacklistService: TokenBlacklistService,
+    private storageService: StorageService,
     private lmsGateway: LmsGateway,
   ) {}
 
@@ -31,6 +33,7 @@ export class UserService {
         updated_at: true,
         ultimo_acceso: true,
         usa_clave_defecto: true,
+        foto_url: true,
         _count: {
           select: {
             cursos_impartidos: true,
@@ -116,11 +119,7 @@ export class UserService {
     const updateData: any = {};
     if (data.nombre) updateData.nombre = data.nombre;
     if (data.apellido) updateData.apellido = data.apellido;
-    if (data.email && data.email !== user.email) {
-      const existing = await this.prisma.usuarios.findUnique({ where: { email: data.email } });
-      if (existing) throw new BadRequestException('Este correo ya está en uso.');
-      updateData.email = data.email;
-    }
+    // Email is immutable — cannot be changed after account creation
 
     // Password change
     if (data.nueva_contrasena) {
@@ -149,8 +148,99 @@ export class UserService {
   }
 
   async getUserProfile(guid: string) {
-    const user = await this.prisma.usuarios.findUnique({ where: { guid }, select: { guid: true, email: true, nombre: true, apellido: true, rol: true, created_at: true } });
+    const user = await this.prisma.usuarios.findUnique({
+      where: { guid },
+      select: { guid: true, email: true, nombre: true, apellido: true, rol: true, created_at: true, foto_url: true },
+    });
     if (!user) throw new NotFoundException('Usuario no encontrado.');
     return user;
+  }
+
+  /**
+   * Upload or replace the user's profile photo.
+   * Deletes the previous photo from R2/local storage to save resources.
+   */
+  async uploadProfilePhoto(guid: string, buffer: Buffer, originalName: string) {
+    const user = await this.prisma.usuarios.findUnique({ where: { guid }, select: { foto_url: true } });
+    if (!user) throw new NotFoundException('Usuario no encontrado.');
+
+    // Delete old photo if exists
+    if (user.foto_url) {
+      try {
+        await this.storageService.deleteFile(user.foto_url);
+        this.logger.log(`Deleted old profile photo: ${user.foto_url}`);
+      } catch (err) {
+        this.logger.warn(`Failed to delete old profile photo: ${user.foto_url}`, err);
+      }
+    }
+
+    // Upload new photo
+    const filename = await this.storageService.uploadFromBuffer(buffer, originalName, 'avatars');
+
+    await this.prisma.usuarios.update({
+      where: { guid },
+      data: { foto_url: filename },
+    });
+
+    this.lmsGateway.broadcast('user:updated', { guid });
+    return { message: 'Foto de perfil actualizada.', foto_url: filename };
+  }
+
+  /**
+   * Delete the user's profile photo from storage and clear the DB field.
+   */
+  async deleteProfilePhoto(guid: string) {
+    const user = await this.prisma.usuarios.findUnique({ where: { guid }, select: { foto_url: true } });
+    if (!user) throw new NotFoundException('Usuario no encontrado.');
+    if (!user.foto_url) throw new BadRequestException('No tienes foto de perfil.');
+
+    try {
+      await this.storageService.deleteFile(user.foto_url);
+      this.logger.log(`Deleted profile photo: ${user.foto_url}`);
+    } catch (err) {
+      this.logger.warn(`Failed to delete profile photo: ${user.foto_url}`, err);
+    }
+
+    await this.prisma.usuarios.update({
+      where: { guid },
+      data: { foto_url: null },
+    });
+
+    this.lmsGateway.broadcast('user:updated', { guid });
+    return { message: 'Foto de perfil eliminada.' };
+  }
+
+  /**
+   * Create a user account directly (admin only).
+   * Bypasses the access request flow entirely.
+   */
+  async createUser(data: { nombre: string; apellido: string; email: string; rol: string; contrasena_temporal: string }) {
+    const existing = await this.prisma.usuarios.findUnique({ where: { email: data.email } });
+    if (existing) {
+      throw new BadRequestException('Ya existe un usuario con este correo electrónico.');
+    }
+
+    const hashed = await bcrypt.hash(data.contrasena_temporal, 10);
+
+    const user = await this.prisma.usuarios.create({
+      data: {
+        email: data.email,
+        nombre: data.nombre,
+        apellido: data.apellido,
+        rol: data.rol as any,
+        contrasena: hashed,
+        usa_clave_defecto: true,
+      },
+    });
+
+    this.lmsGateway.broadcast('user:created', { guid: user.guid });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_created' });
+
+    this.logger.log(`Admin created user: ${data.email} (${data.rol})`);
+
+    return {
+      message: `Usuario ${data.nombre} ${data.apellido} creado exitosamente con contraseña temporal.`,
+      user: { guid: user.guid, email: user.email, nombre: user.nombre, apellido: user.apellido, rol: user.rol },
+    };
   }
 }
