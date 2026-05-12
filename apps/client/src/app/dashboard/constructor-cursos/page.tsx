@@ -1077,7 +1077,9 @@ export default function ConstructorCursosRoot() {
             )}
 
             {/* Right Sidebar (Temario del curso) */}
-            <div className={`w-[350px] max-w-[85vw] bg-card border-l border-border overflow-y-auto flex flex-col shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-50 fixed lg:relative right-0 top-0 h-full lg:h-auto transition-transform duration-300 ease-in-out ${showTemario ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
+            <div
+              className={`w-[350px] max-w-[85vw] bg-card border-l border-border overflow-y-auto flex flex-col shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-50 fixed lg:relative right-0 top-0 h-full lg:h-auto transition-transform duration-300 ease-in-out ${showTemario ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}
+            >
               <div className="p-5 border-b border-border sticky top-0 bg-inherit z-10 flex items-center justify-between">
                 <h2 className="font-bold text-lg tracking-tight flex items-center gap-2 uppercase text-muted-foreground">
                   <Layers className="h-5 w-5" /> Temario del Curso

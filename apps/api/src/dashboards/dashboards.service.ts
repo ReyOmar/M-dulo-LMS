@@ -13,19 +13,19 @@ export class DashboardsService {
           include: {
             lecciones: {
               include: {
-                recursos: { select: { guid: true, tipo: true, titulo: true } }
-              }
-            }
-          }
-        }
-      }
+                recursos: { select: { guid: true, tipo: true, titulo: true } },
+              },
+            },
+          },
+        },
+      },
     });
 
     if (cursos.length === 0) return [];
 
-    const cursoGuids = cursos.map(c => c.guid);
+    const cursoGuids = cursos.map((c) => c.guid);
     const allResourceGuids: string[] = [];
-    
+
     for (const curso of cursos) {
       for (const mod of curso.modulos) {
         const recursos = mod.lecciones.flatMap((l: any) => l.recursos);
@@ -37,40 +37,44 @@ export class DashboardsService {
 
     const matriculas = await this.prisma.lms_matriculas.findMany({
       where: { curso_guid: { in: cursoGuids } },
-      select: { usuario_guid: true, curso_guid: true }
+      select: { usuario_guid: true, curso_guid: true },
     });
-    
-    const enrolledStudentGuids = [...new Set(matriculas.map(m => m.usuario_guid))];
+
+    const enrolledStudentGuids = [...new Set(matriculas.map((m) => m.usuario_guid))];
     if (enrolledStudentGuids.length === 0) return [];
 
     // Run remaining queries in parallel
     const [enrolledStudents, entregas, progresos] = await Promise.all([
       this.prisma.usuarios.findMany({
         where: { guid: { in: enrolledStudentGuids } },
-        select: { guid: true, nombre: true, apellido: true, email: true, ultimo_acceso: true }
+        select: { guid: true, nombre: true, apellido: true, email: true, ultimo_acceso: true },
       }),
       this.prisma.lms_entregas.findMany({
         where: { tarea_guid: { in: allResourceGuids } },
-        select: { usuario_guid: true, tarea_guid: true, fecha_entrega: true }
+        select: { usuario_guid: true, tarea_guid: true, fecha_entrega: true },
       }),
       this.prisma.lms_progreso_recurso.findMany({
         where: { recurso_guid: { in: allResourceGuids } },
-        select: { usuario_guid: true, recurso_guid: true }
+        select: { usuario_guid: true, recurso_guid: true },
       }),
     ]);
 
-    const result = enrolledStudents.map(student => {
-      const studentEntregas = entregas.filter(e => e.usuario_guid === student.guid);
-      const studentProgresos = progresos.filter(p => p.usuario_guid === student.guid);
-      const completedResources = new Set(studentProgresos.map(p => p.recurso_guid));
-      const studentEnrolledCourseGuids = new Set(matriculas.filter(m => m.usuario_guid === student.guid).map(m => m.curso_guid));
+    const result = enrolledStudents.map((student) => {
+      const studentEntregas = entregas.filter((e) => e.usuario_guid === student.guid);
+      const studentProgresos = progresos.filter((p) => p.usuario_guid === student.guid);
+      const completedResources = new Set(studentProgresos.map((p) => p.recurso_guid));
+      const studentEnrolledCourseGuids = new Set(
+        matriculas.filter((m) => m.usuario_guid === student.guid).map((m) => m.curso_guid),
+      );
 
       const cursosProgress = cursos
-        .filter(curso => studentEnrolledCourseGuids.has(curso.guid))
-        .map(curso => {
-          const totalRecursos = curso.modulos.reduce((sum, mod) => 
-            sum + mod.lecciones.reduce((s: any, l: any) => s + l.recursos.length, 0), 0);
-          
+        .filter((curso) => studentEnrolledCourseGuids.has(curso.guid))
+        .map((curso) => {
+          const totalRecursos = curso.modulos.reduce(
+            (sum, mod) => sum + mod.lecciones.reduce((s: any, l: any) => s + l.recursos.length, 0),
+            0,
+          );
+
           const completados = curso.modulos.reduce((sum, mod) => {
             const recursos = mod.lecciones.flatMap((l: any) => l.recursos);
             return sum + recursos.filter((r: any) => completedResources.has(r.guid)).length;
@@ -82,16 +86,16 @@ export class DashboardsService {
             total_recursos: totalRecursos,
             completados,
             porcentaje: totalRecursos > 0 ? Math.round((completados / totalRecursos) * 100) : 0,
-            modulos: curso.modulos.map(mod => {
+            modulos: curso.modulos.map((mod) => {
               const modRecursos = mod.lecciones.flatMap((l: any) => l.recursos);
               const modCompletados = modRecursos.filter((r: any) => completedResources.has(r.guid)).length;
               return {
                 titulo: mod.titulo,
                 total: modRecursos.length,
                 completados: modCompletados,
-                porcentaje: modRecursos.length > 0 ? Math.round((modCompletados / modRecursos.length) * 100) : 0
+                porcentaje: modRecursos.length > 0 ? Math.round((modCompletados / modRecursos.length) * 100) : 0,
               };
-            })
+            }),
           };
         });
 
@@ -102,7 +106,7 @@ export class DashboardsService {
         email: student.email,
         ultimo_acceso: student.ultimo_acceso,
         total_entregas: studentEntregas.length,
-        cursos: cursosProgress
+        cursos: cursosProgress,
       };
     });
 
@@ -125,15 +129,18 @@ export class DashboardsService {
       this.prisma.usuarios.findMany({ where: { rol: 'ESTUDIANTE', activo: true }, select: { guid: true } }),
       this.prisma.lms_cursos.count({ where: { estado: 'PUBLICADO' } }),
       this.prisma.lms_cursos.count({ where: { estado: 'BORRADOR' } }),
-      this.prisma.lms_entregas.findMany({ where: { estado: 'CALIFICADA', calificacion: { not: null } }, select: { calificacion: true } }),
+      this.prisma.lms_entregas.findMany({
+        where: { estado: 'CALIFICADA', calificacion: { not: null } },
+        select: { calificacion: true },
+      }),
       this.prisma.lms_matriculas.count(),
       this.prisma.lms_cursos.findMany({ where: { estado: 'PUBLICADO' }, select: { guid: true, titulo: true } }),
       this.prisma.lms_matriculas.findMany({ select: { usuario_guid: true, curso_guid: true } }),
     ]);
 
     // Count active professors/students using batch data (no extra queries)
-    const profGuids = new Set(profesores.map(p => p.guid));
-    const estudGuids = new Set(estudiantes.map(e => e.guid));
+    const profGuids = new Set(profesores.map((p) => p.guid));
+    const estudGuids = new Set(estudiantes.map((e) => e.guid));
     const matriculasByUser = new Map<string, number>();
     const matriculasByCourse = new Map<string, number>();
 
@@ -142,14 +149,16 @@ export class DashboardsService {
       matriculasByCourse.set(m.curso_guid, (matriculasByCourse.get(m.curso_guid) || 0) + 1);
     }
 
-    const profesoresActivos = [...profGuids].filter(g => {
-      // Professor is active if they have at least one course
-      return cursos.some(c => allMatriculas.some(m => m.curso_guid === c.guid));
-    }).length || profesores.length; // fallback
-    const estudiantesActivos = [...estudGuids].filter(g => matriculasByUser.has(g)).length;
+    const profesoresActivos =
+      [...profGuids].filter((g) => {
+        // Professor is active if they have at least one course
+        return cursos.some((c) => allMatriculas.some((m) => m.curso_guid === c.guid));
+      }).length || profesores.length; // fallback
+    const estudiantesActivos = [...estudGuids].filter((g) => matriculasByUser.has(g)).length;
 
     // Average grades from calificadas — use numeric field directly
-    let sumaNotas = 0, countNotas = 0;
+    let sumaNotas = 0,
+      countNotas = 0;
     for (const e of entregasCalificadas) {
       if (e.calificacion != null) {
         sumaNotas += Number(e.calificacion);
@@ -185,15 +194,24 @@ export class DashboardsService {
 
       weeklyActivity.push({
         day: dayNames[dayStart.getDay()],
-        sesiones: weekProgresos.filter(p => p.fecha_completado >= dayStart && p.fecha_completado < dayEnd).length,
-        entregas: weekEntregas.filter(e => e.fecha_entrega && e.fecha_entrega >= dayStart && e.fecha_entrega < dayEnd).length,
+        sesiones: weekProgresos.filter((p) => p.fecha_completado >= dayStart && p.fecha_completado < dayEnd).length,
+        entregas: weekEntregas.filter((e) => e.fecha_entrega && e.fecha_entrega >= dayStart && e.fecha_entrega < dayEnd)
+          .length,
       });
     }
 
     // Course distribution from pre-fetched data
     const colors = [
-      '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-      '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#64748b',
+      '#6366f1',
+      '#10b981',
+      '#f59e0b',
+      '#ef4444',
+      '#8b5cf6',
+      '#06b6d4',
+      '#ec4899',
+      '#14b8a6',
+      '#f97316',
+      '#64748b',
     ];
     const courseDistribution = cursos.map((c, i) => ({
       name: c.titulo.length > 25 ? c.titulo.substring(0, 25) + '...' : c.titulo,
@@ -202,7 +220,11 @@ export class DashboardsService {
     }));
 
     return {
-      usuarios: { total: profesoresActivos + estudiantesActivos, estudiantes: estudiantesActivos, profesores: profesoresActivos },
+      usuarios: {
+        total: profesoresActivos + estudiantesActivos,
+        estudiantes: estudiantesActivos,
+        profesores: profesoresActivos,
+      },
       cursos: { publicados: cursosPublicados, borrador: cursosBorrador, total: cursosPublicados + cursosBorrador },
       promedioGlobal,
       weeklyActivity,

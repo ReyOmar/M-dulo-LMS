@@ -17,7 +17,7 @@ export class MailService implements OnModuleInit {
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
-    private configuracionService: ConfiguracionService
+    private configuracionService: ConfiguracionService,
   ) {
     this.fromAddress = this.configService.get<string>('SMTP_FROM') || 'noreply@lms.local';
     this.fromName = this.configService.get<string>('SMTP_FROM_NAME') || 'Campus Virtual';
@@ -53,9 +53,13 @@ export class MailService implements OnModuleInit {
         this.fromAddress = testAccount.user;
         this.enabled = true;
         this.logger.log(`Mail service [DEV/ETHEREAL]: ${testAccount.user}`);
-        this.logger.log(`Preview emails at: https://ethereal.email/login (user: ${testAccount.user}, pass: ${testAccount.pass})`);
+        this.logger.log(
+          `Preview emails at: https://ethereal.email/login (user: ${testAccount.user}, pass: ${testAccount.pass})`,
+        );
       } catch (err) {
-        this.logger.warn('Mail service DISABLED — Could not create Ethereal account. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env for production.');
+        this.logger.warn(
+          'Mail service DISABLED — Could not create Ethereal account. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env for production.',
+        );
       }
     }
   }
@@ -70,7 +74,7 @@ export class MailService implements OnModuleInit {
     });
   }
 
-  async updateTemplate(id: number, dto: { asunto?: string, cuerpo_html?: string, activo?: boolean }) {
+  async updateTemplate(id: number, dto: { asunto?: string; cuerpo_html?: string; activo?: boolean }) {
     return this.prisma.lms_plantillas_correo.update({
       where: { id },
       data: dto,
@@ -107,7 +111,7 @@ export class MailService implements OnModuleInit {
         if (attempt < MAX_RETRIES) {
           const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
           this.logger.warn(`Email to ${to} failed (attempt ${attempt}/${MAX_RETRIES}), retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
         } else {
           this.logger.error(`Email to ${to} FAILED after ${MAX_RETRIES} attempts: ${(err as Error)?.message || err}`);
         }
@@ -148,42 +152,105 @@ export class MailService implements OnModuleInit {
     return this.sendMail(email, rendered.asunto, rendered.html);
   }
 
-  async sendGradeNotification(email: string, nombre: string, tarea: string, calificacion: number, notaAprobacion = 3.0) {
+  async sendGradeNotification(
+    email: string,
+    nombre: string,
+    tarea: string,
+    calificacion: number,
+    notaAprobacion = 3.0,
+  ) {
     const emoji = calificacion >= notaAprobacion ? '🎉' : '⚠️';
-    const mensaje_aprobacion = calificacion < notaAprobacion ? '<p style="color:#ef4444;font-size:14px;font-weight:600">Debes subir un nuevo documento para mejorar tu nota.</p>' : '<p style="color:#10b981;font-size:14px;font-weight:600">¡Buen trabajo! Sigue así.</p>';
-    const rendered = await this.renderTemplate('CALIFICACION_RECIBIDA', { nombre, tarea, calificacion, emoji, mensaje_aprobacion, url_campus: `${this.appUrl}/dashboard` });
+    const mensaje_aprobacion =
+      calificacion < notaAprobacion
+        ? '<p style="color:#ef4444;font-size:14px;font-weight:600">Debes subir un nuevo documento para mejorar tu nota.</p>'
+        : '<p style="color:#10b981;font-size:14px;font-weight:600">¡Buen trabajo! Sigue así.</p>';
+    const rendered = await this.renderTemplate('CALIFICACION_RECIBIDA', {
+      nombre,
+      tarea,
+      calificacion,
+      emoji,
+      mensaje_aprobacion,
+      url_campus: `${this.appUrl}/dashboard`,
+    });
     if (!rendered) return false;
     return this.sendMail(email, rendered.asunto, rendered.html);
   }
 
   async sendInactivityReminder(email: string, nombre: string, diasInactivo: number) {
-    const rendered = await this.renderTemplate('RECORDATORIO_INACTIVIDAD', { nombre, diasInactivo, url_campus: `${this.appUrl}/dashboard` });
+    const rendered = await this.renderTemplate('RECORDATORIO_INACTIVIDAD', {
+      nombre,
+      diasInactivo,
+      url_campus: `${this.appUrl}/dashboard`,
+    });
     if (!rendered) return false;
     return this.sendMail(email, rendered.asunto, rendered.html);
   }
 
   async sendCourseReactivated(email: string, nombre: string, cursoTitulo: string) {
-    const rendered = await this.renderTemplate('CURSO_REACTIVADO', { nombre, cursoTitulo, url_campus: `${this.appUrl}/dashboard` });
+    const rendered = await this.renderTemplate('CURSO_REACTIVADO', {
+      nombre,
+      cursoTitulo,
+      url_campus: `${this.appUrl}/dashboard`,
+    });
     if (!rendered) return false;
     return this.sendMail(email, rendered.asunto, rendered.html);
   }
 
-  async sendNewAccessRequest(adminEmail: string, adminNombre: string, solicitante: { nombre: string; apellido: string; email: string; rol_pedido: string }) {
-    const rolLabel = solicitante.rol_pedido === 'ESTUDIANTE' ? 'Capacitante' : solicitante.rol_pedido === 'PROFESOR' ? 'Examinador' : 'Administrador';
+  async sendNewAccessRequest(
+    adminEmail: string,
+    adminNombre: string,
+    solicitante: { nombre: string; apellido: string; email: string; rol_pedido: string },
+  ) {
+    const rolLabel =
+      solicitante.rol_pedido === 'ESTUDIANTE'
+        ? 'Capacitante'
+        : solicitante.rol_pedido === 'PROFESOR'
+          ? 'Examinador'
+          : 'Administrador';
     const solicitanteNombre = `${solicitante.nombre} ${solicitante.apellido}`;
-    const rendered = await this.renderTemplate('NUEVA_SOLICITUD_ACCESO', { adminNombre, solicitanteNombre, solicitanteEmail: solicitante.email, solicitanteRol: rolLabel, url_solicitudes: `${this.appUrl}/dashboard/admin/solicitudes` });
+    const rendered = await this.renderTemplate('NUEVA_SOLICITUD_ACCESO', {
+      adminNombre,
+      solicitanteNombre,
+      solicitanteEmail: solicitante.email,
+      solicitanteRol: rolLabel,
+      url_solicitudes: `${this.appUrl}/dashboard/admin/solicitudes`,
+    });
     if (!rendered) return false;
     return this.sendMail(adminEmail, rendered.asunto, rendered.html);
   }
 
-  async sendNewSubmissionNotification(examinerEmail: string, examinerNombre: string, estudiante: string, tarea: string, curso: string) {
-    const rendered = await this.renderTemplate('NUEVA_ENTREGA', { examinerNombre, estudiante, tarea, curso, url_calificaciones: `${this.appUrl}/dashboard/examiner/calificaciones` });
+  async sendNewSubmissionNotification(
+    examinerEmail: string,
+    examinerNombre: string,
+    estudiante: string,
+    tarea: string,
+    curso: string,
+  ) {
+    const rendered = await this.renderTemplate('NUEVA_ENTREGA', {
+      examinerNombre,
+      estudiante,
+      tarea,
+      curso,
+      url_calificaciones: `${this.appUrl}/dashboard/examiner/calificaciones`,
+    });
     if (!rendered) return false;
     return this.sendMail(examinerEmail, rendered.asunto, rendered.html);
   }
 
-  async sendQuizFailedModuleReset(email: string, nombre: string, quizTitulo: string, moduloTitulo: string, nota: number) {
-    const rendered = await this.renderTemplate('MODULO_REINICIADO', { nombre, quizTitulo, moduloTitulo, nota, url_campus: `${this.appUrl}/dashboard` });
+  async sendQuizFailedModuleReset(
+    email: string,
+    nombre: string,
+    quizTitulo: string,
+    moduloTitulo: string,
+    nota: number,
+  ) {
+    const rendered = await this.renderTemplate('MODULO_REINICIADO', {
+      nombre,
+      quizTitulo,
+      moduloTitulo,
+      nota,
+      url_campus: `${this.appUrl}/dashboard`,
+    });
     if (!rendered) return false;
     return this.sendMail(email, rendered.asunto, rendered.html);
   }
@@ -228,7 +295,9 @@ export class MailService implements OnModuleInit {
     const config = await this.configuracionService.getConfig();
     const colorPrimario = config?.color_primario || '#4f46e5';
     const titulo = config?.nombre_plataforma || 'Campus Virtual';
-    const logoHtml = config?.logo_url ? `<img src="${config.logo_url}" alt="${titulo}" style="max-height:40px;vertical-align:middle" />` : `<h1 style="color:#ffffff;font-size:18px;margin:0;font-weight:700">${titulo}</h1>`;
+    const logoHtml = config?.logo_url
+      ? `<img src="${config.logo_url}" alt="${titulo}" style="max-height:40px;vertical-align:middle" />`
+      : `<h1 style="color:#ffffff;font-size:18px;margin:0;font-weight:700">${titulo}</h1>`;
 
     return `
 <!DOCTYPE html>
@@ -271,4 +340,3 @@ export class MailService implements OnModuleInit {
     await this.sendMail(email, 'Código de Verificación — Campus Virtual', html);
   }
 }
-

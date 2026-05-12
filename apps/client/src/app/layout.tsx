@@ -1,22 +1,22 @@
-import "./globals.css";
-import { type Metadata } from "next";
-import { Inter } from "next/font/google";
-import Script from "next/script";
-import { ThemeProvider } from "@/components/ui/ThemeProvider";
-import { RoleProvider } from "@/contexts/RoleContext";
-import { ConfigProvider } from "@/contexts/ConfigContext";
-import { AlertProvider } from "@/contexts/AlertContext";
-import { WebSocketProvider } from "@/contexts/WebSocketContext";
+import './globals.css';
+import { type Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import Script from 'next/script';
+import { ThemeProvider } from '@/components/ui/ThemeProvider';
+import { RoleProvider } from '@/contexts/RoleContext';
+import { ConfigProvider } from '@/contexts/ConfigContext';
+import { AlertProvider } from '@/contexts/AlertContext';
+import { WebSocketProvider } from '@/contexts/WebSocketContext';
 
 const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-  variable: "--font-inter",
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+  variable: '--font-inter',
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  let platformName = "Campus Virtual";
+  let platformName = 'Campus Virtual';
   let faviconUrl: string | null = null;
 
   try {
@@ -47,18 +47,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: platformName,
-    description: "Plataforma Educativa Empresarial Moderna",
+    description: 'Plataforma Educativa Empresarial Moderna',
     icons: {
       icon: faviconUrl || defaultFavicon,
     },
   };
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning className={inter.variable}>
       <head>
@@ -68,18 +64,15 @@ export default function RootLayout({
         {/* Blocking script to apply cached theme BEFORE any CSS/React renders — eliminates color flash */}
         <Script src="/theme-preload.js" strategy="beforeInteractive" />
       </head>
-      <body suppressHydrationWarning className={`min-h-screen bg-background font-sans antialiased text-foreground transition-colors duration-300 ${inter.className}`}>
-        <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem={false}
-          >
+      <body
+        suppressHydrationWarning
+        className={`min-h-screen bg-background font-sans antialiased text-foreground transition-colors duration-300 ${inter.className}`}
+      >
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <RoleProvider>
             <WebSocketProvider>
               <ConfigProvider>
-                <AlertProvider>
-                  {children}
-                </AlertProvider>
+                <AlertProvider>{children}</AlertProvider>
               </ConfigProvider>
             </WebSocketProvider>
           </RoleProvider>
@@ -88,4 +81,3 @@ export default function RootLayout({
     </html>
   );
 }
-

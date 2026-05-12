@@ -31,7 +31,10 @@ export class CertificadosService {
    * Verify if a student has completed ALL resources in a course.
    * Also checks if all TAREA-type resources have been graded (CALIFICADA).
    */
-  async verificarCursoCompleto(usuario_guid: string, curso_guid: string): Promise<{
+  async verificarCursoCompleto(
+    usuario_guid: string,
+    curso_guid: string,
+  ): Promise<{
     completo: boolean;
     completados: number;
     total: number;
@@ -56,9 +59,7 @@ export class CertificadosService {
 
     if (!curso) throw new NotFoundException('Curso no encontrado');
 
-    const allResources = curso.modulos.flatMap((m) =>
-      m.lecciones.flatMap((l) => l.recursos),
-    );
+    const allResources = curso.modulos.flatMap((m) => m.lecciones.flatMap((l) => l.recursos));
     const allResourceGuids = allResources.map((r) => r.guid);
 
     if (allResourceGuids.length === 0) {
@@ -163,7 +164,9 @@ export class CertificadosService {
           descripcion: true,
           duracion_horas: true,
           profesor_guid: true,
-          profesor: { select: { nombre: true, apellido: true, firma_url: true, firma_nombre: true, firma_cargo: true } },
+          profesor: {
+            select: { nombre: true, apellido: true, firma_url: true, firma_nombre: true, firma_cargo: true },
+          },
           modulos: {
             include: {
               lecciones: {
@@ -187,9 +190,7 @@ export class CertificadosService {
     }
 
     // Calculate metrics
-    const allResourceGuids = curso.modulos.flatMap((m) =>
-      m.lecciones.flatMap((l) => l.recursos.map((r) => r.guid)),
-    );
+    const allResourceGuids = curso.modulos.flatMap((m) => m.lecciones.flatMap((l) => l.recursos.map((r) => r.guid)));
     const totalModulos = curso.modulos.length;
     const totalRecursos = allResourceGuids.length;
     const totalTareas = curso.modulos.flatMap((m) =>
@@ -232,7 +233,7 @@ export class CertificadosService {
     const fechaCompletado = new Date();
 
     // Use active time or course duration as fallback
-    const tiempoHoras = tiempoActivoSeg > 0 ? tiempoActivoHoras : (curso.duracion_horas || 1);
+    const tiempoHoras = tiempoActivoSeg > 0 ? tiempoActivoHoras : curso.duracion_horas || 1;
 
     // Generate verification code
     const codigoVerificacion = `CERT-${crypto.randomBytes(4).toString('hex').toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
@@ -317,24 +318,30 @@ export class CertificadosService {
     });
 
     // Broadcast via WebSocket to the student
-    this.lmsGateway.broadcast('certificate:new', {
-      guid: certificado.guid,
-      curso_guid,
-      curso_titulo: curso.titulo,
-      fecha_completado: fechaCompletado,
-    }, [usuario_guid]);
+    this.lmsGateway.broadcast(
+      'certificate:new',
+      {
+        guid: certificado.guid,
+        curso_guid,
+        curso_titulo: curso.titulo,
+        fecha_completado: fechaCompletado,
+      },
+      [usuario_guid],
+    );
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'certificate_generated' });
 
     // Create notification (fire-and-forget)
-    this.notificacionesService.crearNotificacion({
-      usuario_guid,
-      tipo: 'MODULO_COMPLETADO',
-      titulo: '🎓 ¡Curso completado!',
-      mensaje: `Has finalizado exitosamente el curso "${curso.titulo}". Tu certificado ya está disponible para descargar.`,
-      url_accion: '/dashboard/student/certificados',
-      ref_tipo: 'certificado',
-      ref_guid: certificado.guid,
-    }).catch((err) => this.logger.error('Certificate notification error:', err));
+    this.notificacionesService
+      .crearNotificacion({
+        usuario_guid,
+        tipo: 'MODULO_COMPLETADO',
+        titulo: '🎓 ¡Curso completado!',
+        mensaje: `Has finalizado exitosamente el curso "${curso.titulo}". Tu certificado ya está disponible para descargar.`,
+        url_accion: '/dashboard/student/certificados',
+        ref_tipo: 'certificado',
+        ref_guid: certificado.guid,
+      })
+      .catch((err) => this.logger.error('Certificate notification error:', err));
 
     // F7.5.2: Purge submission files to free storage after certificate generation.
     // Awaited (not fire-and-forget) to ensure files are cleaned up before returning.
@@ -361,11 +368,11 @@ export class CertificadosService {
         leccion: {
           select: {
             modulo: {
-              select: { curso_guid: true }
-            }
-          }
-        }
-      }
+              select: { curso_guid: true },
+            },
+          },
+        },
+      },
     });
     if (!recurso) return;
 
@@ -509,11 +516,13 @@ export class CertificadosService {
       doc.rect(0, 0, W, H).fill('#FAFAFA');
 
       // ── Academic Double Border ──
-      doc.rect(24, 24, W - 48, H - 48)
+      doc
+        .rect(24, 24, W - 48, H - 48)
         .lineWidth(3)
         .stroke(primary);
-        
-      doc.rect(30, 30, W - 60, H - 60)
+
+      doc
+        .rect(30, 30, W - 60, H - 60)
         .lineWidth(1)
         .stroke(secondary);
 
@@ -525,7 +534,7 @@ export class CertificadosService {
 
       // ── Logo and Platform name header ──
       let headerY = 55;
-      
+
       if (data.logoImagePath) {
         try {
           doc.image(data.logoImagePath, W / 2 - 45, headerY, {
@@ -538,25 +547,19 @@ export class CertificadosService {
           headerY += 105;
         } catch (e) {
           // Fallback to text if image fails
-          doc.fontSize(16)
-            .font('Times-Bold')
-            .fillColor(primary)
-            .text(data.nombrePlataforma.toUpperCase(), 0, headerY, {
-              align: 'center',
-              width: W,
-              characterSpacing: 2,
-            });
-          headerY += 30;
-        }
-      } else {
-        doc.fontSize(16)
-          .font('Times-Bold')
-          .fillColor(primary)
-          .text(data.nombrePlataforma.toUpperCase(), 0, headerY, {
+          doc.fontSize(16).font('Times-Bold').fillColor(primary).text(data.nombrePlataforma.toUpperCase(), 0, headerY, {
             align: 'center',
             width: W,
             characterSpacing: 2,
           });
+          headerY += 30;
+        }
+      } else {
+        doc.fontSize(16).font('Times-Bold').fillColor(primary).text(data.nombrePlataforma.toUpperCase(), 0, headerY, {
+          align: 'center',
+          width: W,
+          characterSpacing: 2,
+        });
         headerY += 30;
       }
 
@@ -565,17 +568,23 @@ export class CertificadosService {
       const sepW = 160;
       const sepGrad = doc.linearGradient(W / 2 - sepW / 2, sepY, W / 2 + sepW / 2, sepY);
       sepGrad.stop(0, '#E2E8F0').stop(0.5, primary).stop(1, '#E2E8F0');
-      doc.moveTo(W / 2 - sepW / 2, sepY).lineTo(W / 2 + sepW / 2, sepY).lineWidth(1).stroke(sepGrad);
+      doc
+        .moveTo(W / 2 - sepW / 2, sepY)
+        .lineTo(W / 2 + sepW / 2, sepY)
+        .lineWidth(1)
+        .stroke(sepGrad);
 
       // ── Title ──
       const certTitle = data.tituloPersonalizado || 'CERTIFICADO';
-      doc.fontSize(32)
+      doc
+        .fontSize(32)
         .font('Times-Bold')
         .fillColor('#1E293B')
         .text(certTitle, 0, sepY + 15, { align: 'center', width: W });
 
       const subTitle = data.subtitulo || 'DE FINALIZACIÓN ACADÉMICA';
-      doc.fontSize(11)
+      doc
+        .fontSize(11)
         .font('Times-Roman')
         .fillColor('#64748B')
         .text(subTitle, 0, sepY + 50, {
@@ -585,13 +594,15 @@ export class CertificadosService {
         });
 
       // ── "Se otorga a:" ──
-      doc.fontSize(12)
+      doc
+        .fontSize(12)
         .font('Times-Italic')
         .fillColor('#94A3B8')
         .text('El presente documento se otorga a:', 0, sepY + 80, { align: 'center', width: W });
 
       // ── Student Name ──
-      doc.fontSize(28)
+      doc
+        .fontSize(28)
         .font('Times-BoldItalic')
         .fillColor(primary)
         .text(data.nombreEstudiante, 0, sepY + 105, { align: 'center', width: W });
@@ -601,26 +612,35 @@ export class CertificadosService {
       const nameLineW = Math.min(data.nombreEstudiante.length * 15 + 60, 500);
       const nameGrad = doc.linearGradient(W / 2 - nameLineW / 2, nameLineY, W / 2 + nameLineW / 2, nameLineY);
       nameGrad.stop(0, '#E2E8F0').stop(0.3, primary).stop(0.7, primary).stop(1, '#E2E8F0');
-      doc.moveTo(W / 2 - nameLineW / 2, nameLineY)
+      doc
+        .moveTo(W / 2 - nameLineW / 2, nameLineY)
         .lineTo(W / 2 + nameLineW / 2, nameLineY)
         .lineWidth(1)
         .stroke(nameGrad);
 
       // ── "Por haber completado exitosamente el curso:" ──
-      doc.fontSize(12)
+      doc
+        .fontSize(12)
         .font('Times-Italic')
         .fillColor('#64748B')
-        .text('Por haber completado y aprobado satisfactoriamente los requisitos del programa formativo:', 0, nameLineY + 15, { align: 'center', width: W });
+        .text(
+          'Por haber completado y aprobado satisfactoriamente los requisitos del programa formativo:',
+          0,
+          nameLineY + 15,
+          { align: 'center', width: W },
+        );
 
       // ── Course Title ──
-      doc.fontSize(18)
+      doc
+        .fontSize(18)
         .font('Times-Bold')
         .fillColor('#1E293B')
         .text(`"${data.tituloCurso}"`, 60, nameLineY + 35, { align: 'center', width: W - 120 });
 
       // ── Legal / Descriptive text ──
       const legalY = nameLineY + 65;
-      doc.fontSize(10)
+      doc
+        .fontSize(10)
         .font('Times-Roman')
         .fillColor('#475569')
         .text(data.textoLegal, 80, legalY, { align: 'center', width: W - 160, lineGap: 4 });
@@ -665,11 +685,13 @@ export class CertificadosService {
       const metricWidth = (W - 120) / metricsData.length;
       metricsData.forEach((metric, i) => {
         const x = 60 + i * metricWidth;
-        doc.fontSize(9)
+        doc
+          .fontSize(9)
           .font('Times-Roman')
           .fillColor('#64748B')
           .text(metric.label.toUpperCase(), x, metricsY, { width: metricWidth, align: 'center' });
-        doc.fontSize(12)
+        doc
+          .fontSize(12)
           .font('Times-Bold')
           .fillColor('#1E293B')
           .text(metric.value, x, metricsY + 14, { width: metricWidth, align: 'center' });
@@ -678,7 +700,7 @@ export class CertificadosService {
       // ── Instructor signature area ──
       if (data.mostrarFirma) {
         const sigY = H - 110;
-        
+
         // If there's a signature image, render it
         if (data.firmaImagePath) {
           try {
@@ -696,19 +718,22 @@ export class CertificadosService {
 
         // Signature line
         const sigLineW = 220;
-        doc.moveTo(W / 2 - sigLineW / 2, sigY)
+        doc
+          .moveTo(W / 2 - sigLineW / 2, sigY)
           .lineTo(W / 2 + sigLineW / 2, sigY)
           .lineWidth(0.8)
           .stroke('#94A3B8');
 
         const sigName = data.firmaNombre || data.nombreProfesor;
-        doc.fontSize(11)
+        doc
+          .fontSize(11)
           .font('Times-Bold')
           .fillColor('#1E293B')
           .text(sigName, 0, sigY + 8, { align: 'center', width: W });
 
         const sigTitle = data.firmaCargo || 'Instructor / Examinador Académico';
-        doc.fontSize(10)
+        doc
+          .fontSize(10)
           .font('Times-Italic')
           .fillColor('#64748B')
           .text(sigTitle, 0, sigY + 22, { align: 'center', width: W });
@@ -716,10 +741,14 @@ export class CertificadosService {
 
       // ── Verification code at bottom ──
       const codeY = H - 45;
-      doc.fontSize(8)
+      doc
+        .fontSize(8)
         .font('Times-Roman')
         .fillColor('#94A3B8')
-        .text(`Código de verificación institucional: ${data.codigoVerificacion}`, 0, codeY, { align: 'center', width: W });
+        .text(`Código de verificación institucional: ${data.codigoVerificacion}`, 0, codeY, {
+          align: 'center',
+          width: W,
+        });
 
       // ── Finalize ──
       doc.end();
@@ -732,12 +761,20 @@ export class CertificadosService {
   /**
    * Draw a small corner ornament (L-shaped bracket).
    */
-  private drawCornerOrnament(doc: PDFKit.PDFDocument, x: number, y: number, color: string, flipX: boolean, flipY: boolean) {
+  private drawCornerOrnament(
+    doc: PDFKit.PDFDocument,
+    x: number,
+    y: number,
+    color: string,
+    flipX: boolean,
+    flipY: boolean,
+  ) {
     const size = 16;
     const dx = flipX ? -1 : 1;
     const dy = flipY ? -1 : 1;
 
-    doc.moveTo(x, y + dy * size)
+    doc
+      .moveTo(x, y + dy * size)
       .lineTo(x, y)
       .lineTo(x + dx * size, y)
       .lineWidth(2)
@@ -829,6 +866,4 @@ export class CertificadosService {
       this.logger.log(`📦 Purged ${purged} submission files for user ${usuario_guid} in course ${curso_guid}`);
     }
   }
-
 }
-

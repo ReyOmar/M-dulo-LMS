@@ -74,8 +74,9 @@ export default function BaseUsuarios() {
     if (realRole === 'admin') {
       fetchUsuarios();
       // Fetch the default password to use for new admin accounts
-      api.get('/configuracion/full')
-        .then(res => setDefaultPassword(res.data?.contrasena_defecto || 'pesvauth2026'))
+      api
+        .get('/configuracion/full')
+        .then((res) => setDefaultPassword(res.data?.contrasena_defecto || 'pesvauth2026'))
         .catch(() => setDefaultPassword('pesvauth2026'));
     }
   }, [realRole]);
@@ -285,27 +286,27 @@ export default function BaseUsuarios() {
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 animate-in slide-in-from-bottom-4 duration-500">
         <div className="overflow-x-auto -mx-1 px-1">
           <div className="flex bg-muted/30 p-1 rounded-xl border border-border/50 w-max sm:w-auto">
-          <button
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'ADMINISTRADOR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-            onClick={() => setActiveTab('ADMINISTRADOR')}
-          >
-            <Shield className="h-4 w-4 text-red-500" />
-            Administradores ({usuarios.filter((u) => u.rol === 'ADMINISTRADOR').length})
-          </button>
-          <button
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'PROFESOR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-            onClick={() => setActiveTab('PROFESOR')}
-          >
-            <Presentation className="h-4 w-4 text-blue-500" />
-            Examinadores ({usuarios.filter((u) => u.rol === 'PROFESOR').length})
-          </button>
-          <button
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'ESTUDIANTE' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-            onClick={() => setActiveTab('ESTUDIANTE')}
-          >
-            <GraduationCap className="h-4 w-4 text-emerald-500" />
-            Estudiantes ({usuarios.filter((u) => u.rol === 'ESTUDIANTE').length})
-          </button>
+            <button
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'ADMINISTRADOR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setActiveTab('ADMINISTRADOR')}
+            >
+              <Shield className="h-4 w-4 text-red-500" />
+              Administradores ({usuarios.filter((u) => u.rol === 'ADMINISTRADOR').length})
+            </button>
+            <button
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'PROFESOR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setActiveTab('PROFESOR')}
+            >
+              <Presentation className="h-4 w-4 text-blue-500" />
+              Examinadores ({usuarios.filter((u) => u.rol === 'PROFESOR').length})
+            </button>
+            <button
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'ESTUDIANTE' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setActiveTab('ESTUDIANTE')}
+            >
+              <GraduationCap className="h-4 w-4 text-emerald-500" />
+              Estudiantes ({usuarios.filter((u) => u.rol === 'ESTUDIANTE').length})
+            </button>
           </div>
         </div>
 
@@ -366,10 +367,17 @@ export default function BaseUsuarios() {
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-full shrink-0 overflow-hidden">
                             {user.foto_url ? (
-                              <img src={resolveFileUrl(user.foto_url) || ''} alt="" className="h-full w-full object-cover" />
+                              <img
+                                src={resolveFileUrl(user.foto_url) || ''}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
                             ) : (
-                              <div className={`h-full w-full flex items-center justify-center text-white font-bold text-xs ${user.rol === 'ADMINISTRADOR' ? 'bg-red-500' : user.rol === 'PROFESOR' ? 'bg-blue-500' : 'bg-emerald-500'}`}>
-                                {user.nombre.charAt(0)}{user.apellido.charAt(0)}
+                              <div
+                                className={`h-full w-full flex items-center justify-center text-white font-bold text-xs ${user.rol === 'ADMINISTRADOR' ? 'bg-red-500' : user.rol === 'PROFESOR' ? 'bg-blue-500' : 'bg-emerald-500'}`}
+                              >
+                                {user.nombre.charAt(0)}
+                                {user.apellido.charAt(0)}
                               </div>
                             )}
                           </div>
@@ -423,9 +431,7 @@ export default function BaseUsuarios() {
           {/* Mobile card list — visible only on mobile */}
           <div className="lg:hidden divide-y divide-border/30">
             {filteredUsuarios.length === 0 ? (
-              <div className="px-5 py-8 text-center text-muted-foreground font-medium">
-                No se encontraron usuarios.
-              </div>
+              <div className="px-5 py-8 text-center text-muted-foreground font-medium">No se encontraron usuarios.</div>
             ) : (
               filteredUsuarios.map((user) => (
                 <div
@@ -437,13 +443,18 @@ export default function BaseUsuarios() {
                     {user.foto_url ? (
                       <img src={resolveFileUrl(user.foto_url) || ''} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className={`h-full w-full flex items-center justify-center text-white font-bold text-sm ${user.rol === 'ADMINISTRADOR' ? 'bg-red-500' : user.rol === 'PROFESOR' ? 'bg-blue-500' : 'bg-emerald-500'}`}>
-                        {user.nombre.charAt(0)}{user.apellido.charAt(0)}
+                      <div
+                        className={`h-full w-full flex items-center justify-center text-white font-bold text-sm ${user.rol === 'ADMINISTRADOR' ? 'bg-red-500' : user.rol === 'PROFESOR' ? 'bg-blue-500' : 'bg-emerald-500'}`}
+                      >
+                        {user.nombre.charAt(0)}
+                        {user.apellido.charAt(0)}
                       </div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm truncate">{user.nombre} {user.apellido}</p>
+                    <p className="font-bold text-sm truncate">
+                      {user.nombre} {user.apellido}
+                    </p>
                     <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {user.usa_clave_defecto && (
@@ -451,8 +462,8 @@ export default function BaseUsuarios() {
                           <Key className="h-2.5 w-2.5" /> Sin Clave
                         </span>
                       )}
-                      {activeTab !== 'ADMINISTRADOR' && (
-                        user.activo ? (
+                      {activeTab !== 'ADMINISTRADOR' &&
+                        (user.activo ? (
                           <span className="flex items-center gap-1 text-emerald-500 text-[10px] font-bold">
                             <UserCheck className="h-2.5 w-2.5" /> Activo
                           </span>
@@ -460,13 +471,10 @@ export default function BaseUsuarios() {
                           <span className="flex items-center gap-1 text-red-500 text-[10px] font-bold">
                             <UserX className="h-2.5 w-2.5" /> Inactivo
                           </span>
-                        )
-                      )}
+                        ))}
                     </div>
                   </div>
-                  <div className="shrink-0 text-right">
-                    {renderUltimoAcceso(user.guid, user.ultimo_acceso)}
-                  </div>
+                  <div className="shrink-0 text-right">{renderUltimoAcceso(user.guid, user.ultimo_acceso)}</div>
                 </div>
               ))
             )}
@@ -489,9 +497,15 @@ export default function BaseUsuarios() {
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-full shrink-0 overflow-hidden">
                   {selectedUser.foto_url ? (
-                    <img src={resolveFileUrl(selectedUser.foto_url) || ''} alt="" className="h-full w-full object-cover" />
+                    <img
+                      src={resolveFileUrl(selectedUser.foto_url) || ''}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
-                    <div className={`h-full w-full flex items-center justify-center text-white font-bold text-lg ${selectedUser.rol === 'PROFESOR' ? 'bg-blue-500' : 'bg-emerald-500'}`}>
+                    <div
+                      className={`h-full w-full flex items-center justify-center text-white font-bold text-lg ${selectedUser.rol === 'PROFESOR' ? 'bg-blue-500' : 'bg-emerald-500'}`}
+                    >
                       {selectedUser.nombre.charAt(0)}
                       {selectedUser.apellido.charAt(0)}
                     </div>
@@ -694,21 +708,25 @@ export default function BaseUsuarios() {
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Nombre</label>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                    Nombre
+                  </label>
                   <input
                     type="text"
                     value={createForm.nombre}
-                    onChange={(e) => setCreateForm(f => ({ ...f, nombre: e.target.value }))}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, nombre: e.target.value }))}
                     className="w-full px-3 py-2.5 bg-background border border-border rounded-xl text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                     placeholder="Juan"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Apellido</label>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                    Apellido
+                  </label>
                   <input
                     type="text"
                     value={createForm.apellido}
-                    onChange={(e) => setCreateForm(f => ({ ...f, apellido: e.target.value }))}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, apellido: e.target.value }))}
                     className="w-full px-3 py-2.5 bg-background border border-border rounded-xl text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                     placeholder="Pérez"
                   />
@@ -716,13 +734,15 @@ export default function BaseUsuarios() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Correo Electrónico</label>
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                  Correo Electrónico
+                </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input
                     type="email"
                     value={createForm.email}
-                    onChange={(e) => setCreateForm(f => ({ ...f, email: e.target.value }))}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
                     className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                     placeholder="correo@ejemplo.com"
                   />
@@ -733,8 +753,13 @@ export default function BaseUsuarios() {
               <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2.5">
                 <Key className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-bold text-amber-700 dark:text-amber-400">Contraseña por defecto del sistema</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Se usará la contraseña por defecto configurada en Solicitudes. El administrador deberá cambiarla obligatoriamente al ingresar por primera vez.</p>
+                  <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                    Contraseña por defecto del sistema
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Se usará la contraseña por defecto configurada en Solicitudes. El administrador deberá cambiarla
+                    obligatoriamente al ingresar por primera vez.
+                  </p>
                 </div>
               </div>
             </div>
@@ -763,7 +788,9 @@ export default function BaseUsuarios() {
                       rol: 'ADMINISTRADOR',
                       contrasena_temporal: defaultPassword,
                     });
-                    showToast.success(`Administrador ${createForm.nombre} ${createForm.apellido} registrado exitosamente.`);
+                    showToast.success(
+                      `Administrador ${createForm.nombre} ${createForm.apellido} registrado exitosamente.`,
+                    );
                     setShowCreate(false);
                     setCreateForm({ nombre: '', apellido: '', email: '' });
                     fetchUsuarios();

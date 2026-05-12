@@ -16,10 +16,7 @@ export class BloqueService {
    * Combined validation: checks course exists, is BORRADOR, and ownership in ONE query.
    * Replaces the old 3-query pattern (ensureDraft + ensureOwnership + find).
    */
-  private assertDraftAndOwnership(
-    curso: { estado: string; profesor_guid: string } | null,
-    requestUser?: any,
-  ): void {
+  private assertDraftAndOwnership(curso: { estado: string; profesor_guid: string } | null, requestUser?: any): void {
     if (!curso) throw new NotFoundException('Curso no encontrado');
     if (curso.estado !== 'BORRADOR') {
       throw new BadRequestException('El curso debe estar en estado Borrador para realizar cambios.');

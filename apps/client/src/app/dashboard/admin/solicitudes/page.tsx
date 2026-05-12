@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { Check, X, ShieldAlert, Clock, KeyRound, Eye, EyeOff, Save, Loader2 } from "lucide-react";
-import { PageLoader } from "@/components/ui/PageLoader";
-import { useRole } from "@/contexts/RoleContext";
-import Link from "next/link";
-import api from "@/lib/api";
-import { useAlert } from "@/contexts/AlertContext";
-import { useWS } from "@/contexts/WebSocketContext";
+import { useEffect, useState } from 'react';
+import { Check, X, ShieldAlert, Clock, KeyRound, Eye, EyeOff, Save, Loader2 } from 'lucide-react';
+import { PageLoader } from '@/components/ui/PageLoader';
+import { useRole } from '@/contexts/RoleContext';
+import Link from 'next/link';
+import api from '@/lib/api';
+import { useAlert } from '@/contexts/AlertContext';
+import { useWS } from '@/contexts/WebSocketContext';
 
 export default function SolicitudesPendientes() {
   const { realRole } = useRole();
@@ -18,26 +18,26 @@ export default function SolicitudesPendientes() {
   const { subscribe } = useWS();
 
   // Default password state
-  const [defaultPassword, setDefaultPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
+  const [defaultPassword, setDefaultPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordSaved, setPasswordSaved] = useState(false);
 
   useEffect(() => {
-    if (realRole === "admin") {
+    if (realRole === 'admin') {
       fetchSolicitudes();
       fetchDefaultPassword();
     }
   }, [realRole]);
 
   useEffect(() => {
-    if (realRole !== "admin") return;
-    
+    if (realRole !== 'admin') return;
+
     // Subscribe to new requests or resolutions to auto-update the list
     const unsub1 = subscribe('request:new', fetchSolicitudes);
     const unsub2 = subscribe('request:resolved', fetchSolicitudes);
-    
+
     return () => {
       unsub1();
       unsub2();
@@ -46,7 +46,7 @@ export default function SolicitudesPendientes() {
 
   const fetchSolicitudes = async () => {
     try {
-      const res = await api.get("/auth/solicitudes");
+      const res = await api.get('/auth/solicitudes');
       const data = res.data;
       setSolicitudes(data);
     } catch (err) {
@@ -58,10 +58,10 @@ export default function SolicitudesPendientes() {
 
   const fetchDefaultPassword = async () => {
     try {
-      const res = await api.get("/configuracion/full");
+      const res = await api.get('/configuracion/full');
       const data = res.data;
-      setDefaultPassword(data?.contrasena_defecto || "pesvauth2026");
-      setNewPassword(data?.contrasena_defecto || "pesvauth2026");
+      setDefaultPassword(data?.contrasena_defecto || 'pesvauth2026');
+      setNewPassword(data?.contrasena_defecto || 'pesvauth2026');
     } catch (err) {
       console.error(err);
     }
@@ -69,18 +69,18 @@ export default function SolicitudesPendientes() {
 
   const handleSavePassword = async () => {
     if (!newPassword || newPassword.length < 6) {
-      showAlert.warning("Atención", "La contraseña debe tener al menos 6 caracteres.");
+      showAlert.warning('Atención', 'La contraseña debe tener al menos 6 caracteres.');
       return;
     }
     setSavingPassword(true);
     try {
-      await api.post("/configuracion", { contrasena_defecto: newPassword });
+      await api.post('/configuracion', { contrasena_defecto: newPassword });
       setDefaultPassword(newPassword);
       setPasswordSaved(true);
       setTimeout(() => setPasswordSaved(false), 3000);
     } catch (err) {
       console.error(err);
-      showAlert.error("Error", "Error al guardar la contraseña.");
+      showAlert.error('Error', 'Error al guardar la contraseña.');
     } finally {
       setSavingPassword(false);
     }
@@ -90,7 +90,7 @@ export default function SolicitudesPendientes() {
     setProcessing(id);
     try {
       await api.post(`/auth/solicitudes/${id}/${action}`);
-      setSolicitudes(solicitudes.filter(s => s.id !== id));
+      setSolicitudes(solicitudes.filter((s) => s.id !== id));
     } catch (err) {
       console.error(err);
     } finally {
@@ -98,24 +98,37 @@ export default function SolicitudesPendientes() {
     }
   };
 
-  if (realRole !== "admin") {
-      return (
-          <div className="flex flex-col items-center justify-center h-[70vh] animate-in fade-in">
-              <ShieldAlert className="h-16 w-16 text-red-500 mb-4" />
-              <h1 className="text-2xl font-bold">Acceso Restringido PESV</h1>
-              <p className="text-muted-foreground mt-2">Área exclusiva para Administradores de Sistema.</p>
-              <Link href="/dashboard" className="mt-6 px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-colors">Volver al Tablero</Link>
-          </div>
-      );
+  if (realRole !== 'admin') {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh] animate-in fade-in">
+        <ShieldAlert className="h-16 w-16 text-red-500 mb-4" />
+        <h1 className="text-2xl font-bold">Acceso Restringido PESV</h1>
+        <p className="text-muted-foreground mt-2">Área exclusiva para Administradores de Sistema.</p>
+        <Link
+          href="/dashboard"
+          className="mt-6 px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-colors"
+        >
+          Volver al Tablero
+        </Link>
+      </div>
+    );
   }
 
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-700">
       <header className="mb-6 sm:mb-8">
         <h1 className="text-xl sm:text-3xl font-bold tracking-tight flex items-center gap-2 sm:gap-3 flex-wrap">
-          Solicitudes de Acceso <span className="bg-amber-500/10 text-amber-500 px-2.5 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-bold">{solicitudes.length} Pendientes</span>
+          Solicitudes de Acceso{' '}
+          <span className="bg-amber-500/10 text-amber-500 px-2.5 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-bold">
+            {solicitudes.length} Pendientes
+          </span>
         </h1>
-        <p className="text-muted-foreground mt-2 text-sm sm:text-base">Revise y valide las solicitudes de registro manualmente. <span className="hidden sm:inline">Al aprobar, se asignará la clave temporal configurada abajo a la cuenta.</span></p>
+        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
+          Revise y valide las solicitudes de registro manualmente.{' '}
+          <span className="hidden sm:inline">
+            Al aprobar, se asignará la clave temporal configurada abajo a la cuenta.
+          </span>
+        </p>
       </header>
 
       {/* ===== CONTRASEÑA POR DEFECTO ===== */}
@@ -126,18 +139,26 @@ export default function SolicitudesPendientes() {
           </div>
           <div>
             <h2 className="font-bold text-sm">Contraseña por Defecto</h2>
-            <p className="text-xs text-muted-foreground">Esta contraseña se asignará automáticamente a cada usuario nuevo aprobado.</p>
+            <p className="text-xs text-muted-foreground">
+              Esta contraseña se asignará automáticamente a cada usuario nuevo aprobado.
+            </p>
           </div>
         </div>
         <div className="p-6">
-          <form onSubmit={(e) => { e.preventDefault(); handleSavePassword(); }} className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSavePassword();
+            }}
+            className="flex flex-col sm:flex-row items-start sm:items-end gap-4"
+          >
             <div className="flex-1 w-full sm:max-w-md">
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-2">
                 Contraseña temporal para nuevos usuarios
               </label>
               <div className="relative">
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full bg-background border border-border rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-amber-500/50 font-mono text-sm"
@@ -159,25 +180,33 @@ export default function SolicitudesPendientes() {
               type="submit"
               disabled={savingPassword || newPassword === defaultPassword || newPassword.length < 6}
               className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-sm whitespace-nowrap
-                ${passwordSaved 
-                  ? 'bg-emerald-500 text-white' 
-                  : newPassword !== defaultPassword && newPassword.length >= 6
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white hover:-translate-y-0.5'
-                    : 'bg-muted text-muted-foreground cursor-not-allowed'
+                ${
+                  passwordSaved
+                    ? 'bg-emerald-500 text-white'
+                    : newPassword !== defaultPassword && newPassword.length >= 6
+                      ? 'bg-amber-500 hover:bg-amber-600 text-white hover:-translate-y-0.5'
+                      : 'bg-muted text-muted-foreground cursor-not-allowed'
                 }`}
             >
               {savingPassword ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Guardando...</>
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Guardando...
+                </>
               ) : passwordSaved ? (
-                <><Check className="h-4 w-4" /> ¡Guardada!</>
+                <>
+                  <Check className="h-4 w-4" /> ¡Guardada!
+                </>
               ) : (
-                <><Save className="h-4 w-4" /> Guardar Contraseña</>
+                <>
+                  <Save className="h-4 w-4" /> Guardar Contraseña
+                </>
               )}
             </button>
           </form>
           {newPassword !== defaultPassword && newPassword.length >= 6 && (
             <div className="mt-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-sm text-amber-600 dark:text-amber-400 font-medium animate-in fade-in duration-300">
-              ⚠️ Has modificado la contraseña. Presiona <strong>&quot;Guardar Contraseña&quot;</strong> para que los próximos usuarios aprobados reciban esta nueva clave.
+              ⚠️ Has modificado la contraseña. Presiona <strong>&quot;Guardar Contraseña&quot;</strong> para que los
+              próximos usuarios aprobados reciban esta nueva clave.
             </div>
           )}
         </div>
@@ -188,9 +217,11 @@ export default function SolicitudesPendientes() {
         <PageLoader message="Cargando solicitudes..." />
       ) : solicitudes.length === 0 ? (
         <div className="bg-card border border-border/50 rounded-2xl p-12 flex flex-col items-center justify-center text-center shadow-sm">
-            <Check className="h-16 w-16 text-emerald-500 mb-4 opacity-50" />
-            <h3 className="text-xl font-bold">Bandeja Limpia</h3>
-            <p className="text-muted-foreground mt-2 max-w-md">No hay solicitudes de registro pendientes. Toda la red académica está operando con normalidad.</p>
+          <Check className="h-16 w-16 text-emerald-500 mb-4 opacity-50" />
+          <h3 className="text-xl font-bold">Bandeja Limpia</h3>
+          <p className="text-muted-foreground mt-2 max-w-md">
+            No hay solicitudes de registro pendientes. Toda la red académica está operando con normalidad.
+          </p>
         </div>
       ) : (
         <div className="bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden">
@@ -206,24 +237,37 @@ export default function SolicitudesPendientes() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/30">
-              {solicitudes.map(sol => (
+              {solicitudes.map((sol) => (
                 <tr key={sol.id} className="hover:bg-muted/10 transition-colors">
-                  <td className="px-6 py-4 font-bold">{sol.nombre} {sol.apellido}</td>
+                  <td className="px-6 py-4 font-bold">
+                    {sol.nombre} {sol.apellido}
+                  </td>
                   <td className="px-6 py-4 text-muted-foreground">{sol.email}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
-                        ${sol.rol_pedido === 'ADMINISTRADOR' ? 'bg-red-500/10 text-red-500' : 
-                          sol.rol_pedido === 'PROFESOR' ? 'bg-blue-500/10 text-blue-500' : 
-                          'bg-emerald-500/10 text-emerald-500'}
-                    `}>
-                        {sol.rol_pedido}
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
+                        ${
+                          sol.rol_pedido === 'ADMINISTRADOR'
+                            ? 'bg-red-500/10 text-red-500'
+                            : sol.rol_pedido === 'PROFESOR'
+                              ? 'bg-blue-500/10 text-blue-500'
+                              : 'bg-emerald-500/10 text-emerald-500'
+                        }
+                    `}
+                    >
+                      {sol.rol_pedido}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> {new Date(sol.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    <Clock className="h-3 w-3" />{' '}
+                    {new Date(sol.created_at).toLocaleDateString('es-ES', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                    })}
                   </td>
                   <td className="px-6 py-4 text-right space-x-2">
-                    <button 
+                    <button
                       onClick={() => handleAction(sol.id, 'aprobar')}
                       disabled={processing === sol.id}
                       className="bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-lg transition-colors disabled:opacity-50"
@@ -231,7 +275,7 @@ export default function SolicitudesPendientes() {
                     >
                       <Check className="h-4 w-4" />
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleAction(sol.id, 'rechazar')}
                       disabled={processing === sol.id}
                       className="bg-destructive hover:bg-destructive/90 text-white p-2 rounded-lg transition-colors disabled:opacity-50"
@@ -247,34 +291,51 @@ export default function SolicitudesPendientes() {
 
           {/* Mobile card view */}
           <div className="lg:hidden divide-y divide-border/30">
-            {solicitudes.map(sol => (
+            {solicitudes.map((sol) => (
               <div key={sol.id} className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm">{sol.nombre} {sol.apellido}</p>
+                    <p className="font-bold text-sm">
+                      {sol.nombre} {sol.apellido}
+                    </p>
                     <p className="text-xs text-muted-foreground truncate">{sol.email}</p>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ml-2
-                      ${sol.rol_pedido === 'ADMINISTRADOR' ? 'bg-red-500/10 text-red-500' : 
-                        sol.rol_pedido === 'PROFESOR' ? 'bg-blue-500/10 text-blue-500' : 
-                        'bg-emerald-500/10 text-emerald-500'}
-                  `}>
-                      {sol.rol_pedido === 'PROFESOR' ? 'Examinador' : sol.rol_pedido === 'ESTUDIANTE' ? 'Capacitante' : 'Admin'}
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ml-2
+                      ${
+                        sol.rol_pedido === 'ADMINISTRADOR'
+                          ? 'bg-red-500/10 text-red-500'
+                          : sol.rol_pedido === 'PROFESOR'
+                            ? 'bg-blue-500/10 text-blue-500'
+                            : 'bg-emerald-500/10 text-emerald-500'
+                      }
+                  `}
+                  >
+                    {sol.rol_pedido === 'PROFESOR'
+                      ? 'Examinador'
+                      : sol.rol_pedido === 'ESTUDIANTE'
+                        ? 'Capacitante'
+                        : 'Admin'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> {new Date(sol.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    <Clock className="h-3 w-3" />{' '}
+                    {new Date(sol.created_at).toLocaleDateString('es-ES', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                    })}
                   </span>
                   <div className="flex items-center gap-2">
-                    <button 
+                    <button
                       onClick={() => handleAction(sol.id, 'aprobar')}
                       disabled={processing === sol.id}
                       className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 text-xs font-bold flex items-center gap-1"
                     >
                       <Check className="h-3.5 w-3.5" /> Aprobar
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleAction(sol.id, 'rechazar')}
                       disabled={processing === sol.id}
                       className="bg-destructive hover:bg-destructive/90 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 text-xs font-bold flex items-center gap-1"

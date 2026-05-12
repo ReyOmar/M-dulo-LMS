@@ -1,4 +1,15 @@
-import { Controller, Post, Body, Get, Param, Patch, ForbiddenException, Delete, BadRequestException, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  Patch,
+  ForbiddenException,
+  Delete,
+  BadRequestException,
+  Req,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { UserService } from './user.service';
@@ -112,7 +123,9 @@ export class AuthController {
 
   @Roles('ADMINISTRADOR')
   @Post('usuarios/crear')
-  async createUser(@Body() body: { nombre: string; apellido: string; email: string; rol: string; contrasena_temporal: string }) {
+  async createUser(
+    @Body() body: { nombre: string; apellido: string; email: string; rol: string; contrasena_temporal: string },
+  ) {
     return this.userService.createUser(body);
   }
 
@@ -143,11 +156,7 @@ export class AuthController {
   // ── Profile photo management (Fastify multipart) ──
 
   @Post('perfil/:guid/foto')
-  async uploadPhoto(
-    @Param('guid') guid: string,
-    @CurrentUser() user: JwtPayload,
-    @Req() req: any,
-  ) {
+  async uploadPhoto(@Param('guid') guid: string, @CurrentUser() user: JwtPayload, @Req() req: any) {
     if (user && user.sub !== guid && user.role !== 'ADMINISTRADOR') {
       throw new ForbiddenException('No tienes permiso para modificar este perfil.');
     }

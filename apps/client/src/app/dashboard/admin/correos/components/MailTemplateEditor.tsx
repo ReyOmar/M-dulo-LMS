@@ -36,16 +36,36 @@ interface MailTemplateEditorProps {
  * This avoids showing raw {{variable}} syntax to the user.
  */
 const VARIABLE_META: Record<string, { label: string; sample: string; color: string }> = {
-  nombre: { label: 'Nombre', sample: 'Juan', color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30' },
-  apellido: { label: 'Apellido', sample: 'Pérez', color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30' },
-  email: { label: 'Correo', sample: 'juan@correo.com', color: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/30' },
-  contrasena: { label: 'Contraseña', sample: '••••••••', color: 'bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/30' },
+  nombre: {
+    label: 'Nombre',
+    sample: 'Juan',
+    color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30',
+  },
+  apellido: {
+    label: 'Apellido',
+    sample: 'Pérez',
+    color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30',
+  },
+  email: {
+    label: 'Correo',
+    sample: 'juan@correo.com',
+    color: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/30',
+  },
+  contrasena: {
+    label: 'Contraseña',
+    sample: '••••••••',
+    color: 'bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/30',
+  },
   curso: {
     label: 'Curso',
     sample: 'Módulo PESV Básico',
     color: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30',
   },
-  tarea: { label: 'Tarea', sample: 'Evaluación Final', color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30' },
+  tarea: {
+    label: 'Tarea',
+    sample: 'Evaluación Final',
+    color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30',
+  },
   calificacion: {
     label: 'Calificación',
     sample: '4.5',
@@ -56,15 +76,31 @@ const VARIABLE_META: Record<string, { label: string; sample: string; color: stri
     sample: '¡Aprobado! Excelente trabajo.',
     color: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30',
   },
-  emoji: { label: 'Emoji', sample: '🎓', color: 'bg-pink-500/15 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-500/30' },
+  emoji: {
+    label: 'Emoji',
+    sample: '🎓',
+    color: 'bg-pink-500/15 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-500/30',
+  },
   enlace: {
     label: 'Enlace',
     sample: 'https://plataforma.com/...',
     color: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30',
   },
-  fecha: { label: 'Fecha', sample: '09/05/2026', color: 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-500/30' },
-  modulo: { label: 'Módulo', sample: 'Módulo 1', color: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30' },
-  codigo: { label: 'Código', sample: 'CERT-2026-ABC', color: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/30' },
+  fecha: {
+    label: 'Fecha',
+    sample: '09/05/2026',
+    color: 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-500/30',
+  },
+  modulo: {
+    label: 'Módulo',
+    sample: 'Módulo 1',
+    color: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30',
+  },
+  codigo: {
+    label: 'Código',
+    sample: 'CERT-2026-ABC',
+    color: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/30',
+  },
 };
 
 const DEFAULT_COLOR = 'bg-slate-500/15 text-foreground border-slate-300 dark:border-slate-500/30';

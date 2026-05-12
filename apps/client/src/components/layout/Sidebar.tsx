@@ -219,7 +219,12 @@ export function Sidebar() {
             <>
               <div className="space-y-0.5 mb-7">
                 <p className="sidebar-section-label">Gestión de Evaluaciones</p>
-                <Link prefetch={true} href="/dashboard" className={linkClass('/dashboard')} onClick={() => setMobileOpen(false)}>
+                <Link
+                  prefetch={true}
+                  href="/dashboard"
+                  className={linkClass('/dashboard')}
+                  onClick={() => setMobileOpen(false)}
+                >
                   <Presentation className="h-4 w-4 shrink-0" /> Asignaciones
                 </Link>
                 <Link
@@ -254,7 +259,12 @@ export function Sidebar() {
                 >
                   <FileSignature className="h-4 w-4 shrink-0" /> Mi Firma
                 </Link>
-                <Link prefetch={true} href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')} onClick={() => setMobileOpen(false)}>
+                <Link
+                  prefetch={true}
+                  href="/dashboard/mensajes"
+                  className={linkClass('/dashboard/mensajes')}
+                  onClick={() => setMobileOpen(false)}
+                >
                   <MessageSquare className="h-4 w-4 shrink-0" />
                   <span>Mensajes</span>
                   {unreadMessagesCount > 0 && !pathname.startsWith('/dashboard/mensajes') && (
@@ -271,10 +281,20 @@ export function Sidebar() {
           {role === 'student' && (
             <div className="space-y-0.5 mb-7">
               <p className="sidebar-section-label">Área de Aprendizaje</p>
-              <Link prefetch={true} href="/dashboard" className={linkClass('/dashboard')} onClick={() => setMobileOpen(false)}>
+              <Link
+                prefetch={true}
+                href="/dashboard"
+                className={linkClass('/dashboard')}
+                onClick={() => setMobileOpen(false)}
+              >
                 <Compass className="h-4 w-4 shrink-0" /> Mi Tablero
               </Link>
-              <Link prefetch={true} href="/dashboard/student/cursos" className={linkClass('/dashboard/student/cursos')} onClick={() => setMobileOpen(false)}>
+              <Link
+                prefetch={true}
+                href="/dashboard/student/cursos"
+                className={linkClass('/dashboard/student/cursos')}
+                onClick={() => setMobileOpen(false)}
+              >
                 <BookOpen className="h-4 w-4 shrink-0" /> Mis Cursos Activos
               </Link>
               <Link
@@ -285,7 +305,12 @@ export function Sidebar() {
               >
                 <Award className="h-4 w-4 shrink-0" /> Mis Certificados PDF
               </Link>
-              <Link prefetch={true} href="/dashboard/mensajes" className={linkClass('/dashboard/mensajes')} onClick={() => setMobileOpen(false)}>
+              <Link
+                prefetch={true}
+                href="/dashboard/mensajes"
+                className={linkClass('/dashboard/mensajes')}
+                onClick={() => setMobileOpen(false)}
+              >
                 <MessageSquare className="h-4 w-4 shrink-0" />
                 <span>Mensajes</span>
                 {unreadMessagesCount > 0 && !pathname.startsWith('/dashboard/mensajes') && (
@@ -302,7 +327,12 @@ export function Sidebar() {
             <>
               <div className="space-y-0.5 mb-6">
                 <p className="sidebar-section-label">Visión Global</p>
-                <Link prefetch={true} href="/dashboard" className={linkClass('/dashboard')} onClick={() => setMobileOpen(false)}>
+                <Link
+                  prefetch={true}
+                  href="/dashboard"
+                  className={linkClass('/dashboard')}
+                  onClick={() => setMobileOpen(false)}
+                >
                   <BarChart3 className="h-4 w-4 shrink-0" /> Panel Administrativo
                 </Link>
               </div>
@@ -359,7 +389,12 @@ export function Sidebar() {
                 >
                   <FileSignature className="h-4 w-4 shrink-0" /> Certificados
                 </Link>
-                <Link prefetch={true} href="/dashboard/admin/tema" className={linkClass('/dashboard/admin/tema')} onClick={() => setMobileOpen(false)}>
+                <Link
+                  prefetch={true}
+                  href="/dashboard/admin/tema"
+                  className={linkClass('/dashboard/admin/tema')}
+                  onClick={() => setMobileOpen(false)}
+                >
                   <Palette className="h-4 w-4 shrink-0" /> Tema y Apariencia
                 </Link>
                 <Link
@@ -370,7 +405,12 @@ export function Sidebar() {
                 >
                   <Globe className="h-4 w-4 shrink-0" /> Landing Page
                 </Link>
-                <Link prefetch={true} href="/dashboard/admin/correos" className={linkClass('/dashboard/admin/correos')} onClick={() => setMobileOpen(false)}>
+                <Link
+                  prefetch={true}
+                  href="/dashboard/admin/correos"
+                  className={linkClass('/dashboard/admin/correos')}
+                  onClick={() => setMobileOpen(false)}
+                >
                   <Mail className="h-4 w-4 shrink-0" /> Correos y Eventos
                 </Link>
               </div>

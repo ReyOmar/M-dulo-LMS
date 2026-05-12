@@ -58,7 +58,11 @@ export class StorageController {
    */
   @Public()
   @Get('/download/*')
-  async downloadFile(@Req() req: any, @Query('originalName') originalName: string, @Res({ passthrough: true }) res: any) {
+  async downloadFile(
+    @Req() req: any,
+    @Query('originalName') originalName: string,
+    @Res({ passthrough: true }) res: any,
+  ) {
     // Extract the full key from the URL path (supports 'file.png' and 'folder/file.png')
     const rawKey: string = req.params['*'] || '';
     if (!rawKey) throw new BadRequestException('Nombre de archivo requerido.');
@@ -66,7 +70,7 @@ export class StorageController {
     // Validate each path segment to prevent directory traversal
     const segments = rawKey.split('/');
     const ALLOWED_FOLDERS = ['portadas', 'recursos', 'entregas', 'firmas', 'logos', 'certificados', 'avatars'];
-    
+
     let sanitizedKey: string;
     if (segments.length === 1) {
       // Legacy flat file: "123-abc.pdf"
@@ -103,12 +107,13 @@ export class StorageController {
     // Strategy 3: Serve from local filesystem
     const filePath = this.storageService.getUploadPath(justFilename);
     const stream = fs.createReadStream(filePath);
-    
+
     const ext = justFilename.split('.').pop()?.toLowerCase();
     let contentType = 'application/octet-stream';
     if (ext === 'pdf') contentType = 'application/pdf';
-    else if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext || '')) contentType = `image/${ext === 'svg' ? 'svg+xml' : ext}`;
-    
+    else if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext || ''))
+      contentType = `image/${ext === 'svg' ? 'svg+xml' : ext}`;
+
     res.header('Content-Type', contentType);
     res.header('Content-Disposition', `inline; filename="${downloadName}"`);
     res.header('Cache-Control', 'public, max-age=86400');

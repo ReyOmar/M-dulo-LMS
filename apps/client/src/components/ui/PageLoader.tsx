@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from 'react';
 
 interface PageLoaderProps {
   message?: string;
 }
 
-export function PageLoader({ message = "Cargando..." }: PageLoaderProps) {
+export function PageLoader({ message = 'Cargando...' }: PageLoaderProps) {
   const [progress, setProgress] = useState(0);
   const [fadeOut, setFadeOut] = useState(false);
   const animFrameRef = useRef<number>(0);
@@ -93,12 +93,8 @@ export function PageLoader({ message = "Cargando..." }: PageLoaderProps) {
         </div>
         {/* Percentage text */}
         <div className="flex justify-between mt-2">
-          <span className="text-xs font-bold text-foreground/70 tabular-nums">
-            {Math.round(progress)}%
-          </span>
-          <span className="text-[10px] font-bold text-muted-foreground">
-            Procesando
-          </span>
+          <span className="text-xs font-bold text-foreground/70 tabular-nums">{Math.round(progress)}%</span>
+          <span className="text-[10px] font-bold text-muted-foreground">Procesando</span>
         </div>
       </div>
 

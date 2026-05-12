@@ -254,7 +254,9 @@ export default function AsignacionCursosPage() {
 
       <div className="flex flex-col lg:flex-row gap-6 min-h-[calc(100vh-14rem)] lg:h-[calc(100vh-14rem)]">
         {/* = = = = = LEFT PANEL: COURSE LIST = = = = = */}
-        <div className={`w-full lg:w-[350px] shrink-0 bg-card border border-border shadow-sm rounded-3xl flex flex-col overflow-hidden ${selectedCursoId ? 'hidden lg:flex' : 'flex'}`}>
+        <div
+          className={`w-full lg:w-[350px] shrink-0 bg-card border border-border shadow-sm rounded-3xl flex flex-col overflow-hidden ${selectedCursoId ? 'hidden lg:flex' : 'flex'}`}
+        >
           <div className="p-5 border-b border-border/50 bg-muted/20">
             <h2 className="font-bold text-lg flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" /> Directorio de Cursos

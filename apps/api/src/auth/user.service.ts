@@ -38,12 +38,12 @@ export class UserService {
           select: {
             cursos_impartidos: true,
             matriculas: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
-    return users.map(user => {
+    return users.map((user) => {
       const { _count, ...rest } = user;
       return {
         ...rest,
@@ -55,11 +55,11 @@ export class UserService {
 
   async getAdminStats() {
     const cuentasAprobadas = await this.prisma.lms_solicitudes_acceso.count({
-      where: { estado: 'ACEPTADA' }
+      where: { estado: 'ACEPTADA' },
     });
-    
+
     return {
-      cuentasAprobadas
+      cuentasAprobadas,
     };
   }
 
@@ -78,13 +78,13 @@ export class UserService {
     // Reasignar cursos si es PROFESOR o ADMIN para no borrarlos
     if (user.rol === 'PROFESOR' || user.rol === 'ADMINISTRADOR') {
       const fallbackAdmin = await this.prisma.usuarios.findFirst({
-        where: { rol: 'ADMINISTRADOR', activo: true, guid: { not: guid } }
+        where: { rol: 'ADMINISTRADOR', activo: true, guid: { not: guid } },
       });
-      
+
       if (fallbackAdmin) {
         await this.prisma.lms_cursos.updateMany({
           where: { profesor_guid: guid },
-          data: { profesor_guid: fallbackAdmin.guid }
+          data: { profesor_guid: fallbackAdmin.guid },
         });
       }
     }
@@ -95,7 +95,9 @@ export class UserService {
       this.prisma.lms_progreso_recurso.deleteMany({ where: { usuario_guid: guid } }),
       this.prisma.lms_notificaciones.deleteMany({ where: { usuario_guid: guid } }),
       this.prisma.lms_mensajes.deleteMany({ where: { OR: [{ remitente_guid: guid }, { destinatario_guid: guid }] } }),
-      this.prisma.lms_contacto_chat.deleteMany({ where: { OR: [{ solicitante_guid: guid }, { receptor_guid: guid }] } }),
+      this.prisma.lms_contacto_chat.deleteMany({
+        where: { OR: [{ solicitante_guid: guid }, { receptor_guid: guid }] },
+      }),
       this.prisma.lms_certificados.deleteMany({ where: { usuario_guid: guid } }),
       this.prisma.lms_sesion_activa.deleteMany({ where: { usuario_guid: guid } }),
       this.prisma.lms_metricas_capacitacion.deleteMany({ where: { usuario_guid: guid } }),
@@ -109,10 +111,16 @@ export class UserService {
     this.lmsGateway.broadcast('user:deleted', { guid, rol: user.rol });
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_deleted' });
 
-    return { message: 'Cuenta eliminada exitosamente. Sus cursos han sido reasignados a otro administrador si los hubiera.', deletedGuid: guid };
+    return {
+      message: 'Cuenta eliminada exitosamente. Sus cursos han sido reasignados a otro administrador si los hubiera.',
+      deletedGuid: guid,
+    };
   }
 
-  async updateProfile(guid: string, data: { nombre?: string; apellido?: string; email?: string; contrasena_actual?: string; nueva_contrasena?: string }) {
+  async updateProfile(
+    guid: string,
+    data: { nombre?: string; apellido?: string; email?: string; contrasena_actual?: string; nueva_contrasena?: string },
+  ) {
     const user = await this.prisma.usuarios.findUnique({ where: { guid } });
     if (!user) throw new NotFoundException('Usuario no encontrado.');
 
@@ -138,13 +146,22 @@ export class UserService {
 
     const updated = await this.prisma.usuarios.update({
       where: { guid },
-      data: updateData
+      data: updateData,
     });
 
     this.lmsGateway.broadcast('user:updated', { guid: updated.guid });
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_updated' });
 
-    return { message: 'Perfil actualizado exitosamente.', user: { guid: updated.guid, role: updated.rol, nombre: updated.nombre, apellido: updated.apellido, email: updated.email } };
+    return {
+      message: 'Perfil actualizado exitosamente.',
+      user: {
+        guid: updated.guid,
+        role: updated.rol,
+        nombre: updated.nombre,
+        apellido: updated.apellido,
+        email: updated.email,
+      },
+    };
   }
 
   async getUserProfile(guid: string) {
@@ -214,7 +231,13 @@ export class UserService {
    * Create a user account directly (admin only).
    * Bypasses the access request flow entirely.
    */
-  async createUser(data: { nombre: string; apellido: string; email: string; rol: string; contrasena_temporal: string }) {
+  async createUser(data: {
+    nombre: string;
+    apellido: string;
+    email: string;
+    rol: string;
+    contrasena_temporal: string;
+  }) {
     const existing = await this.prisma.usuarios.findUnique({ where: { email: data.email } });
     if (existing) {
       throw new BadRequestException('Ya existe un usuario con este correo electrónico.');

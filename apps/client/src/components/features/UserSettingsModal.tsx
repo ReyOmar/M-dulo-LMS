@@ -1,9 +1,23 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useRef } from "react";
-import { X, User, Mail, Lock, Save, Loader2, CheckCircle, AlertCircle, Shield, Eye, EyeOff, Camera, Trash2 } from "lucide-react";
-import { useRole } from "@/contexts/RoleContext";
-import api, { API_BASE_URL, resolveFileUrl } from "@/lib/api";
+import { useEffect, useState, useRef } from 'react';
+import {
+  X,
+  User,
+  Mail,
+  Lock,
+  Save,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  Shield,
+  Eye,
+  EyeOff,
+  Camera,
+  Trash2,
+} from 'lucide-react';
+import { useRole } from '@/contexts/RoleContext';
+import api, { API_BASE_URL, resolveFileUrl } from '@/lib/api';
 
 interface Props {
   open: boolean;
@@ -93,11 +107,9 @@ export function UserSettingsModal({ open, onClose }: Props) {
         body.nueva_contrasena = nuevaContrasena;
       }
 
-      const res = await api.patch(`/auth/perfil/${user.guid}`, body
-      );
+      const res = await api.patch(`/auth/perfil/${user.guid}`, body);
 
       const data = res.data;
-
 
       // Sync session with updated data
       if (data.user) {
@@ -109,7 +121,7 @@ export function UserSettingsModal({ open, onClose }: Props) {
       setContrasenaActual('');
       setNuevaContrasena('');
       setConfirmarContrasena('');
-      
+
       // Auto-close after success
       setTimeout(() => {
         handleClose();
@@ -186,10 +198,13 @@ export function UserSettingsModal({ open, onClose }: Props) {
   const rolInfo = getRolLabel(profileData?.rol || '');
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={handleClose}>
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+      onClick={handleClose}
+    >
       <div
         className="bg-card border border-border/50 rounded-2xl shadow-2xl w-full max-w-xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border/50">
@@ -202,7 +217,10 @@ export function UserSettingsModal({ open, onClose }: Props) {
               <p className="text-xs text-muted-foreground">Modifica tu información personal</p>
             </div>
           </div>
-          <button onClick={handleClose} className="p-2 hover:bg-muted rounded-xl transition-colors active:scale-90 duration-200">
+          <button
+            onClick={handleClose}
+            className="p-2 hover:bg-muted rounded-xl transition-colors active:scale-90 duration-200"
+          >
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
@@ -213,24 +231,40 @@ export function UserSettingsModal({ open, onClose }: Props) {
           </div>
         ) : (
           <div className="p-6 space-y-6 max-h-[70dvh] overflow-y-auto">
-
             {/* Feedback */}
             {feedback && (
-              <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold animate-in slide-in-from-top-2 duration-200 ${
-                feedback.type === 'success' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
-              }`}>
-                {feedback.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+              <div
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold animate-in slide-in-from-top-2 duration-200 ${
+                  feedback.type === 'success'
+                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                    : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                }`}
+              >
+                {feedback.type === 'success' ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
                 {feedback.msg}
               </div>
             )}
 
             {/* Role badge + date */}
             <div className="flex items-center gap-3">
-              <span className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg ${rolInfo.bg} ${rolInfo.color}`}>
+              <span
+                className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg ${rolInfo.bg} ${rolInfo.color}`}
+              >
                 <Shield className="h-3 w-3" /> {rolInfo.label}
               </span>
               <span className="text-xs text-muted-foreground">
-                Registrado: {profileData?.created_at ? new Date(profileData.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
+                Registrado:{' '}
+                {profileData?.created_at
+                  ? new Date(profileData.created_at).toLocaleDateString('es-ES', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                    })
+                  : '—'}
               </span>
             </div>
 
@@ -265,7 +299,9 @@ export function UserSettingsModal({ open, onClose }: Props) {
                 />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-bold">{nombre} {apellido}</p>
+                <p className="text-sm font-bold">
+                  {nombre} {apellido}
+                </p>
                 <p className="text-xs text-muted-foreground">{email}</p>
                 {profileData?.foto_url && (
                   <button
@@ -284,23 +320,27 @@ export function UserSettingsModal({ open, onClose }: Props) {
             {/* Name fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Nombre</label>
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                  Nombre
+                </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input
                     type="text"
                     value={nombre}
-                    onChange={e => setNombre(e.target.value)}
+                    onChange={(e) => setNombre(e.target.value)}
                     className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Apellido</label>
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                  Apellido
+                </label>
                 <input
                   type="text"
                   value={apellido}
-                  onChange={e => setApellido(e.target.value)}
+                  onChange={(e) => setApellido(e.target.value)}
                   className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 />
               </div>
@@ -308,7 +348,9 @@ export function UserSettingsModal({ open, onClose }: Props) {
 
             {/* Email (read-only) */}
             <div>
-              <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Correo Electrónico</label>
+              <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                Correo Electrónico
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
@@ -319,7 +361,9 @@ export function UserSettingsModal({ open, onClose }: Props) {
                   className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-xl text-sm font-medium text-muted-foreground cursor-not-allowed outline-none"
                 />
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1 ml-1">El correo electrónico no se puede modificar.</p>
+              <p className="text-[10px] text-muted-foreground mt-1 ml-1">
+                El correo electrónico no se puede modificar.
+              </p>
             </div>
 
             {/* Password change section */}
@@ -331,27 +375,30 @@ export function UserSettingsModal({ open, onClose }: Props) {
 
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Contraseña Actual</label>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Contraseña Actual
+                  </label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <input
                       type={showCurrentPwd ? 'text' : 'password'}
                       value={contrasenaActual}
-                      onChange={e => setContrasenaActual(e.target.value)}
+                      onChange={(e) => setContrasenaActual(e.target.value)}
                       placeholder="••••••••"
                       className="w-full pl-10 pr-10 py-2.5 bg-background border border-border rounded-xl text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                     />
-                    <button 
-                      type="button" 
-                      onClick={() => setShowCurrentPwd(!showCurrentPwd)} 
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPwd(!showCurrentPwd)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 active:scale-90"
-                      title={showCurrentPwd ? "Ver" : "Ocultar"}
+                      title={showCurrentPwd ? 'Ver' : 'Ocultar'}
                     >
                       <div className="relative h-4 w-4 flex items-center justify-center">
-                        {showCurrentPwd ? 
-                          <Eye className="h-4 w-4 animate-in zoom-in-75 duration-300" /> : 
+                        {showCurrentPwd ? (
+                          <Eye className="h-4 w-4 animate-in zoom-in-75 duration-300" />
+                        ) : (
                           <EyeOff className="h-4 w-4 animate-in zoom-in-75 duration-300" />
-                        }
+                        )}
                       </div>
                     </button>
                   </div>
@@ -359,40 +406,47 @@ export function UserSettingsModal({ open, onClose }: Props) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Nueva Contraseña</label>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                      Nueva Contraseña
+                    </label>
                     <div className="relative">
                       <input
                         type={showNewPwd ? 'text' : 'password'}
                         value={nuevaContrasena}
-                        onChange={e => setNuevaContrasena(e.target.value)}
+                        onChange={(e) => setNuevaContrasena(e.target.value)}
                         placeholder="Mín. 6 caracteres"
                         className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Confirmar</label>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                      Confirmar
+                    </label>
                     <div className="relative">
                       <input
                         type={showNewPwd ? 'text' : 'password'}
                         value={confirmarContrasena}
-                        onChange={e => setConfirmarContrasena(e.target.value)}
+                        onChange={(e) => setConfirmarContrasena(e.target.value)}
                         placeholder="Repetir contraseña"
                         className={`w-full px-4 py-2.5 bg-background border rounded-xl text-sm font-medium focus:ring-1 outline-none transition-all ${
-                          confirmarContrasena && confirmarContrasena !== nuevaContrasena ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border focus:border-primary focus:ring-primary'
+                          confirmarContrasena && confirmarContrasena !== nuevaContrasena
+                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                            : 'border-border focus:border-primary focus:ring-primary'
                         }`}
                       />
-                      <button 
-                        type="button" 
-                        onClick={() => setShowNewPwd(!showNewPwd)} 
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPwd(!showNewPwd)}
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 active:scale-90"
-                        title={showNewPwd ? "Ver" : "Ocultar"}
+                        title={showNewPwd ? 'Ver' : 'Ocultar'}
                       >
                         <div className="relative h-4 w-4 flex items-center justify-center">
-                          {showNewPwd ? 
-                            <Eye className="h-4 w-4 animate-in zoom-in-75 duration-300" /> : 
+                          {showNewPwd ? (
+                            <Eye className="h-4 w-4 animate-in zoom-in-75 duration-300" />
+                          ) : (
                             <EyeOff className="h-4 w-4 animate-in zoom-in-75 duration-300" />
-                          }
+                          )}
                         </div>
                       </button>
                     </div>
@@ -406,7 +460,10 @@ export function UserSettingsModal({ open, onClose }: Props) {
         {/* Footer */}
         {!loading && (
           <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 p-6 border-t border-border/50 bg-muted/5">
-            <button onClick={handleClose} className="px-5 py-2.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors rounded-xl hover:bg-muted active:scale-95">
+            <button
+              onClick={handleClose}
+              className="px-5 py-2.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors rounded-xl hover:bg-muted active:scale-95"
+            >
               Cancelar
             </button>
             <button

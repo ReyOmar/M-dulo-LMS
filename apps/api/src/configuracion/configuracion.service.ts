@@ -39,14 +39,16 @@ export class ConfiguracionService implements OnModuleInit {
           idioma: 'es',
           landing_hero_titulo1: 'Transporte Seguro,',
           landing_hero_titulo2: 'Personal Capacitado',
-          landing_hero_subtitulo: 'Plataforma integral para la gestión del Plan Estratégico de Seguridad Vial. Capacitación, evaluación y certificación de conductores con tecnología de vanguardia.',
+          landing_hero_subtitulo:
+            'Plataforma integral para la gestión del Plan Estratégico de Seguridad Vial. Capacitación, evaluación y certificación de conductores con tecnología de vanguardia.',
           landing_telefono: '+57 300 123 4567',
           landing_telefono_sub: 'Lun-Vie 8am-6pm',
           landing_email: 'contacto@pesveducation.com',
           landing_email_sub: 'Respuesta en 24h',
           landing_oficina: 'Bogotá, Colombia',
           landing_oficina_sub: 'Cra 7 #45-21, Oficina 302',
-          landing_footer_texto: 'Plataforma líder en capacitación y certificación de seguridad vial para empresas de transporte de carga.',
+          landing_footer_texto:
+            'Plataforma líder en capacitación y certificación de seguridad vial para empresas de transporte de carga.',
         },
       });
     }
@@ -113,7 +115,7 @@ export class ConfiguracionService implements OnModuleInit {
       where: { id: 1 },
       data: dto,
     });
-    
+
     this.invalidateCache();
     this.lmsGateway.broadcast('config:updated', updated);
     return updated;
@@ -169,9 +171,14 @@ export class ConfiguracionService implements OnModuleInit {
   async updateCertConfig(dto: any) {
     // Only allow cert_* fields to be updated
     const allowedFields = [
-      'cert_titulo_personalizado', 'cert_subtitulo', 'cert_texto_legal',
-      'cert_mostrar_modulos', 'cert_mostrar_recursos', 'cert_mostrar_nota',
-      'cert_mostrar_firma', 'cert_mostrar_fecha_ingreso',
+      'cert_titulo_personalizado',
+      'cert_subtitulo',
+      'cert_texto_legal',
+      'cert_mostrar_modulos',
+      'cert_mostrar_recursos',
+      'cert_mostrar_nota',
+      'cert_mostrar_firma',
+      'cert_mostrar_fecha_ingreso',
     ];
     const data: any = {};
     for (const key of allowedFields) {

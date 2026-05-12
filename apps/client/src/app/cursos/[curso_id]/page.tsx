@@ -553,9 +553,10 @@ export default function CursoVisorPage() {
           <button
             onClick={toggleSidebar}
             className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-200 border shadow-sm
-              ${sidebarOpen
-                ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
-                : 'bg-muted/50 border-border hover:bg-muted hover:border-primary/30 text-muted-foreground hover:text-primary'
+              ${
+                sidebarOpen
+                  ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
+                  : 'bg-muted/50 border-border hover:bg-muted hover:border-primary/30 text-muted-foreground hover:text-primary'
               }
             `}
             title={sidebarOpen ? 'Ocultar temario' : 'Mostrar temario'}
@@ -563,22 +564,16 @@ export default function CursoVisorPage() {
             <div className="relative h-5 w-5 flex items-center justify-center overflow-hidden">
               <PanelLeft
                 className={`h-5 w-5 absolute transition-all duration-300 ${
-                  sidebarOpen
-                    ? 'opacity-0 rotate-180 scale-50'
-                    : 'opacity-100 rotate-0 scale-100'
+                  sidebarOpen ? 'opacity-0 rotate-180 scale-50' : 'opacity-100 rotate-0 scale-100'
                 }`}
               />
               <PanelLeftClose
                 className={`h-5 w-5 absolute transition-all duration-300 ${
-                  sidebarOpen
-                    ? 'opacity-100 rotate-0 scale-100'
-                    : 'opacity-0 -rotate-180 scale-50'
+                  sidebarOpen ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-180 scale-50'
                 }`}
               />
             </div>
-            <span className="hidden sm:inline">
-              {sidebarOpen ? 'Ocultar' : 'Temario'}
-            </span>
+            <span className="hidden sm:inline">{sidebarOpen ? 'Ocultar' : 'Temario'}</span>
             {/* Pulsing dot indicator when sidebar is closed (hint there's content) */}
             {!sidebarOpen && (
               <span className="absolute -top-1 -right-1 flex h-3 w-3">
@@ -607,16 +602,8 @@ export default function CursoVisorPage() {
             className={`bg-card border-r border-border overflow-y-auto flex flex-col shrink-0 transition-all duration-300 ease-in-out z-50
               ${
                 isMobile
-                  ? `fixed inset-y-0 left-0 w-[300px] shadow-2xl ${
-                      sidebarOpen
-                        ? 'translate-x-0'
-                        : '-translate-x-full'
-                    }`
-                  : `${
-                      sidebarOpen
-                        ? 'w-[320px] opacity-100'
-                        : 'w-0 opacity-0 overflow-hidden border-r-0'
-                    }`
+                  ? `fixed inset-y-0 left-0 w-[300px] shadow-2xl ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
+                  : `${sidebarOpen ? 'w-[320px] opacity-100' : 'w-0 opacity-0 overflow-hidden border-r-0'}`
               }
             `}
           >

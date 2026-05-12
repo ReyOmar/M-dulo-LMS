@@ -231,7 +231,7 @@ export default function LoginPage() {
   // Countdown timer for resend
   useEffect(() => {
     if (countdown <= 0) return;
-    const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
   }, [countdown]);
 
@@ -414,22 +414,34 @@ export default function LoginPage() {
             <div className="flex items-center gap-2 mb-2">
               {['email', 'code', 'form'].map((step, i) => (
                 <div key={step} className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                    verificationStep === step
-                      ? 'bg-primary text-primary-foreground scale-110'
-                      : (i < ['email', 'code', 'form'].indexOf(verificationStep))
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {i < ['email', 'code', 'form'].indexOf(verificationStep)
-                      ? <CheckCircle2 className="h-4 w-4" />
-                      : i + 1}
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                      verificationStep === step
+                        ? 'bg-primary text-primary-foreground scale-110'
+                        : i < ['email', 'code', 'form'].indexOf(verificationStep)
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {i < ['email', 'code', 'form'].indexOf(verificationStep) ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      i + 1
+                    )}
                   </div>
-                  {i < 2 && <div className={`w-8 h-0.5 rounded transition-colors ${i < ['email', 'code', 'form'].indexOf(verificationStep) ? 'bg-emerald-500' : 'bg-muted'}`} />}
+                  {i < 2 && (
+                    <div
+                      className={`w-8 h-0.5 rounded transition-colors ${i < ['email', 'code', 'form'].indexOf(verificationStep) ? 'bg-emerald-500' : 'bg-muted'}`}
+                    />
+                  )}
                 </div>
               ))}
               <span className="text-xs text-muted-foreground ml-auto">
-                {verificationStep === 'email' ? 'Verificar correo' : verificationStep === 'code' ? 'Ingresar código' : 'Completar solicitud'}
+                {verificationStep === 'email'
+                  ? 'Verificar correo'
+                  : verificationStep === 'code'
+                    ? 'Ingresar código'
+                    : 'Completar solicitud'}
               </span>
             </div>
 
@@ -460,7 +472,15 @@ export default function LoginPage() {
                     disabled={codeSending || !email}
                     className="flex-1 h-10 rounded-lg bg-primary text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-70 flex items-center justify-center gap-2"
                   >
-                    {codeSending ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</> : <><Send className="h-4 w-4" /> Verificar Correo</>}
+                    {codeSending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" /> Verificar Correo
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -488,7 +508,11 @@ export default function LoginPage() {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => { setVerificationStep('email'); setErrorMsg(''); setSuccessMsg(''); }}
+                    onClick={() => {
+                      setVerificationStep('email');
+                      setErrorMsg('');
+                      setSuccessMsg('');
+                    }}
                     className="h-10 px-4 text-xs font-bold text-muted-foreground rounded-lg border border-border hover:bg-muted"
                   >
                     Cambiar correo
@@ -499,14 +523,27 @@ export default function LoginPage() {
                     disabled={codeVerifying || verificationCode.length !== 6}
                     className="flex-1 h-10 rounded-lg bg-primary text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-70 flex items-center justify-center gap-2"
                   >
-                    {codeVerifying ? <><Loader2 className="h-4 w-4 animate-spin" /> Verificando...</> : <><CheckCircle2 className="h-4 w-4" /> Confirmar Código</>}
+                    {codeVerifying ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Verificando...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4" /> Confirmar Código
+                      </>
+                    )}
                   </button>
                 </div>
                 <div className="text-center">
                   {countdown > 0 ? (
                     <span className="text-xs text-muted-foreground">Reenviar en {countdown}s</span>
                   ) : (
-                    <button type="button" onClick={handleSendVerification} disabled={codeSending} className="text-xs text-primary font-bold hover:underline">
+                    <button
+                      type="button"
+                      onClick={handleSendVerification}
+                      disabled={codeSending}
+                      className="text-xs text-primary font-bold hover:underline"
+                    >
                       Reenviar código
                     </button>
                   )}
@@ -516,10 +553,15 @@ export default function LoginPage() {
 
             {/* Step 3: Full form */}
             {verificationStep === 'form' && (
-              <form onSubmit={handleRequestAccess} className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+              <form
+                onSubmit={handleRequestAccess}
+                className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300"
+              >
                 <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <p className="text-xs text-emerald-700 dark:text-emerald-400"><strong>{email}</strong> verificado correctamente</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                    <strong>{email}</strong> verificado correctamente
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -570,7 +612,11 @@ export default function LoginPage() {
                     disabled={loading || rateLimited}
                     className="flex-1 h-10 rounded-lg bg-primary text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-70"
                   >
-                    {loading ? 'Elevando Petición...' : rateLimited ? 'Bloqueado Temporalmente' : 'Solicitar a Prevención'}
+                    {loading
+                      ? 'Elevando Petición...'
+                      : rateLimited
+                        ? 'Bloqueado Temporalmente'
+                        : 'Solicitar a Prevención'}
                   </button>
                 </div>
               </form>

@@ -1,12 +1,28 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { MessageSquare, Send, ArrowLeft, Search, X, User, Clock, Check, Loader2, Inbox, UserPlus, CheckCircle, XCircle, Shield, Trash2 } from "lucide-react";
-import { useRole } from "@/contexts/RoleContext";
-import { useWS } from "@/contexts/WebSocketContext";
-import api from "@/lib/api";
-import { PageLoader } from "@/components/ui/PageLoader";
-import { useAlert } from "@/contexts/AlertContext";
+import { useEffect, useState, useRef, useCallback } from 'react';
+import {
+  MessageSquare,
+  Send,
+  ArrowLeft,
+  Search,
+  X,
+  User,
+  Clock,
+  Check,
+  Loader2,
+  Inbox,
+  UserPlus,
+  CheckCircle,
+  XCircle,
+  Shield,
+  Trash2,
+} from 'lucide-react';
+import { useRole } from '@/contexts/RoleContext';
+import { useWS } from '@/contexts/WebSocketContext';
+import api from '@/lib/api';
+import { PageLoader } from '@/components/ui/PageLoader';
+import { useAlert } from '@/contexts/AlertContext';
 
 interface Contact {
   guid: string;
@@ -58,14 +74,14 @@ export default function MensajesPage() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
   const [msgLoading, setMsgLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [newMsg, setNewMsg] = useState("");
+  const [search, setSearch] = useState('');
+  const [newMsg, setNewMsg] = useState('');
   const [sending, setSending] = useState(false);
-  
+
   // New conversation state
   const [showNewChat, setShowNewChat] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [userSearch, setUserSearch] = useState("");
+  const [userSearch, setUserSearch] = useState('');
   const [searching, setSearching] = useState(false);
 
   // Pending requests
@@ -103,25 +119,31 @@ export default function MensajesPage() {
     const unsub = subscribe('message:new', (data: any) => {
       fetchContacts();
       if (selectedContact && data.remitente_guid === selectedContact.guid) {
-        setMessages(prev => [...prev, {
-          id: data.id,
-          contenido: data.contenido,
-          asunto: data.asunto,
-          created_at: data.created_at,
-          remitente: {
-            guid: data.remitente_guid,
-            nombre: data.remitente_nombre?.split(' ')[0] || '',
-            apellido: data.remitente_nombre?.split(' ').slice(1).join(' ') || '',
-            rol: '',
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: data.id,
+            contenido: data.contenido,
+            asunto: data.asunto,
+            created_at: data.created_at,
+            remitente: {
+              guid: data.remitente_guid,
+              nombre: data.remitente_nombre?.split(' ')[0] || '',
+              apellido: data.remitente_nombre?.split(' ').slice(1).join(' ') || '',
+              rol: '',
+            },
           },
-        }]);
+        ]);
         api.patch(`/notificaciones/mensajes/${data.remitente_guid}/leer`).catch(() => {});
       }
     });
     const unsub2 = subscribe('notification:new', () => {
       fetchPendingRequests();
     });
-    return () => { unsub(); unsub2(); };
+    return () => {
+      unsub();
+      unsub2();
+    };
   }, [user?.guid, subscribe, selectedContact, fetchContacts, fetchPendingRequests]);
 
   // Scroll to bottom on new messages
@@ -136,7 +158,7 @@ export default function MensajesPage() {
       const res = await api.get(`/notificaciones/mensajes/${contact.guid}`);
       setMessages(res.data || []);
       await api.patch(`/notificaciones/mensajes/${contact.guid}/leer`);
-      setContacts(prev => prev.map(c => c.guid === contact.guid ? { ...c, no_leidos: 0 } : c));
+      setContacts((prev) => prev.map((c) => (c.guid === contact.guid ? { ...c, no_leidos: 0 } : c)));
     } catch (err) {
       console.error(err);
     } finally {
@@ -153,19 +175,22 @@ export default function MensajesPage() {
         asunto: 'Mensaje',
         contenido: newMsg.trim(),
       });
-      setMessages(prev => [...prev, {
-        id: Date.now(),
-        contenido: newMsg.trim(),
-        asunto: 'Mensaje',
-        created_at: new Date().toISOString(),
-        remitente: {
-          guid: user?.guid || '',
-          nombre: user?.nombre || '',
-          apellido: user?.apellido || '',
-          rol: '',
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          contenido: newMsg.trim(),
+          asunto: 'Mensaje',
+          created_at: new Date().toISOString(),
+          remitente: {
+            guid: user?.guid || '',
+            nombre: user?.nombre || '',
+            apellido: user?.apellido || '',
+            rol: '',
+          },
         },
-      }]);
-      setNewMsg("");
+      ]);
+      setNewMsg('');
       fetchContacts();
     } catch (err) {
       console.error(err);
@@ -179,10 +204,10 @@ export default function MensajesPage() {
     const confirmed = await showConfirm(
       'Eliminar conversación',
       `¿Estás seguro de que quieres eliminar la conversación con ${selectedContact.nombre}? Esta acción no se puede deshacer.`,
-      'Eliminar'
+      'Eliminar',
     );
     if (!confirmed) return;
-    
+
     try {
       await api.delete(`/notificaciones/mensajes/${selectedContact.guid}`);
       setMessages([]);
@@ -221,13 +246,13 @@ export default function MensajesPage() {
   const respondToRequest = async (id: number, aceptar: boolean) => {
     try {
       await api.patch(`/notificaciones/chat/responder/${id}`, { aceptar });
-      setPendingRequests(prev => prev.filter(r => r.id !== id));
+      setPendingRequests((prev) => prev.filter((r) => r.id !== id));
       if (aceptar) fetchContacts();
     } catch {}
   };
 
-  const filteredContacts = contacts.filter(c =>
-    `${c.nombre} ${c.apellido}`.toLowerCase().includes(search.toLowerCase())
+  const filteredContacts = contacts.filter((c) =>
+    `${c.nombre} ${c.apellido}`.toLowerCase().includes(search.toLowerCase()),
   );
 
   const formatTime = (dateStr: string) => {
@@ -267,7 +292,9 @@ export default function MensajesPage() {
 
       <div className="flex gap-0 h-[calc(100vh-14rem)] bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
         {/* Contacts List */}
-        <div className={`w-full md:w-[340px] border-r border-border flex flex-col shrink-0 ${selectedContact ? 'hidden md:flex' : 'flex'}`}>
+        <div
+          className={`w-full md:w-[340px] border-r border-border flex flex-col shrink-0 ${selectedContact ? 'hidden md:flex' : 'flex'}`}
+        >
           {/* Search + Actions */}
           <div className="p-4 border-b border-border/50 space-y-3">
             <div className="relative">
@@ -275,21 +302,28 @@ export default function MensajesPage() {
               <input
                 type="text"
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar contacto..."
                 className="w-full bg-muted/50 border-0 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
               />
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => { setShowNewChat(true); setShowRequests(false); handleSearch(''); }}
+                onClick={() => {
+                  setShowNewChat(true);
+                  setShowRequests(false);
+                  handleSearch('');
+                }}
                 className="flex-1 bg-primary text-white rounded-xl py-2.5 text-sm font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
               >
                 <UserPlus className="h-4 w-4" /> Nuevo Contacto
               </button>
               {pendingRequests.length > 0 && (
                 <button
-                  onClick={() => { setShowRequests(!showRequests); setShowNewChat(false); }}
+                  onClick={() => {
+                    setShowRequests(!showRequests);
+                    setShowNewChat(false);
+                  }}
                   className="relative bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-xl px-3 py-2.5 text-sm font-bold hover:bg-amber-500/20 transition-colors"
                   title="Solicitudes pendientes"
                 >
@@ -306,19 +340,24 @@ export default function MensajesPage() {
           {showRequests && pendingRequests.length > 0 && (
             <div className="p-3 border-b border-border bg-amber-500/5 max-h-64 overflow-y-auto">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-amber-600 uppercase tracking-widest">Solicitudes Pendientes</span>
+                <span className="text-xs font-bold text-amber-600 uppercase tracking-widest">
+                  Solicitudes Pendientes
+                </span>
                 <button onClick={() => setShowRequests(false)} className="p-1 hover:bg-muted rounded-lg">
                   <X className="h-3.5 w-3.5 text-muted-foreground" />
                 </button>
               </div>
               <div className="space-y-2">
-                {pendingRequests.map(req => (
+                {pendingRequests.map((req) => (
                   <div key={req.id} className="flex items-center gap-3 p-3 bg-card border border-border/50 rounded-xl">
                     <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                      {req.solicitante?.nombre?.charAt(0)}{req.solicitante?.apellido?.charAt(0)}
+                      {req.solicitante?.nombre?.charAt(0)}
+                      {req.solicitante?.apellido?.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold truncate">{req.solicitante?.nombre} {req.solicitante?.apellido}</p>
+                      <p className="text-sm font-bold truncate">
+                        {req.solicitante?.nombre} {req.solicitante?.apellido}
+                      </p>
                       <p className="text-[10px] text-muted-foreground">Quiere conversar contigo</p>
                     </div>
                     <div className="flex gap-1.5 shrink-0">
@@ -347,7 +386,9 @@ export default function MensajesPage() {
           {showNewChat && (
             <div className="p-3 border-b border-border bg-muted/20 max-h-80 overflow-hidden flex flex-col">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Buscar en tus cursos</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                  Buscar en tus cursos
+                </span>
                 <button onClick={() => setShowNewChat(false)} className="p-1 hover:bg-muted rounded-lg">
                   <X className="h-3.5 w-3.5 text-muted-foreground" />
                 </button>
@@ -355,7 +396,7 @@ export default function MensajesPage() {
               <input
                 type="text"
                 value={userSearch}
-                onChange={e => handleSearch(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Nombre o correo electrónico..."
                 className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 mb-2"
                 autoFocus
@@ -366,29 +407,42 @@ export default function MensajesPage() {
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   </div>
                 ) : searchResults.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">No se encontraron participantes en tus cursos. Verifica que estés inscrito o asignado a un curso.</p>
+                  <p className="text-xs text-muted-foreground text-center py-3">
+                    No se encontraron participantes en tus cursos. Verifica que estés inscrito o asignado a un curso.
+                  </p>
                 ) : (
-                  searchResults.map(u => (
+                  searchResults.map((u) => (
                     <div
                       key={u.guid}
                       className="flex items-center gap-3 p-2.5 rounded-xl bg-card border border-border/30 hover:border-primary/30 transition-all"
                     >
-                      <div className={`h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${getRoleColor(u.rol)}`}>
-                        {u.nombre?.charAt(0)}{u.apellido?.charAt(0)}
+                      <div
+                        className={`h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${getRoleColor(u.rol)}`}
+                      >
+                        {u.nombre?.charAt(0)}
+                        {u.apellido?.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-bold truncate">{u.nombre} {u.apellido}</p>
+                          <p className="text-sm font-bold truncate">
+                            {u.nombre} {u.apellido}
+                          </p>
                           {u.es_examinador && (
-                            <span className="text-[9px] bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded-full font-bold shrink-0">Examinador</span>
+                            <span className="text-[9px] bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded-full font-bold shrink-0">
+                              Examinador
+                            </span>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                       </div>
                       {u.contacto_estado === 'ACEPTADO' ? (
-                        <span className="text-[10px] text-emerald-500 font-bold px-2 py-1 bg-emerald-500/10 rounded-full shrink-0">Conectado</span>
+                        <span className="text-[10px] text-emerald-500 font-bold px-2 py-1 bg-emerald-500/10 rounded-full shrink-0">
+                          Conectado
+                        </span>
                       ) : u.contacto_estado === 'PENDIENTE' ? (
-                        <span className="text-[10px] text-amber-500 font-bold px-2 py-1 bg-amber-500/10 rounded-full shrink-0">Pendiente</span>
+                        <span className="text-[10px] text-amber-500 font-bold px-2 py-1 bg-amber-500/10 rounded-full shrink-0">
+                          Pendiente
+                        </span>
                       ) : (
                         <button
                           onClick={() => sendContactRequest(u.guid, u.cursos[0])}
@@ -410,10 +464,12 @@ export default function MensajesPage() {
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-6">
                 <Inbox className="h-10 w-10 opacity-20 mb-3" />
                 <p className="text-sm font-medium">Sin conversaciones</p>
-                <p className="text-xs text-center mt-1">Busca un compañero o examinador de tu curso para iniciar una conversación.</p>
+                <p className="text-xs text-center mt-1">
+                  Busca un compañero o examinador de tu curso para iniciar una conversación.
+                </p>
               </div>
             ) : (
-              filteredContacts.map(c => (
+              filteredContacts.map((c) => (
                 <button
                   key={c.guid}
                   onClick={() => openConversation(c)}
@@ -421,15 +477,24 @@ export default function MensajesPage() {
                     selectedContact?.guid === c.guid ? 'bg-primary/5 border-l-2 border-l-primary' : ''
                   }`}
                 >
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 ${getRoleColor(c.rol)}`}>
-                    {c.nombre?.charAt(0)}{c.apellido?.charAt(0)}
+                  <div
+                    className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 ${getRoleColor(c.rol)}`}
+                  >
+                    {c.nombre?.charAt(0)}
+                    {c.apellido?.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <p className="font-bold text-sm truncate">{c.nombre} {c.apellido}</p>
-                      <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{c.ultimo_mensaje_fecha ? formatTime(c.ultimo_mensaje_fecha) : ''}</span>
+                      <p className="font-bold text-sm truncate">
+                        {c.nombre} {c.apellido}
+                      </p>
+                      <span className="text-[10px] text-muted-foreground shrink-0 ml-2">
+                        {c.ultimo_mensaje_fecha ? formatTime(c.ultimo_mensaje_fecha) : ''}
+                      </span>
                     </div>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">{c.ultimo_mensaje || 'Envía el primer mensaje'}</p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {c.ultimo_mensaje || 'Envía el primer mensaje'}
+                    </p>
                   </div>
                   {c.no_leidos > 0 && (
                     <span className="bg-primary text-white text-[10px] font-bold h-5 min-w-[20px] px-1.5 rounded-full flex items-center justify-center shrink-0">
@@ -462,11 +527,16 @@ export default function MensajesPage() {
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <div className={`h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 ${getRoleColor(selectedContact.rol)}`}>
-                  {selectedContact.nombre?.charAt(0)}{selectedContact.apellido?.charAt(0)}
+                <div
+                  className={`h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 ${getRoleColor(selectedContact.rol)}`}
+                >
+                  {selectedContact.nombre?.charAt(0)}
+                  {selectedContact.apellido?.charAt(0)}
                 </div>
                 <div className="flex-1">
-                  <p className="font-bold text-sm">{selectedContact.nombre} {selectedContact.apellido}</p>
+                  <p className="font-bold text-sm">
+                    {selectedContact.nombre} {selectedContact.apellido}
+                  </p>
                   <p className="text-xs text-muted-foreground">{getRoleLabel(selectedContact.rol)}</p>
                 </div>
                 <button
@@ -492,17 +562,19 @@ export default function MensajesPage() {
                     </div>
                   </div>
                 ) : (
-                  messages.map(m => {
+                  messages.map((m) => {
                     const isMine = m.remitente.guid === user?.guid;
                     return (
                       <div key={m.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
-                          isMine
-                            ? 'bg-primary text-primary-foreground rounded-br-md'
-                            : 'bg-muted rounded-bl-md'
-                        }`}>
+                        <div
+                          className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
+                            isMine ? 'bg-primary text-primary-foreground rounded-br-md' : 'bg-muted rounded-bl-md'
+                          }`}
+                        >
                           <p className="text-sm whitespace-pre-wrap break-words">{m.contenido}</p>
-                          <p className={`text-[10px] mt-1.5 flex items-center gap-1 ${isMine ? 'text-primary-foreground/60 justify-end' : 'text-muted-foreground'}`}>
+                          <p
+                            className={`text-[10px] mt-1.5 flex items-center gap-1 ${isMine ? 'text-primary-foreground/60 justify-end' : 'text-muted-foreground'}`}
+                          >
                             {new Date(m.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                             {isMine && <Check className="h-3 w-3" />}
                           </p>
@@ -520,8 +592,8 @@ export default function MensajesPage() {
                   <input
                     type="text"
                     value={newMsg}
-                    onChange={e => setNewMsg(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                    onChange={(e) => setNewMsg(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                     placeholder="Escribe un mensaje..."
                     className="flex-1 bg-muted/50 border border-border rounded-xl px-4 py-3 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                     disabled={sending}

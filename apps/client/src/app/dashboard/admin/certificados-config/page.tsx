@@ -362,7 +362,10 @@ export default function CertificadosConfigPage() {
 
               {/* Header Section */}
               <div className="flex flex-col items-center gap-1 pt-2">
-                <p className="text-xs tracking-[0.25em] font-semibold uppercase" style={{ color: config.color_primario }}>
+                <p
+                  className="text-xs tracking-[0.25em] font-semibold uppercase"
+                  style={{ color: config.color_primario }}
+                >
                   {config.nombre_plataforma}
                 </p>
                 <div

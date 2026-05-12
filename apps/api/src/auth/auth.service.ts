@@ -58,29 +58,40 @@ export class AuthService {
         nombre: dto.nombre,
         apellido: dto.apellido,
         rol_pedido: dto.rol_pedido,
-      }
+      },
     });
 
     // Notify admins about new access request
-    this.lmsGateway.broadcastToRole('request:new', {
-      id: sol.id,
-      email: dto.email,
-      nombre: dto.nombre,
-      apellido: dto.apellido,
-      rol_pedido: dto.rol_pedido,
-    }, 'ADMINISTRADOR');
+    this.lmsGateway.broadcastToRole(
+      'request:new',
+      {
+        id: sol.id,
+        email: dto.email,
+        nombre: dto.nombre,
+        apellido: dto.apellido,
+        rol_pedido: dto.rol_pedido,
+      },
+      'ADMINISTRADOR',
+    );
 
     // Fire-and-forget: email all active admins (don't block response)
-    this.prisma.usuarios.findMany({
-      where: { rol: 'ADMINISTRADOR', activo: true },
-      select: { email: true, nombre: true },
-    }).then(admins => {
-      Promise.all(admins.map(admin =>
-        this.mailService.sendNewAccessRequest(admin.email, admin.nombre, {
-          nombre: dto.nombre, apellido: dto.apellido, email: dto.email, rol_pedido: dto.rol_pedido,
-        })
-      )).catch(err => this.logger.error('Admin email error:', err));
-    });
+    this.prisma.usuarios
+      .findMany({
+        where: { rol: 'ADMINISTRADOR', activo: true },
+        select: { email: true, nombre: true },
+      })
+      .then((admins) => {
+        Promise.all(
+          admins.map((admin) =>
+            this.mailService.sendNewAccessRequest(admin.email, admin.nombre, {
+              nombre: dto.nombre,
+              apellido: dto.apellido,
+              email: dto.email,
+              rol_pedido: dto.rol_pedido,
+            }),
+          ),
+        ).catch((err) => this.logger.error('Admin email error:', err));
+      });
 
     return { message: 'Solicitud enviada al administrador exitosamente.', request_id: sol.id };
   }
@@ -100,10 +111,10 @@ export class AuthService {
     }
 
     if (!user.contrasena) {
-      return { 
-        requireSetup: true, 
+      return {
+        requireSetup: true,
         message: 'Cuenta aprobada. Por favor, crea tu contraseña segura.',
-        user: { email: user.email, nombre: user.nombre }
+        user: { email: user.email, nombre: user.nombre },
       };
     }
 
@@ -114,20 +125,20 @@ export class AuthService {
 
     const defaultPwd = await this.getDefaultPassword();
     if (contrasena === defaultPwd) {
-      return { 
-        requireSetup: true, 
+      return {
+        requireSetup: true,
         message: 'Estás usando la contraseña temporal. Por favor, crea tu contraseña segura.',
-        user: { email: user.email, nombre: user.nombre }
+        user: { email: user.email, nombre: user.nombre },
       };
     }
 
     const payload = { sub: user.guid, role: user.rol, email: user.email };
     const token = await this.jwtService.signAsync(payload);
-    
+
     return {
       message: 'Inicio de sesión exitoso.',
       token,
-      user: { guid: user.guid, role: user.rol, nombre: user.nombre, apellido: user.apellido, foto_url: user.foto_url }
+      user: { guid: user.guid, role: user.rol, nombre: user.nombre, apellido: user.apellido, foto_url: user.foto_url },
     };
   }
 
@@ -164,14 +175,16 @@ export class AuthService {
       }
 
       if (!user.usa_clave_defecto) {
-        throw new BadRequestException('La cuenta ya tiene una contraseña personalizada. Usa la opción de cambiar contraseña desde tu perfil.');
+        throw new BadRequestException(
+          'La cuenta ya tiene una contraseña personalizada. Usa la opción de cambiar contraseña desde tu perfil.',
+        );
       }
     }
 
     const hashed = await bcrypt.hash(nuevaContrasena, 10);
     const updatedUser = await this.prisma.usuarios.update({
       where: { email },
-      data: { contrasena: hashed, usa_clave_defecto: false }
+      data: { contrasena: hashed, usa_clave_defecto: false },
     });
 
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_password_setup' });
@@ -182,7 +195,12 @@ export class AuthService {
     return {
       message: 'Contraseña establecida exitosamente.',
       token,
-      user: { guid: updatedUser.guid, role: updatedUser.rol, nombre: updatedUser.nombre, apellido: updatedUser.apellido }
+      user: {
+        guid: updatedUser.guid,
+        role: updatedUser.rol,
+        nombre: updatedUser.nombre,
+        apellido: updatedUser.apellido,
+      },
     };
   }
 
@@ -191,7 +209,7 @@ export class AuthService {
   async getPendingRequests() {
     return this.prisma.lms_solicitudes_acceso.findMany({
       where: { estado: 'PENDIENTE' },
-      orderBy: { created_at: 'desc' }
+      orderBy: { created_at: 'desc' },
     });
   }
 
@@ -206,7 +224,7 @@ export class AuthService {
     await this.prisma.$transaction([
       this.prisma.lms_solicitudes_acceso.update({
         where: { id },
-        data: { estado: 'ACEPTADA' }
+        data: { estado: 'ACEPTADA' },
       }),
       this.prisma.usuarios.create({
         data: {
@@ -214,14 +232,15 @@ export class AuthService {
           nombre: request.nombre,
           apellido: request.apellido,
           rol: request.rol_pedido,
-          contrasena: hashedDefault
-        }
-      })
+          contrasena: hashedDefault,
+        },
+      }),
     ]);
 
     // BUG-08 FIX: Send welcome email with temp password (fire-and-forget)
-    this.mailService.sendWelcomeEmail(request.email, request.nombre, defaultPwd)
-      .catch(err => this.logger.error('Welcome email error:', err));
+    this.mailService
+      .sendWelcomeEmail(request.email, request.nombre, defaultPwd)
+      .catch((err) => this.logger.error('Welcome email error:', err));
 
     return { message: 'Solicitud aprobada y usuario creado con clave temporal.' };
   }
@@ -243,7 +262,7 @@ export class AuthService {
     if (request.estado !== 'PENDIENTE') throw new BadRequestException('La solicitud ya fue procesada.');
 
     await this.prisma.lms_solicitudes_acceso.delete({
-      where: { id }
+      where: { id },
     });
 
     return { message: 'Solicitud rechazada y eliminada de la base de datos.' };
@@ -280,7 +299,8 @@ export class AuthService {
     const resetRecord = await this.prisma.lms_password_resets.findUnique({ where: { token } });
     if (!resetRecord) throw new BadRequestException('Token inválido o expirado.');
     if (resetRecord.usado) throw new BadRequestException('Este enlace ya fue utilizado.');
-    if (new Date() > resetRecord.expires_at) throw new BadRequestException('El enlace ha expirado. Solicita uno nuevo.');
+    if (new Date() > resetRecord.expires_at)
+      throw new BadRequestException('El enlace ha expirado. Solicita uno nuevo.');
 
     const hashed = await bcrypt.hash(nuevaContrasena, 10);
     await this.prisma.usuarios.update({

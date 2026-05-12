@@ -326,10 +326,22 @@ export function AdminDashboard() {
                         formatter={(value: any, name: any) => [`${value} estudiantes`, name]}
                       />
                       {/* Center label */}
-                      <text x="50%" y="48%" textAnchor="middle" dominantBaseline="central" className="fill-foreground text-2xl font-black">
+                      <text
+                        x="50%"
+                        y="48%"
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        className="fill-foreground text-2xl font-black"
+                      >
                         {totalMatriculas}
                       </text>
-                      <text x="50%" y="58%" textAnchor="middle" dominantBaseline="central" className="fill-muted-foreground text-[10px] font-medium">
+                      <text
+                        x="50%"
+                        y="58%"
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        className="fill-muted-foreground text-[10px] font-medium"
+                      >
                         matrículas
                       </text>
                     </PieChart>

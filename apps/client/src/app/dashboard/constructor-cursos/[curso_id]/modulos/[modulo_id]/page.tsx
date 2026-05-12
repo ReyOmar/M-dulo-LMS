@@ -144,10 +144,12 @@ export default function ModuleEditorPage() {
       if (!prev) return prev;
       const updated = { ...prev };
       if (updated.lecciones?.[0]?.recursos) {
-        updated.lecciones = [{
-          ...updated.lecciones[0],
-          recursos: updated.lecciones[0].recursos.filter((r: any) => r.guid !== id),
-        }];
+        updated.lecciones = [
+          {
+            ...updated.lecciones[0],
+            recursos: updated.lecciones[0].recursos.filter((r: any) => r.guid !== id),
+          },
+        ];
       }
       return updated;
     });
@@ -194,12 +196,14 @@ export default function ModuleEditorPage() {
         setModulo((prev: any) => {
           if (!prev?.lecciones?.[0]?.recursos) return prev;
           const updated = { ...prev };
-          updated.lecciones = [{
-            ...updated.lecciones[0],
-            recursos: updated.lecciones[0].recursos.map((r: any) =>
-              r.guid === editingBlockId ? { ...r, titulo: finalTitulo, contenido_html: htmlContent } : r
-            ),
-          }];
+          updated.lecciones = [
+            {
+              ...updated.lecciones[0],
+              recursos: updated.lecciones[0].recursos.map((r: any) =>
+                r.guid === editingBlockId ? { ...r, titulo: finalTitulo, contenido_html: htmlContent } : r,
+              ),
+            },
+          ];
           return updated;
         });
       } else {
@@ -208,10 +212,12 @@ export default function ModuleEditorPage() {
         setModulo((prev: any) => {
           if (!prev?.lecciones?.[0]) return prev;
           const updated = { ...prev };
-          updated.lecciones = [{
-            ...updated.lecciones[0],
-            recursos: [...(updated.lecciones[0].recursos || []), res.data],
-          }];
+          updated.lecciones = [
+            {
+              ...updated.lecciones[0],
+              recursos: [...(updated.lecciones[0].recursos || []), res.data],
+            },
+          ];
           return updated;
         });
       }
