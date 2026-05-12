@@ -112,8 +112,7 @@ describe('AuthService', () => {
       mockPrisma.usuarios.findUnique.mockResolvedValue(null);
       mockPrisma.lms_solicitudes_acceso.findUnique.mockResolvedValue(null);
 
-      await expect(service.login('nobody@pesv.com', 'pass'))
-        .rejects.toThrow(UnauthorizedException);
+      await expect(service.login('nobody@pesv.com', 'pass')).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw specific message for pending request users', async () => {
@@ -123,8 +122,7 @@ describe('AuthService', () => {
         estado: 'PENDIENTE',
       });
 
-      await expect(service.login('pending@pesv.com', 'pass'))
-        .rejects.toThrow('Aún está en espera de autorización.');
+      await expect(service.login('pending@pesv.com', 'pass')).rejects.toThrow('Aún está en espera de autorización.');
     });
 
     it('should throw for wrong password', async () => {
@@ -134,8 +132,7 @@ describe('AuthService', () => {
         contrasena: hashedPassword,
       });
 
-      await expect(service.login('test@pesv.com', 'WrongPass1'))
-        .rejects.toThrow(UnauthorizedException);
+      await expect(service.login('test@pesv.com', 'WrongPass1')).rejects.toThrow(UnauthorizedException);
     });
 
     it('should require password setup when using temp password', async () => {
@@ -173,8 +170,7 @@ describe('AuthService', () => {
         contrasena: hashedPassword,
       });
 
-      await expect(service.login('test@pesv.com', ''))
-        .rejects.toThrow('Contraseña requerida.');
+      await expect(service.login('test@pesv.com', '')).rejects.toThrow('Contraseña requerida.');
     });
   });
 
@@ -182,18 +178,15 @@ describe('AuthService', () => {
 
   describe('validatePasswordStrength', () => {
     it('should reject passwords shorter than 8 chars', () => {
-      expect(() => service.validatePasswordStrength('Ab1'))
-        .toThrow(BadRequestException);
+      expect(() => service.validatePasswordStrength('Ab1')).toThrow(BadRequestException);
     });
 
     it('should reject passwords without letters', () => {
-      expect(() => service.validatePasswordStrength('12345678'))
-        .toThrow('al menos una letra');
+      expect(() => service.validatePasswordStrength('12345678')).toThrow('al menos una letra');
     });
 
     it('should reject passwords without numbers', () => {
-      expect(() => service.validatePasswordStrength('abcdefgh'))
-        .toThrow('al menos un número');
+      expect(() => service.validatePasswordStrength('abcdefgh')).toThrow('al menos un número');
     });
 
     it('should accept valid passwords', () => {
@@ -236,8 +229,7 @@ describe('AuthService', () => {
     it('should throw if user already exists', async () => {
       mockPrisma.usuarios.findUnique.mockResolvedValue({ email: dto.email });
 
-      await expect(service.requestAccess(dto))
-        .rejects.toThrow('ya existe en el sistema');
+      await expect(service.requestAccess(dto)).rejects.toThrow('ya existe en el sistema');
     });
 
     it('should throw if pending request already exists', async () => {
@@ -248,8 +240,7 @@ describe('AuthService', () => {
         estado: 'PENDIENTE',
       });
 
-      await expect(service.requestAccess(dto))
-        .rejects.toThrow('solicitud pendiente');
+      await expect(service.requestAccess(dto)).rejects.toThrow('solicitud pendiente');
     });
 
     it('should delete old non-pending request and create new one', async () => {
@@ -288,18 +279,13 @@ describe('AuthService', () => {
 
       expect(result.message).toContain('aprobada');
       expect(mockPrisma.$transaction).toHaveBeenCalled();
-      expect(mockMailService.sendWelcomeEmail).toHaveBeenCalledWith(
-        'new@pesv.com',
-        'Nuevo',
-        'tempPass123',
-      );
+      expect(mockMailService.sendWelcomeEmail).toHaveBeenCalledWith('new@pesv.com', 'Nuevo', 'tempPass123');
     });
 
     it('should throw NotFoundException for non-existent request', async () => {
       mockPrisma.lms_solicitudes_acceso.findUnique.mockResolvedValue(null);
 
-      await expect(service.approveRequest(999))
-        .rejects.toThrow(NotFoundException);
+      await expect(service.approveRequest(999)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw if request already processed', async () => {
@@ -308,8 +294,7 @@ describe('AuthService', () => {
         estado: 'ACEPTADA',
       });
 
-      await expect(service.approveRequest(1))
-        .rejects.toThrow('ya fue procesada');
+      await expect(service.approveRequest(1)).rejects.toThrow('ya fue procesada');
     });
   });
 
@@ -330,8 +315,7 @@ describe('AuthService', () => {
     it('should throw for non-existent request', async () => {
       mockPrisma.lms_solicitudes_acceso.findUnique.mockResolvedValue(null);
 
-      await expect(service.rejectRequest(999))
-        .rejects.toThrow(NotFoundException);
+      await expect(service.rejectRequest(999)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -370,8 +354,7 @@ describe('AuthService', () => {
     it('should reject invalid token', async () => {
       mockPrisma.lms_password_resets.findUnique.mockResolvedValue(null);
 
-      await expect(service.resetPassword('bad-token', 'NewPass1234'))
-        .rejects.toThrow('Token inválido');
+      await expect(service.resetPassword('bad-token', 'NewPass1234')).rejects.toThrow('Token inválido');
     });
 
     it('should reject already-used token', async () => {
@@ -381,8 +364,7 @@ describe('AuthService', () => {
         expires_at: new Date(Date.now() + 3600000),
       });
 
-      await expect(service.resetPassword('used-token', 'NewPass1234'))
-        .rejects.toThrow('ya fue utilizado');
+      await expect(service.resetPassword('used-token', 'NewPass1234')).rejects.toThrow('ya fue utilizado');
     });
 
     it('should reject expired token', async () => {
@@ -392,8 +374,7 @@ describe('AuthService', () => {
         expires_at: new Date(Date.now() - 1000), // expired
       });
 
-      await expect(service.resetPassword('old-token', 'NewPass1234'))
-        .rejects.toThrow('expirado');
+      await expect(service.resetPassword('old-token', 'NewPass1234')).rejects.toThrow('expirado');
     });
 
     it('should reset password with valid token', async () => {
@@ -424,8 +405,7 @@ describe('AuthService', () => {
         expires_at: new Date(Date.now() + 3600000),
       });
 
-      await expect(service.resetPassword('valid-token', 'weak'))
-        .rejects.toThrow(BadRequestException);
+      await expect(service.resetPassword('valid-token', 'weak')).rejects.toThrow(BadRequestException);
     });
   });
 
