@@ -26,6 +26,9 @@ const mockPrisma = {
   lms_configuracion: {
     findUnique: jest.fn(),
   },
+  lms_verificacion_email: {
+    findFirst: jest.fn(),
+  },
   lms_password_resets: {
     findUnique: jest.fn(),
     create: jest.fn(),
@@ -214,6 +217,7 @@ describe('AuthService', () => {
 
     it('should create access request and return success', async () => {
       mockPrisma.usuarios.findUnique.mockResolvedValue(null);
+      mockPrisma.lms_verificacion_email.findFirst.mockResolvedValue({ id: 1, email: dto.email, verificado: true });
       mockPrisma.lms_solicitudes_acceso.findUnique.mockResolvedValue(null);
       mockPrisma.lms_solicitudes_acceso.create.mockResolvedValue({ id: 1, ...dto });
       mockPrisma.usuarios.findMany.mockResolvedValue([]);
@@ -238,6 +242,7 @@ describe('AuthService', () => {
 
     it('should throw if pending request already exists', async () => {
       mockPrisma.usuarios.findUnique.mockResolvedValue(null);
+      mockPrisma.lms_verificacion_email.findFirst.mockResolvedValue({ id: 1, email: dto.email, verificado: true });
       mockPrisma.lms_solicitudes_acceso.findUnique.mockResolvedValue({
         email: dto.email,
         estado: 'PENDIENTE',
@@ -249,6 +254,7 @@ describe('AuthService', () => {
 
     it('should delete old non-pending request and create new one', async () => {
       mockPrisma.usuarios.findUnique.mockResolvedValue(null);
+      mockPrisma.lms_verificacion_email.findFirst.mockResolvedValue({ id: 1, email: dto.email, verificado: true });
       mockPrisma.lms_solicitudes_acceso.findUnique.mockResolvedValue({
         id: 99,
         email: dto.email,
