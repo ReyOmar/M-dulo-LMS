@@ -701,18 +701,18 @@ export default function ConstructorCursosRoot() {
       ) : activeCourse ? (
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
           {/* Header for Active Course */}
-          <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
-            <div className="flex items-center gap-4 flex-1">
+          <div className="bg-card border-b border-border px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-10 shadow-sm">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <button
                 type="button"
                 onClick={handleBackButton}
-                className="p-2 bg-muted rounded-full hover:bg-border transition-colors"
+                className="p-2 bg-muted rounded-full hover:bg-border transition-colors shrink-0"
               >
                 <ArrowLeft className="h-5 w-5 text-muted-foreground" />
               </button>
-              <h1 className="font-bold text-2xl leading-none text-foreground truncate pr-4">{activeCourse.titulo}</h1>
+              <h1 className="font-bold text-lg sm:text-2xl leading-none text-foreground truncate">{activeCourse.titulo}</h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               <div className="relative group/status">
                 <select
                   value={activeCourse.estado}
@@ -729,7 +729,7 @@ export default function ConstructorCursosRoot() {
                       e.target.value = activeCourse.estado;
                     }
                   }}
-                  className={`appearance-none pl-10 pr-10 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest transition-all cursor-pointer border shadow-sm focus:outline-none focus:ring-4 ${
+                  className={`appearance-none pl-8 sm:pl-10 pr-8 sm:pr-10 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all cursor-pointer border shadow-sm focus:outline-none focus:ring-4 ${
                     activeCourse.estado === 'PUBLICADO'
                       ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 focus:ring-emerald-500/20'
                       : 'bg-amber-500/10 border-amber-500/30 text-amber-600 focus:ring-amber-500/20'
@@ -739,12 +739,12 @@ export default function ConstructorCursosRoot() {
                   <option value="PUBLICADO">Publicado</option>
                 </select>
                 <div
-                  className={`absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${activeCourse.estado === 'PUBLICADO' ? 'text-emerald-500' : 'text-amber-500'}`}
+                  className={`absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${activeCourse.estado === 'PUBLICADO' ? 'text-emerald-500' : 'text-amber-500'}`}
                 >
                   {activeCourse.estado === 'PUBLICADO' ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                 </div>
                 <div
-                  className={`absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${activeCourse.estado === 'PUBLICADO' ? 'text-emerald-500' : 'text-amber-500'}`}
+                  className={`absolute right-2.5 sm:right-3.5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${activeCourse.estado === 'PUBLICADO' ? 'text-emerald-500' : 'text-amber-500'}`}
                 >
                   <ChevronDown className="h-4 w-4" />
                 </div>
@@ -777,14 +777,14 @@ export default function ConstructorCursosRoot() {
                       }
                     }
                   }}
-                  className={`font-bold px-6 py-2.5 rounded-xl shadow-md transition-transform flex items-center gap-2 ${
+                  className={`font-bold px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl shadow-md transition-transform flex items-center gap-2 ${
                     isReadOnly
                       ? 'bg-muted text-muted-foreground cursor-not-allowed'
                       : 'bg-red-500 hover:bg-red-600 text-white hover:-translate-y-0.5'
                   }`}
                 >
-                  <Trash2 className="h-5 w-5" />
-                  Eliminar curso
+                  <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="hidden sm:inline">Eliminar curso</span>
                 </button>
               )}
             </div>
@@ -800,7 +800,7 @@ export default function ConstructorCursosRoot() {
           )}
           <div className="flex flex-1 h-[calc(100%-80px)] overflow-hidden">
             {/* Main Content Panel (Left/Center) */}
-            <div className="flex-1 bg-muted/10 overflow-y-auto p-8 relative">
+            <div className="flex-1 bg-muted/10 overflow-y-auto p-4 sm:p-8 relative">
               {!selectedItem.type ? (
                 <div className="max-w-3xl mx-auto w-full flex flex-col items-center justify-center pt-10">
                   <h2 className="text-2xl font-bold mb-8 text-foreground">Configuración General del Curso</h2>
@@ -916,13 +916,13 @@ export default function ConstructorCursosRoot() {
                 </div>
               ) : selectedItem.type === 'RESOURCE' && bloqueTipo ? (
                 <div className="max-w-4xl mx-auto bg-card rounded-2xl shadow-sm border border-border flex flex-col overflow-hidden h-full max-h-full">
-                  <div className="p-4 border-b border-border flex items-center justify-between bg-muted/30">
-                    <h3 className="font-bold flex items-center gap-2">
-                      {bloqueTipo === 'PARRAFO' && <Type className="h-5 w-5 text-primary" />}
-                      {bloqueTipo === 'ENLACE' && <PlayCircle className="h-5 w-5 text-pink-500" />}
-                      {bloqueTipo === 'TAREA' && <FileText className="h-5 w-5 text-blue-500" />}
-                      {bloqueTipo === 'CUESTIONARIO' && <CheckCircle className="h-5 w-5 text-amber-500" />}
-                      {bloqueTitulo || 'Sin título'}
+                  <div className="p-3 sm:p-4 border-b border-border flex flex-wrap items-center justify-between gap-2 bg-muted/30">
+                    <h3 className="font-bold flex items-center gap-2 text-sm sm:text-base min-w-0">
+                      {bloqueTipo === 'PARRAFO' && <Type className="h-4 sm:h-5 w-4 sm:w-5 text-primary shrink-0" />}
+                      {bloqueTipo === 'ENLACE' && <PlayCircle className="h-4 sm:h-5 w-4 sm:w-5 text-pink-500 shrink-0" />}
+                      {bloqueTipo === 'TAREA' && <FileText className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500 shrink-0" />}
+                      {bloqueTipo === 'CUESTIONARIO' && <CheckCircle className="h-4 sm:h-5 w-4 sm:w-5 text-amber-500 shrink-0" />}
+                      <span className="truncate">{bloqueTitulo || 'Sin título'}</span>
                     </h3>
                     {editingBlockId && (
                       <div className="flex items-center gap-2">
@@ -936,17 +936,20 @@ export default function ConstructorCursosRoot() {
                               `/dashboard/constructor-cursos/${activeCourse.guid}/modulos/${selectedItem.moduloId}/bloques/${editingBlockId}`,
                             );
                           }}
-                          className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors ${isReadOnly ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}
+                          className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-colors ${isReadOnly ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}
                         >
-                          <Edit3 className="h-4 w-4" /> {isReadOnly ? 'Solo lectura' : 'Editar Contenido'}
+                          <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline">{isReadOnly ? 'Solo lectura' : 'Editar Contenido'}</span>
+                          <span className="sm:hidden">{isReadOnly ? 'Lectura' : 'Editar'}</span>
                         </button>
                         <button
                           type="button"
                           disabled={isReadOnly}
                           onClick={() => !isReadOnly && handleDeleteBlock(editingBlockId)}
-                          className={`px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors ${isReadOnly ? 'text-muted-foreground bg-muted cursor-not-allowed' : 'text-red-500 hover:text-red-600 bg-red-500/10'}`}
+                          className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-1 transition-colors ${isReadOnly ? 'text-muted-foreground bg-muted cursor-not-allowed' : 'text-red-500 hover:text-red-600 bg-red-500/10'}`}
                         >
-                          <Trash2 className="h-4 w-4" /> Eliminar
+                          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline">Eliminar</span>
                         </button>
                       </div>
                     )}
