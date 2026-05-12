@@ -26,90 +26,102 @@ export class EvaluacionesService {
    * - BUG-02 FIX: Blocks resubmission if already graded with passing score.
    * @throws BadRequestException if delivery was already approved.
    */
-  async submitEntrega(tarea_guid: string, data: { buffer: Buffer, nombre_archivo: string, usuario_guid: string }) {
+  async submitEntrega(tarea_guid: string, data: { buffer: Buffer; nombre_archivo: string; usuario_guid: string }) {
     const serverFilename = await this.storageService.uploadFromBuffer(data.buffer, data.nombre_archivo, 'entregas');
 
     let entrega = await this.prisma.lms_entregas.findFirst({
-        where: { tarea_guid, usuario_guid: data.usuario_guid }
+      where: { tarea_guid, usuario_guid: data.usuario_guid },
     });
 
     if (entrega) {
-        // BUG-02 FIX: Block resubmission if the delivery was already graded with a passing score.
-        // Look up the course's nota_aprobacion to determine the threshold dynamically.
-        const previousGrade = entrega.calificacion != null ? Number(entrega.calificacion) : null;
-        let notaAprobacion = 3.0; // safe default
-        if (previousGrade !== null) {
-          const recurso = await this.prisma.lms_recursos.findUnique({
-            where: { guid: tarea_guid },
-            select: { leccion: { select: { modulo: { select: { curso: { select: { nota_aprobacion: true } } } } } } },
-          });
-          if (recurso?.leccion?.modulo?.curso?.nota_aprobacion != null) {
-            notaAprobacion = Number(recurso.leccion.modulo.curso.nota_aprobacion);
-          }
-        }
-        if (entrega.estado === 'CALIFICADA' && previousGrade !== null && previousGrade >= notaAprobacion) {
-          throw new BadRequestException(
-            `Tu entrega ya fue aprobada con ${previousGrade.toFixed(1)}/5.0. No es necesario re-enviar.`,
-          );
-        }
-        const isResubmission = entrega.estado === 'CALIFICADA' && previousGrade !== null && previousGrade < notaAprobacion;
-
-        entrega = await this.prisma.lms_entregas.update({
-            where: { guid: entrega.guid },
-            data: {
-                url_archivo_adjunto: serverFilename,
-                respuesta_texto: data.nombre_archivo,
-                estado: isResubmission ? 'EN_REVISION' : 'ENTREGADA',
-                fecha_entrega: new Date()
-            }
+      // BUG-02 FIX: Block resubmission if the delivery was already graded with a passing score.
+      // Look up the course's nota_aprobacion to determine the threshold dynamically.
+      const previousGrade = entrega.calificacion != null ? Number(entrega.calificacion) : null;
+      let notaAprobacion = 3.0; // safe default
+      if (previousGrade !== null) {
+        const recurso = await this.prisma.lms_recursos.findUnique({
+          where: { guid: tarea_guid },
+          select: { leccion: { select: { modulo: { select: { curso: { select: { nota_aprobacion: true } } } } } } },
         });
-
-        // If re-submission, notify the examiner
-        if (isResubmission && entrega.tarea_guid) {
-          const recurso = await this.prisma.lms_recursos.findUnique({
-            where: { guid: entrega.tarea_guid },
-            select: {
-              titulo: true,
-              leccion: { select: { modulo: { select: { curso: { select: { titulo: true, profesor_guid: true } } } } } },
-            },
-          });
-          if (recurso) {
-            const estudiante = await this.prisma.usuarios.findUnique({ where: { guid: data.usuario_guid }, select: { nombre: true, apellido: true } });
-            const nombreEstudiante = estudiante ? `${estudiante.nombre} ${estudiante.apellido}` : 'Estudiante';
-            await this.notificacionesService.crearNotificacion({
-              usuario_guid: recurso.leccion.modulo.curso.profesor_guid,
-              tipo: 'REVISION_ENTREGA',
-              titulo: 'Nueva entrega para revisión',
-              mensaje: `${nombreEstudiante} ha re-entregado "${recurso.titulo}" del curso "${recurso.leccion.modulo.curso.titulo}". La entrega anterior obtuvo ${previousGrade?.toFixed(1)}/5.0.`,
-              ref_tipo: 'entrega',
-              ref_guid: entrega.guid,
-            });
-          }
+        if (recurso?.leccion?.modulo?.curso?.nota_aprobacion != null) {
+          notaAprobacion = Number(recurso.leccion.modulo.curso.nota_aprobacion);
         }
+      }
+      if (entrega.estado === 'CALIFICADA' && previousGrade !== null && previousGrade >= notaAprobacion) {
+        throw new BadRequestException(
+          `Tu entrega ya fue aprobada con ${previousGrade.toFixed(1)}/5.0. No es necesario re-enviar.`,
+        );
+      }
+      const isResubmission =
+        entrega.estado === 'CALIFICADA' && previousGrade !== null && previousGrade < notaAprobacion;
+
+      entrega = await this.prisma.lms_entregas.update({
+        where: { guid: entrega.guid },
+        data: {
+          url_archivo_adjunto: serverFilename,
+          respuesta_texto: data.nombre_archivo,
+          estado: isResubmission ? 'EN_REVISION' : 'ENTREGADA',
+          fecha_entrega: new Date(),
+        },
+      });
+
+      // If re-submission, notify the examiner
+      if (isResubmission && entrega.tarea_guid) {
+        const recurso = await this.prisma.lms_recursos.findUnique({
+          where: { guid: entrega.tarea_guid },
+          select: {
+            titulo: true,
+            leccion: { select: { modulo: { select: { curso: { select: { titulo: true, profesor_guid: true } } } } } },
+          },
+        });
+        if (recurso) {
+          const estudiante = await this.prisma.usuarios.findUnique({
+            where: { guid: data.usuario_guid },
+            select: { nombre: true, apellido: true },
+          });
+          const nombreEstudiante = estudiante ? `${estudiante.nombre} ${estudiante.apellido}` : 'Estudiante';
+          await this.notificacionesService.crearNotificacion({
+            usuario_guid: recurso.leccion.modulo.curso.profesor_guid,
+            tipo: 'REVISION_ENTREGA',
+            titulo: 'Nueva entrega para revisión',
+            mensaje: `${nombreEstudiante} ha re-entregado "${recurso.titulo}" del curso "${recurso.leccion.modulo.curso.titulo}". La entrega anterior obtuvo ${previousGrade?.toFixed(1)}/5.0.`,
+            ref_tipo: 'entrega',
+            ref_guid: entrega.guid,
+          });
+        }
+      }
     } else {
-        entrega = await this.prisma.lms_entregas.create({
-            data: {
-                tarea_guid,
-                usuario_guid: data.usuario_guid,
-                url_archivo_adjunto: serverFilename,
-                respuesta_texto: data.nombre_archivo,
-                estado: 'ENTREGADA',
-                fecha_entrega: new Date()
-            }
-        });
+      entrega = await this.prisma.lms_entregas.create({
+        data: {
+          tarea_guid,
+          usuario_guid: data.usuario_guid,
+          url_archivo_adjunto: serverFilename,
+          respuesta_texto: data.nombre_archivo,
+          estado: 'ENTREGADA',
+          fecha_entrega: new Date(),
+        },
+      });
     }
 
     // Notify teachers/admins about the new submission (not students)
-    this.lmsGateway.broadcastToRole('submission:new', { 
-      tarea_guid, 
-      usuario_guid: data.usuario_guid,
-      estado: 'ENTREGADA'
-    }, 'PROFESOR');
-    this.lmsGateway.broadcastToRole('submission:new', { 
-      tarea_guid, 
-      usuario_guid: data.usuario_guid,
-      estado: 'ENTREGADA'
-    }, 'ADMINISTRADOR');
+    this.lmsGateway.broadcastToRole(
+      'submission:new',
+      {
+        tarea_guid,
+        usuario_guid: data.usuario_guid,
+        estado: 'ENTREGADA',
+      },
+      'PROFESOR',
+    );
+    this.lmsGateway.broadcastToRole(
+      'submission:new',
+      {
+        tarea_guid,
+        usuario_guid: data.usuario_guid,
+        estado: 'ENTREGADA',
+      },
+      'ADMINISTRADOR',
+    );
     this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'submission_new' }, 'PROFESOR');
     this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'submission_new' }, 'ADMINISTRADOR');
 
@@ -118,32 +130,32 @@ export class EvaluacionesService {
 
   async getEntrega(tarea_guid: string, usuario_guid: string) {
     return this.prisma.lms_entregas.findFirst({
-        where: { tarea_guid, usuario_guid },
-        select: {
-            guid: true,
-            estado: true,
-            fecha_entrega: true,
-            respuesta_texto: true,
-            url_archivo_adjunto: true,
-            contenido_texto: true,
-            archivo_purgado: true,
-        }
+      where: { tarea_guid, usuario_guid },
+      select: {
+        guid: true,
+        estado: true,
+        fecha_entrega: true,
+        respuesta_texto: true,
+        url_archivo_adjunto: true,
+        contenido_texto: true,
+        archivo_purgado: true,
+      },
     });
   }
 
   async getTodasEntregasParaTarea(tarea_guid: string) {
     return this.prisma.lms_entregas.findMany({
-        where: { tarea_guid },
-        select: {
-            guid: true,
-            estado: true,
-            fecha_entrega: true,
-            respuesta_texto: true,
-            url_archivo_adjunto: true,
-            archivo_purgado: true,
-            usuario_guid: true,
-        },
-        orderBy: { fecha_entrega: 'desc' }
+      where: { tarea_guid },
+      select: {
+        guid: true,
+        estado: true,
+        fecha_entrega: true,
+        respuesta_texto: true,
+        url_archivo_adjunto: true,
+        archivo_purgado: true,
+        usuario_guid: true,
+      },
+      orderBy: { fecha_entrega: 'desc' },
     });
   }
 
@@ -161,29 +173,32 @@ export class EvaluacionesService {
               include: {
                 recursos: {
                   where: { tipo: 'TAREA' },
-                  select: { guid: true, titulo: true, archivo_max_size_mb: true }
-                }
-              }
-            }
-          }
-        }
-      }
+                  select: { guid: true, titulo: true, archivo_max_size_mb: true },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     const tareaGuids: string[] = [];
-    const tareaInfo: Record<string, { titulo: string; curso_titulo: string; curso_guid: string; modulo_titulo: string; modulo_guid: string }> = {};
+    const tareaInfo: Record<
+      string,
+      { titulo: string; curso_titulo: string; curso_guid: string; modulo_titulo: string; modulo_guid: string }
+    > = {};
 
     for (const curso of cursos) {
       for (const mod of curso.modulos) {
         for (const lec of mod.lecciones) {
           for (const rec of lec.recursos) {
             tareaGuids.push(rec.guid);
-            tareaInfo[rec.guid] = { 
-              titulo: rec.titulo, 
-              curso_titulo: curso.titulo, 
+            tareaInfo[rec.guid] = {
+              titulo: rec.titulo,
+              curso_titulo: curso.titulo,
               curso_guid: curso.guid,
               modulo_titulo: mod.titulo,
-              modulo_guid: mod.guid
+              modulo_guid: mod.guid,
             };
           }
         }
@@ -195,17 +210,17 @@ export class EvaluacionesService {
     const entregas = await this.prisma.lms_entregas.findMany({
       where: { tarea_guid: { in: tareaGuids } },
       orderBy: { fecha_entrega: 'desc' },
-      take: 500
+      take: 500,
     });
 
-    const studentGuids = [...new Set(entregas.map(e => e.usuario_guid))];
+    const studentGuids = [...new Set(entregas.map((e) => e.usuario_guid))];
     const students = await this.prisma.usuarios.findMany({
       where: { guid: { in: studentGuids } },
-      select: { guid: true, nombre: true, apellido: true, email: true }
+      select: { guid: true, nombre: true, apellido: true, email: true },
     });
-    const studentMap = Object.fromEntries(students.map(s => [s.guid, s]));
+    const studentMap = Object.fromEntries(students.map((s) => [s.guid, s]));
 
-    return entregas.map(e => ({
+    return entregas.map((e) => ({
       guid: e.guid,
       tarea_guid: e.tarea_guid,
       tarea_titulo: tareaInfo[e.tarea_guid || '']?.titulo || 'Sin título',
@@ -240,8 +255,8 @@ export class EvaluacionesService {
         calificacion: data.calificacion,
         comentario_calificacion: data.comentario || null,
         // Keep contenido_texto for backward compatibility during migration
-        contenido_texto: `NOTA: ${data.calificacion}${data.comentario ? ` | ${data.comentario}` : ''}`
-      }
+        contenido_texto: `NOTA: ${data.calificacion}${data.comentario ? ` | ${data.comentario}` : ''}`,
+      },
     });
 
     // BUG-01 FIX: Look up the course's actual nota_aprobacion instead of hardcoding 3.0
@@ -261,26 +276,32 @@ export class EvaluacionesService {
         where: {
           usuario_guid_recurso_guid: {
             usuario_guid: entrega.usuario_guid,
-            recurso_guid: entrega.tarea_guid
-          }
-        }
+            recurso_guid: entrega.tarea_guid,
+          },
+        },
       });
       if (!existing) {
         await this.prisma.lms_progreso_recurso.create({
           data: {
             usuario_guid: entrega.usuario_guid,
             recurso_guid: entrega.tarea_guid,
-            completado: true
-          }
+            completado: true,
+          },
         });
       }
     }
 
     // Broadcast immediately for real-time UI — only to the affected student
-    this.lmsGateway.broadcast('submission:graded', {
-      guid, tarea_guid: entrega.tarea_guid,
-      calificacion: data.calificacion, usuario_guid: entrega.usuario_guid
-    }, [entrega.usuario_guid]);
+    this.lmsGateway.broadcast(
+      'submission:graded',
+      {
+        guid,
+        tarea_guid: entrega.tarea_guid,
+        calificacion: data.calificacion,
+        usuario_guid: entrega.usuario_guid,
+      },
+      [entrega.usuario_guid],
+    );
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'submission_graded' });
 
     // Fire-and-forget: notifications + email (don't block the response)
@@ -290,30 +311,48 @@ export class EvaluacionesService {
           entrega.tarea_guid
             ? this.prisma.lms_recursos.findUnique({ where: { guid: entrega.tarea_guid }, select: { titulo: true } })
             : null,
-          this.prisma.usuarios.findUnique({ where: { guid: entrega.usuario_guid }, select: { email: true, nombre: true } }),
+          this.prisma.usuarios.findUnique({
+            where: { guid: entrega.usuario_guid },
+            select: { email: true, nombre: true },
+          }),
         ]);
         const tareaTitulo = tareaInfo?.titulo || 'Tarea';
 
-        const notifPromise = data.calificacion < notaAprobacion
-          ? this.notificacionesService.crearNotificacion({
-              usuario_guid: entrega.usuario_guid,
-              tipo: 'ENTREGA_RECHAZADA',
-              titulo: 'Calificación insuficiente',
-              mensaje: `Tu entrega en "${tareaTitulo}" obtuvo ${data.calificacion.toFixed(1)}/5.0. Debes subir un nuevo documento para mejorar tu nota.${data.comentario ? ` Comentario: ${data.comentario}` : ''}`,
-              ref_tipo: 'entrega', ref_guid: guid,
-            })
-          : this.notificacionesService.crearNotificacion({
-              usuario_guid: entrega.usuario_guid,
-              tipo: 'TAREA_CALIFICADA',
-              titulo: '¡Tarea calificada!',
-              mensaje: `Tu entrega en "${tareaTitulo}" obtuvo ${data.calificacion.toFixed(1)}/5.0. ¡Buen trabajo!${data.comentario ? ` Comentario: ${data.comentario}` : ''}`,
-              ref_tipo: 'entrega', ref_guid: guid,
-            });
+        const notifPromise =
+          data.calificacion < notaAprobacion
+            ? this.notificacionesService.crearNotificacion({
+                usuario_guid: entrega.usuario_guid,
+                tipo: 'ENTREGA_RECHAZADA',
+                titulo: 'Calificación insuficiente',
+                mensaje: `Tu entrega en "${tareaTitulo}" obtuvo ${data.calificacion.toFixed(1)}/5.0. Debes subir un nuevo documento para mejorar tu nota.${data.comentario ? ` Comentario: ${data.comentario}` : ''}`,
+                ref_tipo: 'entrega',
+                ref_guid: guid,
+              })
+            : this.notificacionesService.crearNotificacion({
+                usuario_guid: entrega.usuario_guid,
+                tipo: 'TAREA_CALIFICADA',
+                titulo: '¡Tarea calificada!',
+                mensaje: `Tu entrega en "${tareaTitulo}" obtuvo ${data.calificacion.toFixed(1)}/5.0. ¡Buen trabajo!${data.comentario ? ` Comentario: ${data.comentario}` : ''}`,
+                ref_tipo: 'entrega',
+                ref_guid: guid,
+              });
 
         const emailPromise = estudianteInfo
-          ? (data.calificacion < notaAprobacion
-              ? this.mailService.sendSubmissionRejected(estudianteInfo.email, estudianteInfo.nombre, tareaTitulo, data.calificacion, data.comentario)
-              : this.mailService.sendGradeNotification(estudianteInfo.email, estudianteInfo.nombre, tareaTitulo, data.calificacion, notaAprobacion))
+          ? data.calificacion < notaAprobacion
+            ? this.mailService.sendSubmissionRejected(
+                estudianteInfo.email,
+                estudianteInfo.nombre,
+                tareaTitulo,
+                data.calificacion,
+                data.comentario,
+              )
+            : this.mailService.sendGradeNotification(
+                estudianteInfo.email,
+                estudianteInfo.nombre,
+                tareaTitulo,
+                data.calificacion,
+                notaAprobacion,
+              )
           : Promise.resolve();
 
         await Promise.all([notifPromise, emailPromise]);

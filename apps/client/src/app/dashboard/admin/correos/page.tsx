@@ -176,14 +176,8 @@ export default function BaseCorreos() {
   });
 
   const totalEvents = eventos.length;
-  const activeTemplates = eventos.reduce(
-    (acc, e) => acc + e.plantillas.filter((p) => p.activo).length,
-    0,
-  );
-  const inactiveTemplates = eventos.reduce(
-    (acc, e) => acc + e.plantillas.filter((p) => !p.activo).length,
-    0,
-  );
+  const activeTemplates = eventos.reduce((acc, e) => acc + e.plantillas.filter((p) => p.activo).length, 0);
+  const inactiveTemplates = eventos.reduce((acc, e) => acc + e.plantillas.filter((p) => !p.activo).length, 0);
 
   // Group filtered events by category
   const groupedEvents = CATEGORIES.map((cat) => ({
@@ -395,11 +389,15 @@ export default function BaseCorreos() {
                             {/* Event Header */}
                             <div className="p-4 sm:p-5">
                               <div className="flex items-start gap-3 mb-3">
-                                <div className={`h-10 w-10 ${category.bgColor} rounded-xl flex items-center justify-center shrink-0`}>
+                                <div
+                                  className={`h-10 w-10 ${category.bgColor} rounded-xl flex items-center justify-center shrink-0`}
+                                >
                                   <category.icon className={`h-5 w-5 ${category.color}`} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h3 className="font-bold text-sm sm:text-base leading-tight">{evento.nombre_legible}</h3>
+                                  <h3 className="font-bold text-sm sm:text-base leading-tight">
+                                    {evento.nombre_legible}
+                                  </h3>
                                   <span
                                     className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${category.bgColor} ${category.color}`}
                                   >
@@ -409,12 +407,16 @@ export default function BaseCorreos() {
                                 {/* Status indicator */}
                                 <div
                                   className={`h-2.5 w-2.5 rounded-full shrink-0 mt-1.5 ${
-                                    hasActiveTemplate ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-red-500 shadow-sm shadow-red-500/50'
+                                    hasActiveTemplate
+                                      ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50'
+                                      : 'bg-red-500 shadow-sm shadow-red-500/50'
                                   }`}
                                   title={hasActiveTemplate ? 'Activo' : 'Inactivo'}
                                 />
                               </div>
-                              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-3">{evento.descripcion}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-3">
+                                {evento.descripcion}
+                              </p>
 
                               {/* Variables pills */}
                               <div className="flex flex-wrap gap-1.5">

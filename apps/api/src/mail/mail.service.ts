@@ -331,7 +331,13 @@ export class MailService implements OnModuleInit {
   /**
    * Notify a student when their submission is rejected (below passing grade).
    */
-  async sendSubmissionRejected(email: string, nombre: string, tarea: string, calificacion: number, comentario?: string) {
+  async sendSubmissionRejected(
+    email: string,
+    nombre: string,
+    tarea: string,
+    calificacion: number,
+    comentario?: string,
+  ) {
     const comentarioHtml = comentario
       ? `<div style="background:#f1f5f9;border-radius:12px;padding:16px;margin:16px 0"><p style="color:#64748b;font-size:13px;margin:0"><strong>Comentario del examinador:</strong> ${comentario}</p></div>`
       : '';
@@ -349,7 +355,12 @@ export class MailService implements OnModuleInit {
   /**
    * Notify the examiner when a student completes all course requirements.
    */
-  async sendCourseCompletedNotification(email: string, examinerNombre: string, estudiante: string, cursoTitulo: string) {
+  async sendCourseCompletedNotification(
+    email: string,
+    examinerNombre: string,
+    estudiante: string,
+    cursoTitulo: string,
+  ) {
     const rendered = await this.renderTemplate('CURSO_COMPLETADO', {
       examinerNombre,
       estudiante,

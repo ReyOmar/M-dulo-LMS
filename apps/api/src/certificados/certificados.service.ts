@@ -349,9 +349,9 @@ export class CertificadosService {
     (async () => {
       try {
         // Email to student: certificate generated
-        this.mailService.sendCertificateGenerated(
-          usuario.email, usuario.nombre, curso.titulo, codigoVerificacion, certificado.guid,
-        ).catch(() => {});
+        this.mailService
+          .sendCertificateGenerated(usuario.email, usuario.nombre, curso.titulo, codigoVerificacion, certificado.guid)
+          .catch(() => {});
 
         // Email to examiner: student completed course
         if (curso.profesor_guid) {
@@ -360,9 +360,14 @@ export class CertificadosService {
             select: { email: true, nombre: true },
           });
           if (examiner) {
-            this.mailService.sendCourseCompletedNotification(
-              examiner.email, examiner.nombre, `${usuario.nombre} ${usuario.apellido}`, curso.titulo,
-            ).catch(() => {});
+            this.mailService
+              .sendCourseCompletedNotification(
+                examiner.email,
+                examiner.nombre,
+                `${usuario.nombre} ${usuario.apellido}`,
+                curso.titulo,
+              )
+              .catch(() => {});
           }
         }
       } catch (err) {
