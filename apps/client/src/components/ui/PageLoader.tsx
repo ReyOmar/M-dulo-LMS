@@ -75,9 +75,10 @@ export function PageLoader({ message = 'Cargando...' }: PageLoaderProps) {
       <div className="w-56 relative">
         <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
           <div
-            className="h-full rounded-full transition-all duration-300 ease-out relative overflow-hidden bg-primary"
+            className="h-full rounded-full transition-all duration-300 ease-out relative overflow-hidden"
             style={{
               width: `${progress}%`,
+              backgroundColor: 'hsl(var(--primary, 207 80% 42%))',
             }}
           >
             {/* Shimmer effect on the moving bar */}
