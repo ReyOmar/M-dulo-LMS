@@ -298,7 +298,7 @@ export function AdminDashboard() {
             <p className="text-xs text-muted-foreground mb-4">{totalMatriculas} matrículas totales</p>
             {courseDistribution.length > 0 ? (
               <>
-                <div className="h-52 flex items-center justify-center">
+                <div className="h-52 flex items-center justify-center relative">
                   <ResponsiveContainer width="100%" height="100%" minHeight={200}>
                     <PieChart>
                       <Pie
@@ -325,27 +325,13 @@ export function AdminDashboard() {
                         }}
                         formatter={(value: any, name: any) => [`${value} estudiantes`, name]}
                       />
-                      {/* Center label */}
-                      <text
-                        x="50%"
-                        y="48%"
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        className="fill-foreground text-2xl font-black"
-                      >
-                        {totalMatriculas}
-                      </text>
-                      <text
-                        x="50%"
-                        y="58%"
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        className="fill-muted-foreground text-[10px] font-medium"
-                      >
-                        matrículas
-                      </text>
                     </PieChart>
                   </ResponsiveContainer>
+                  {/* Center label as HTML overlay — avoids SVG text issues with dynamic imports */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-2xl font-black text-foreground">{totalMatriculas}</span>
+                    <span className="text-[10px] font-medium text-muted-foreground">matrículas</span>
+                  </div>
                 </div>
                 {/* Legend */}
                 <div className="space-y-2 mt-4">

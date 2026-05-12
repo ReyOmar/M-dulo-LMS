@@ -284,28 +284,28 @@ export default function BaseUsuarios() {
 
       {/* Tabs y Search Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 animate-in slide-in-from-bottom-4 duration-500">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <div className="flex bg-muted/30 p-1 rounded-xl border border-border/50 w-max sm:w-auto">
+        <div className="overflow-x-auto -mx-1 px-1 w-full">
+          <div className="flex bg-muted/30 p-1 rounded-xl border border-border/50 min-w-0">
             <button
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'ADMINISTRADOR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'ADMINISTRADOR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
               onClick={() => setActiveTab('ADMINISTRADOR')}
             >
-              <Shield className="h-4 w-4 text-red-500" />
-              Administradores ({usuarios.filter((u) => u.rol === 'ADMINISTRADOR').length})
+              <Shield className="h-4 w-4 text-red-500 shrink-0" />
+              <span className="hidden sm:inline">Admins</span> ({usuarios.filter((u) => u.rol === 'ADMINISTRADOR').length})
             </button>
             <button
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'PROFESOR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'PROFESOR' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
               onClick={() => setActiveTab('PROFESOR')}
             >
-              <Presentation className="h-4 w-4 text-blue-500" />
-              Examinadores ({usuarios.filter((u) => u.rol === 'PROFESOR').length})
+              <Presentation className="h-4 w-4 text-blue-500 shrink-0" />
+              <span className="hidden sm:inline">Exam.</span> ({usuarios.filter((u) => u.rol === 'PROFESOR').length})
             </button>
             <button
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'ESTUDIANTE' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'ESTUDIANTE' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
               onClick={() => setActiveTab('ESTUDIANTE')}
             >
-              <GraduationCap className="h-4 w-4 text-emerald-500" />
-              Estudiantes ({usuarios.filter((u) => u.rol === 'ESTUDIANTE').length})
+              <GraduationCap className="h-4 w-4 text-emerald-500 shrink-0" />
+              <span className="hidden sm:inline">Estud.</span> ({usuarios.filter((u) => u.rol === 'ESTUDIANTE').length})
             </button>
           </div>
         </div>

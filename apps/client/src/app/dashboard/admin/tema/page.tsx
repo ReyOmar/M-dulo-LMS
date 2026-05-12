@@ -358,26 +358,26 @@ export default function TemaPage() {
           {/* Live preview of radius */}
           <div className="flex flex-wrap gap-4 items-center pt-2">
             <div
-              className="h-16 w-32 bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-xs font-bold text-primary"
+              className="h-16 w-24 sm:w-32 bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-xs font-bold text-primary shrink-0"
               style={{ borderRadius: `${config?.border_radius ?? 12}px` }}
             >
               Tarjeta
             </div>
             <button
-              className="bg-primary text-primary-foreground px-6 py-2 font-bold text-sm"
+              className="bg-primary text-primary-foreground px-4 sm:px-6 py-2 font-bold text-sm shrink-0"
               style={{ borderRadius: `${config?.border_radius ?? 12}px` }}
             >
               Botón
             </button>
             <div
-              className="h-10 w-48 border-2 border-border bg-background flex items-center px-3 text-xs text-muted-foreground"
+              className="h-10 w-full sm:w-48 border-2 border-border bg-background flex items-center px-3 text-xs text-muted-foreground"
               style={{ borderRadius: `${config?.border_radius ?? 12}px` }}
             >
               Input de texto...
             </div>
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-wrap gap-2 pt-2">
             {[0, 4, 8, 12, 16, 24].map((val) => (
               <button
                 key={val}
@@ -478,11 +478,11 @@ export default function TemaPage() {
         </div>
       </section>
 
-      {/* ======= SAVE BUTTON ======= */}
-      <div className="sticky bottom-6 flex justify-end pb-4">
+      {/* ======= SAVE BUTTON ======= */}
+      <div className="sticky bottom-6 flex justify-center sm:justify-end pb-4">
         <button
           onClick={saveConfigToServer}
-          className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 py-4 rounded-2xl transition-all shadow-lg hover:shadow-xl hover:scale-105 duration-300"
+          className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-6 sm:px-8 py-4 rounded-2xl transition-all shadow-lg hover:shadow-xl hover:scale-105 duration-300 w-full sm:w-auto justify-center"
         >
           <Save className="h-5 w-5" /> Guardar Toda la Configuración
         </button>

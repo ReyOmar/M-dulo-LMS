@@ -424,7 +424,7 @@ export default function MonitoreoPruebasPage() {
                     outerRadius={85}
                     paddingAngle={5}
                     dataKey="value"
-                    stroke="var(--card)"
+                    stroke="hsl(var(--card))"
                     strokeWidth={4}
                     cornerRadius={6}
                   >
@@ -686,7 +686,7 @@ export default function MonitoreoPruebasPage() {
                     outerRadius={85}
                     paddingAngle={5}
                     dataKey="value"
-                    stroke="var(--card)"
+                    stroke="hsl(var(--card))"
                     strokeWidth={4}
                     cornerRadius={6}
                   >

@@ -398,13 +398,13 @@ export default function AsignacionCursosPage() {
               </div>
 
               {/* Tab Content Area */}
-              <div className="flex-1 overflow-hidden relative">
+              <div className="flex-1 overflow-hidden relative min-h-0">
                 {/* --- ESTUDIANTES TAB --- */}
                 {activeTab === 'estudiantes' && (
-                  <div className="absolute inset-0 flex flex-col animate-in fade-in slide-in-from-left-4 duration-300">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 h-full">
+                  <div className="absolute inset-0 flex flex-col animate-in fade-in slide-in-from-left-4 duration-300 overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 sm:p-6 min-h-full md:h-full">
                       {/* Lista de Matriculados */}
-                      <div className="flex flex-col h-full bg-background border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                      <div className="flex flex-col min-h-[280px] md:h-full bg-background border border-border/50 rounded-2xl overflow-hidden shadow-sm">
                         <div className="p-4 border-b border-border/50 bg-emerald-500/5 flex items-center justify-between">
                           <h3 className="font-bold text-sm flex items-center gap-2">
                             <CheckCircle className="h-4 w-4 text-emerald-500" /> Ya Matriculados
@@ -531,10 +531,10 @@ export default function AsignacionCursosPage() {
 
                 {/* --- EXAMINADOR TAB --- */}
                 {activeTab === 'profesor' && (
-                  <div className="absolute inset-0 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 h-full">
+                  <div className="absolute inset-0 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300 overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 sm:p-6 min-h-full md:h-full">
                       {/* Examinador Asignado */}
-                      <div className="flex flex-col h-full bg-background border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                      <div className="flex flex-col min-h-[200px] md:h-full bg-background border border-border/50 rounded-2xl overflow-hidden shadow-sm">
                         <div className="p-4 border-b border-border/50 bg-blue-500/5 flex items-center justify-between">
                           <h3 className="font-bold text-sm flex items-center gap-2">
                             <Presentation className="h-4 w-4 text-blue-500" /> Examinador Asignado

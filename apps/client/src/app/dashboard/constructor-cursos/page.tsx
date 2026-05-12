@@ -500,6 +500,8 @@ export default function ConstructorCursosRoot() {
 
     setBloqueTipo(modalType);
     setSelectedItem({ type: 'RESOURCE', data: recurso, moduloId });
+    // Auto-close temario on mobile so the editor is visible
+    setShowTemario(false);
   };
 
   // Helper to ensure URLs are absolute
