@@ -11,8 +11,18 @@ export function PageLoader({ message = 'Cargando...' }: PageLoaderProps) {
   const [fadeOut, setFadeOut] = useState(false);
   const animFrameRef = useRef<number>(0);
   const startTimeRef = useRef<number>(0);
+  const [barColor, setBarColor] = useState('#2563eb'); // safe default blue
 
   useEffect(() => {
+    // Read the actual computed primary color from the DOM
+    // This ensures the bar color matches the dynamic theme at render time
+    try {
+      const primaryHsl = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+      if (primaryHsl) {
+        setBarColor(`hsl(${primaryHsl})`);
+      }
+    } catch {}
+
     startTimeRef.current = performance.now();
 
     const animate = (now: number) => {
@@ -78,7 +88,7 @@ export function PageLoader({ message = 'Cargando...' }: PageLoaderProps) {
             className="h-full rounded-full transition-all duration-300 ease-out relative overflow-hidden"
             style={{
               width: `${progress}%`,
-              backgroundColor: 'hsl(var(--primary, 207 80% 42%))',
+              backgroundColor: barColor,
             }}
           >
             {/* Shimmer effect on the moving bar */}
