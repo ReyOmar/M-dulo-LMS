@@ -710,7 +710,9 @@ export default function ConstructorCursosRoot() {
               >
                 <ArrowLeft className="h-5 w-5 text-muted-foreground" />
               </button>
-              <h1 className="font-bold text-lg sm:text-2xl leading-none text-foreground truncate">{activeCourse.titulo}</h1>
+              <h1 className="font-bold text-lg sm:text-2xl leading-none text-foreground truncate">
+                {activeCourse.titulo}
+              </h1>
             </div>
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               <div className="relative group/status">
@@ -919,9 +921,13 @@ export default function ConstructorCursosRoot() {
                   <div className="p-3 sm:p-4 border-b border-border flex flex-wrap items-center justify-between gap-2 bg-muted/30">
                     <h3 className="font-bold flex items-center gap-2 text-sm sm:text-base min-w-0">
                       {bloqueTipo === 'PARRAFO' && <Type className="h-4 sm:h-5 w-4 sm:w-5 text-primary shrink-0" />}
-                      {bloqueTipo === 'ENLACE' && <PlayCircle className="h-4 sm:h-5 w-4 sm:w-5 text-pink-500 shrink-0" />}
+                      {bloqueTipo === 'ENLACE' && (
+                        <PlayCircle className="h-4 sm:h-5 w-4 sm:w-5 text-pink-500 shrink-0" />
+                      )}
                       {bloqueTipo === 'TAREA' && <FileText className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500 shrink-0" />}
-                      {bloqueTipo === 'CUESTIONARIO' && <CheckCircle className="h-4 sm:h-5 w-4 sm:w-5 text-amber-500 shrink-0" />}
+                      {bloqueTipo === 'CUESTIONARIO' && (
+                        <CheckCircle className="h-4 sm:h-5 w-4 sm:w-5 text-amber-500 shrink-0" />
+                      )}
                       <span className="truncate">{bloqueTitulo || 'Sin título'}</span>
                     </h3>
                     {editingBlockId && (
