@@ -95,7 +95,7 @@ export default function LandingConfigPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -111,7 +111,7 @@ export default function LandingConfigPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold hover:bg-primary/90 transition-all disabled:opacity-50 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold hover:bg-primary/90 transition-all disabled:opacity-50 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30"
         >
           {saving ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -143,7 +143,7 @@ export default function LandingConfigPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-8 animate-in fade-in duration-300">
+      <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-4 sm:p-8 animate-in fade-in duration-300">
         {activeTab === 'hero' && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-2">

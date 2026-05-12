@@ -98,7 +98,7 @@ export default function ExaminerFirmaPage() {
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-8 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-black text-foreground flex items-center gap-3">
             <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center">

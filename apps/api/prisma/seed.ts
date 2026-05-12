@@ -237,6 +237,109 @@ async function main() {
 </div>`,
         es_sistema: true,
       }
+    },
+    {
+      identificador: 'CURSO_MANTENIMIENTO',
+      nombre_legible: 'Curso en Mantenimiento',
+      descripcion: 'Se envía a los estudiantes matriculados cuando un curso pasa a estado Borrador (mantenimiento).',
+      variables: JSON.stringify(["nombre", "cursoTitulo", "url_campus"]),
+      plantilla: {
+        nombre_interno: 'Plantilla por defecto - Mantenimiento',
+        asunto: '🔧 Curso en Mantenimiento: {{cursoTitulo}}',
+        cuerpo_html: `<h2 style="color:#1e293b;margin:0 0 16px">🔧 Curso en Mantenimiento</h2>
+<p style="color:#64748b;font-size:15px;line-height:1.6">Hola <strong>{{nombre}}</strong>, el curso <strong>"{{cursoTitulo}}"</strong> ha sido puesto temporalmente en mantenimiento por el equipo administrativo.</p>
+<div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:12px;padding:16px;margin:20px 0">
+  <p style="color:#92400e;font-size:14px;font-weight:600;margin:0">⚠️ Durante este período no podrás acceder al contenido del curso. Tu progreso se mantiene intacto.</p>
+</div>
+<p style="color:#64748b;font-size:14px;line-height:1.6">Te notificaremos cuando el curso vuelva a estar disponible.</p>
+<div style="text-align:center;margin:32px 0">
+  <a href="{{url_campus}}" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">Ir al Campus</a>
+</div>`,
+        es_sistema: true,
+      }
+    },
+    {
+      identificador: 'MATRICULA_NUEVA',
+      nombre_legible: 'Matrícula en Curso',
+      descripcion: 'Se envía al estudiante cuando es matriculado en un nuevo curso.',
+      variables: JSON.stringify(["nombre", "cursoTitulo", "url_curso"]),
+      plantilla: {
+        nombre_interno: 'Plantilla por defecto - Matrícula',
+        asunto: '📚 Has sido matriculado en: {{cursoTitulo}}',
+        cuerpo_html: `<h2 style="color:#1e293b;margin:0 0 16px">📚 ¡Nuevo Curso Disponible!</h2>
+<p style="color:#64748b;font-size:15px;line-height:1.6">Hola <strong>{{nombre}}</strong>, has sido matriculado exitosamente en el curso:</p>
+<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:20px;margin:20px 0;text-align:center">
+  <p style="font-size:18px;font-weight:800;color:#166534;margin:0">{{cursoTitulo}}</p>
+</div>
+<p style="color:#64748b;font-size:14px;line-height:1.6">Ya puedes comenzar a estudiar los módulos y completar las actividades del curso.</p>
+<div style="text-align:center;margin:32px 0">
+  <a href="{{url_curso}}" style="display:inline-block;background:#10b981;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">Comenzar Curso</a>
+</div>`,
+        es_sistema: true,
+      }
+    },
+    {
+      identificador: 'CERTIFICADO_GENERADO',
+      nombre_legible: 'Certificado Generado',
+      descripcion: 'Se envía al estudiante cuando se genera su certificado de finalización de curso.',
+      variables: JSON.stringify(["nombre", "cursoTitulo", "codigo", "url_certificado"]),
+      plantilla: {
+        nombre_interno: 'Plantilla por defecto - Certificado',
+        asunto: '🏆 ¡Certificado Disponible! — {{cursoTitulo}}',
+        cuerpo_html: `<h2 style="color:#1e293b;margin:0 0 16px">🏆 ¡Felicitaciones, {{nombre}}!</h2>
+<p style="color:#64748b;font-size:15px;line-height:1.6">Has completado exitosamente el curso <strong>"{{cursoTitulo}}"</strong> y tu certificado ya está disponible para descargar.</p>
+<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:20px;margin:20px 0;text-align:center">
+  <p style="color:#94a3b8;font-size:12px;margin:0 0 8px">Código de verificación</p>
+  <p style="font-size:18px;font-weight:800;letter-spacing:2px;color:#1e293b;font-family:monospace;margin:0">{{codigo}}</p>
+</div>
+<p style="color:#64748b;font-size:14px;line-height:1.6">Puedes compartir el código de verificación con terceros para validar la autenticidad de tu certificado.</p>
+<div style="text-align:center;margin:32px 0">
+  <a href="{{url_certificado}}" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">Ver Certificado</a>
+</div>`,
+        es_sistema: true,
+      }
+    },
+    {
+      identificador: 'ENTREGA_RECHAZADA',
+      nombre_legible: 'Entrega Rechazada',
+      descripcion: 'Se envía al estudiante cuando su entrega recibe una calificación por debajo de la nota mínima aprobatoria.',
+      variables: JSON.stringify(["nombre", "tarea", "calificacion", "comentario", "url_campus"]),
+      plantilla: {
+        nombre_interno: 'Plantilla por defecto - Entrega Rechazada',
+        asunto: '⚠️ Entrega requiere mejora: {{tarea}}',
+        cuerpo_html: `<h2 style="color:#1e293b;margin:0 0 16px">⚠️ Entrega No Aprobada</h2>
+<p style="color:#64748b;font-size:15px;line-height:1.6">Hola <strong>{{nombre}}</strong>, tu entrega en <strong>"{{tarea}}"</strong> ha sido calificada pero no alcanzó la nota mínima aprobatoria.</p>
+<div style="text-align:center;margin:24px 0;padding:20px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px">
+  <span style="font-size:36px;font-weight:800;color:#ef4444">{{calificacion}}</span>
+  <span style="font-size:18px;color:#94a3b8">/5.0</span>
+</div>
+<p style="color:#ef4444;font-size:14px;font-weight:600">Debes subir un nuevo documento para mejorar tu calificación.</p>
+{{comentario}}
+<div style="text-align:center;margin:32px 0">
+  <a href="{{url_campus}}" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">Ir al Campus</a>
+</div>`,
+        es_sistema: true,
+      }
+    },
+    {
+      identificador: 'CURSO_COMPLETADO',
+      nombre_legible: 'Curso Completado (Examinador)',
+      descripcion: 'Se envía al examinador asignado cuando un estudiante completa todos los requisitos de un curso.',
+      variables: JSON.stringify(["examinerNombre", "estudiante", "cursoTitulo", "url_monitoreo"]),
+      plantilla: {
+        nombre_interno: 'Plantilla por defecto - Curso Completado',
+        asunto: '✅ {{estudiante}} completó: {{cursoTitulo}}',
+        cuerpo_html: `<h2 style="color:#1e293b;margin:0 0 16px">✅ Estudiante Completó el Curso</h2>
+<p style="color:#64748b;font-size:15px;line-height:1.6">Hola <strong>{{examinerNombre}}</strong>, el estudiante <strong>{{estudiante}}</strong> ha completado exitosamente todos los requisitos del curso:</p>
+<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:20px;margin:20px 0;text-align:center">
+  <p style="font-size:18px;font-weight:800;color:#166534;margin:0">{{cursoTitulo}}</p>
+</div>
+<p style="color:#64748b;font-size:14px;line-height:1.6">El certificado de finalización ha sido generado automáticamente para el estudiante.</p>
+<div style="text-align:center;margin:32px 0">
+  <a href="{{url_monitoreo}}" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">Ver Monitoreo</a>
+</div>`,
+        es_sistema: true,
+      }
     }
   ];
 

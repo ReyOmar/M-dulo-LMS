@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { lms_estado_curso } from '@prisma/client';
 import { LmsGateway } from '../ws/lms.gateway';
 import { StorageService } from '../storage/storage.service';
+import { MailService } from '../mail/mail.service';
 
 /**
  * CursosService — Core course management (CRUD, assignment, listing).
@@ -16,6 +17,7 @@ export class CursosService {
     private prisma: PrismaService,
     private lmsGateway: LmsGateway,
     private storageService: StorageService,
+    private mailService: MailService,
   ) {}
 
   async getCursosActivosParaEstudiante() {
@@ -204,6 +206,21 @@ export class CursosService {
             },
             enrolledGuids,
           );
+
+          // Fire-and-forget: Send maintenance email to all enrolled students
+          (async () => {
+            try {
+              const students = await this.prisma.usuarios.findMany({
+                where: { guid: { in: enrolledGuids } },
+                select: { email: true, nombre: true },
+              });
+              for (const s of students) {
+                this.mailService.sendCourseMaintenanceNotification(s.email, s.nombre, curso.titulo).catch(() => {});
+              }
+            } catch (err) {
+              this.logger.error('Course maintenance email error:', err);
+            }
+          })();
         }
       }
     }

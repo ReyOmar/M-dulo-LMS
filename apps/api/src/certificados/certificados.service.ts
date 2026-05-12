@@ -4,6 +4,7 @@ import { LmsGateway } from '../ws/lms.gateway';
 import { ConfiguracionService } from '../configuracion/configuracion.service';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { StorageService } from '../storage/storage.service';
+import { MailService } from '../mail/mail.service';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PDFDocument = require('pdfkit');
 import * as fs from 'fs';
@@ -21,6 +22,7 @@ export class CertificadosService {
     private configuracionService: ConfiguracionService,
     private notificacionesService: NotificacionesService,
     private storageService: StorageService,
+    private mailService: MailService,
   ) {
     if (!fs.existsSync(CERTS_DIR)) {
       fs.mkdirSync(CERTS_DIR, { recursive: true });
@@ -342,6 +344,31 @@ export class CertificadosService {
         ref_guid: certificado.guid,
       })
       .catch((err) => this.logger.error('Certificate notification error:', err));
+
+    // Fire-and-forget: Send certificate email + notify examiner of course completion
+    (async () => {
+      try {
+        // Email to student: certificate generated
+        this.mailService.sendCertificateGenerated(
+          usuario.email, usuario.nombre, curso.titulo, codigoVerificacion, certificado.guid,
+        ).catch(() => {});
+
+        // Email to examiner: student completed course
+        if (curso.profesor_guid) {
+          const examiner = await this.prisma.usuarios.findUnique({
+            where: { guid: curso.profesor_guid },
+            select: { email: true, nombre: true },
+          });
+          if (examiner) {
+            this.mailService.sendCourseCompletedNotification(
+              examiner.email, examiner.nombre, `${usuario.nombre} ${usuario.apellido}`, curso.titulo,
+            ).catch(() => {});
+          }
+        }
+      } catch (err) {
+        this.logger.error('Certificate/completion email error:', err);
+      }
+    })();
 
     // F7.5.2: Purge submission files to free storage after certificate generation.
     // Awaited (not fire-and-forget) to ensure files are cleaned up before returning.

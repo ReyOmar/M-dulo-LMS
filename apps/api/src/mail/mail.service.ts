@@ -289,6 +289,78 @@ export class MailService implements OnModuleInit {
   }
 
   /**
+   * Notify enrolled students when a course enters maintenance (BORRADOR state).
+   */
+  async sendCourseMaintenanceNotification(email: string, nombre: string, cursoTitulo: string) {
+    const rendered = await this.renderTemplate('CURSO_MANTENIMIENTO', {
+      nombre,
+      cursoTitulo,
+      url_campus: `${this.appUrl}/dashboard`,
+    });
+    if (!rendered) return false;
+    return this.sendMail(email, rendered.asunto, rendered.html);
+  }
+
+  /**
+   * Notify a student when they are enrolled in a new course.
+   */
+  async sendEnrollmentNotification(email: string, nombre: string, cursoTitulo: string, cursoGuid: string) {
+    const rendered = await this.renderTemplate('MATRICULA_NUEVA', {
+      nombre,
+      cursoTitulo,
+      url_curso: `${this.appUrl}/cursos/${cursoGuid}`,
+    });
+    if (!rendered) return false;
+    return this.sendMail(email, rendered.asunto, rendered.html);
+  }
+
+  /**
+   * Notify a student when their certificate is generated.
+   */
+  async sendCertificateGenerated(email: string, nombre: string, cursoTitulo: string, codigo: string, certGuid: string) {
+    const rendered = await this.renderTemplate('CERTIFICADO_GENERADO', {
+      nombre,
+      cursoTitulo,
+      codigo,
+      url_certificado: `${this.appUrl}/dashboard/student/certificados`,
+    });
+    if (!rendered) return false;
+    return this.sendMail(email, rendered.asunto, rendered.html);
+  }
+
+  /**
+   * Notify a student when their submission is rejected (below passing grade).
+   */
+  async sendSubmissionRejected(email: string, nombre: string, tarea: string, calificacion: number, comentario?: string) {
+    const comentarioHtml = comentario
+      ? `<div style="background:#f1f5f9;border-radius:12px;padding:16px;margin:16px 0"><p style="color:#64748b;font-size:13px;margin:0"><strong>Comentario del examinador:</strong> ${comentario}</p></div>`
+      : '';
+    const rendered = await this.renderTemplate('ENTREGA_RECHAZADA', {
+      nombre,
+      tarea,
+      calificacion,
+      comentario: comentarioHtml,
+      url_campus: `${this.appUrl}/dashboard`,
+    });
+    if (!rendered) return false;
+    return this.sendMail(email, rendered.asunto, rendered.html);
+  }
+
+  /**
+   * Notify the examiner when a student completes all course requirements.
+   */
+  async sendCourseCompletedNotification(email: string, examinerNombre: string, estudiante: string, cursoTitulo: string) {
+    const rendered = await this.renderTemplate('CURSO_COMPLETADO', {
+      examinerNombre,
+      estudiante,
+      cursoTitulo,
+      url_monitoreo: `${this.appUrl}/dashboard/examiner/monitoreo`,
+    });
+    if (!rendered) return false;
+    return this.sendMail(email, rendered.asunto, rendered.html);
+  }
+
+  /**
    * Wrap content in a styled email template dynamically using DB config.
    */
   private async wrapTemplate(content: string): Promise<string> {

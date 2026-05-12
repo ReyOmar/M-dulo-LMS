@@ -1,11 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { lms_tipo_matricula } from '@prisma/client';
 import { LmsGateway } from '../ws/lms.gateway';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class MatriculasService {
-  constructor(private prisma: PrismaService, private lmsGateway: LmsGateway) {}
+  private readonly logger = new Logger(MatriculasService.name);
+  constructor(private prisma: PrismaService, private lmsGateway: LmsGateway, private mailService: MailService) {}
 
   async matricularEstudiante(curso_guid: string, usuario_guid: string) {
     const existing = await this.prisma.lms_matriculas.findUnique({
@@ -20,6 +22,21 @@ export class MatriculasService {
     this.lmsGateway.broadcast('enrollment:changed', { action: 'enrolled', curso_guid, usuario_guid }, [usuario_guid]);
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'enrollment_changed' }, [usuario_guid]);
     this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'enrollment_changed' }, 'ADMINISTRADOR');
+
+    // Fire-and-forget: Send enrollment email notification
+    (async () => {
+      try {
+        const [student, course] = await Promise.all([
+          this.prisma.usuarios.findUnique({ where: { guid: usuario_guid }, select: { email: true, nombre: true } }),
+          this.prisma.lms_cursos.findUnique({ where: { guid: curso_guid }, select: { titulo: true } }),
+        ]);
+        if (student && course) {
+          this.mailService.sendEnrollmentNotification(student.email, student.nombre, course.titulo, curso_guid).catch(() => {});
+        }
+      } catch (err) {
+        this.logger.error('Enrollment email error:', err);
+      }
+    })();
 
     return result;
   }

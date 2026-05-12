@@ -807,7 +807,7 @@ export default function ConstructorCursosRoot() {
                 <div className="max-w-3xl mx-auto w-full flex flex-col items-center justify-center pt-10">
                   <h2 className="text-2xl font-bold mb-8 text-foreground">Configuración General del Curso</h2>
 
-                  <div className="w-full bg-card rounded-2xl shadow-sm border border-border p-8 mb-8 flex flex-col items-start gap-4">
+                  <div className="w-full bg-card rounded-2xl shadow-sm border border-border p-4 sm:p-8 mb-8 flex flex-col items-start gap-4">
                     <div className="w-full">
                       <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
                         <BookOpen className="h-5 w-5 text-primary" /> Nombre del Curso
@@ -826,7 +826,7 @@ export default function ConstructorCursosRoot() {
                     </div>
                   </div>
 
-                  <div className="w-full bg-card rounded-2xl shadow-sm border border-border p-8 mb-8 flex flex-col items-center">
+                  <div className="w-full bg-card rounded-2xl shadow-sm border border-border p-4 sm:p-8 mb-8 flex flex-col items-center">
                     <h3 className="text-lg font-bold mb-4 w-full text-left">Portada del Curso</h3>
                     <div className="w-full max-w-md h-56 bg-muted rounded-xl border-2 border-dashed border-border flex items-center justify-center relative overflow-hidden group">
                       {activeCourse.imagen_portada ? (
@@ -897,7 +897,7 @@ export default function ConstructorCursosRoot() {
                   </div>
                 </div>
               ) : selectedItem.type === 'MODULE' ? (
-                <div className="max-w-3xl mx-auto bg-card rounded-2xl shadow-sm border border-border p-8">
+                <div className="max-w-3xl mx-auto bg-card rounded-2xl shadow-sm border border-border p-4 sm:p-8">
                   <h2 className="text-2xl font-bold flex items-center gap-3 mb-6">
                     <Layers className="h-6 w-6 text-primary" /> Configuración del Módulo
                   </h2>

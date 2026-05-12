@@ -311,7 +311,9 @@ export class EvaluacionesService {
             });
 
         const emailPromise = estudianteInfo
-          ? this.mailService.sendGradeNotification(estudianteInfo.email, estudianteInfo.nombre, tareaTitulo, data.calificacion, notaAprobacion)
+          ? (data.calificacion < notaAprobacion
+              ? this.mailService.sendSubmissionRejected(estudianteInfo.email, estudianteInfo.nombre, tareaTitulo, data.calificacion, data.comentario)
+              : this.mailService.sendGradeNotification(estudianteInfo.email, estudianteInfo.nombre, tareaTitulo, data.calificacion, notaAprobacion))
           : Promise.resolve();
 
         await Promise.all([notifPromise, emailPromise]);

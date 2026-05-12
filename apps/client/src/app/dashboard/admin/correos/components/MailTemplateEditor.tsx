@@ -101,6 +101,106 @@ const VARIABLE_META: Record<string, { label: string; sample: string; color: stri
     sample: 'CERT-2026-ABC',
     color: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/30',
   },
+  cursoTitulo: {
+    label: 'Curso',
+    sample: 'Módulo PESV Básico',
+    color: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30',
+  },
+  tempPassword: {
+    label: 'Contraseña Temporal',
+    sample: '••••••••',
+    color: 'bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/30',
+  },
+  resetUrl: {
+    label: 'URL Reset',
+    sample: 'https://plataforma.com/reset?token=...',
+    color: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30',
+  },
+  url_campus: {
+    label: 'URL Campus',
+    sample: 'https://plataforma.com/dashboard',
+    color: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30',
+  },
+  url_curso: {
+    label: 'URL Curso',
+    sample: 'https://plataforma.com/cursos/abc',
+    color: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30',
+  },
+  url_certificado: {
+    label: 'URL Certificado',
+    sample: 'https://plataforma.com/certificados',
+    color: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30',
+  },
+  url_monitoreo: {
+    label: 'URL Monitoreo',
+    sample: 'https://plataforma.com/monitoreo',
+    color: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30',
+  },
+  url_solicitudes: {
+    label: 'URL Solicitudes',
+    sample: 'https://plataforma.com/solicitudes',
+    color: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30',
+  },
+  url_calificaciones: {
+    label: 'URL Calificaciones',
+    sample: 'https://plataforma.com/calificaciones',
+    color: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30',
+  },
+  examinerNombre: {
+    label: 'Examinador',
+    sample: 'Prof. García',
+    color: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30',
+  },
+  adminNombre: {
+    label: 'Admin',
+    sample: 'Administrador',
+    color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30',
+  },
+  estudiante: {
+    label: 'Estudiante',
+    sample: 'María López',
+    color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30',
+  },
+  solicitanteNombre: {
+    label: 'Solicitante',
+    sample: 'Carlos Rodríguez',
+    color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30',
+  },
+  solicitanteEmail: {
+    label: 'Email Solicitante',
+    sample: 'carlos@correo.com',
+    color: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/30',
+  },
+  solicitanteRol: {
+    label: 'Rol Solicitado',
+    sample: 'Capacitante',
+    color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30',
+  },
+  comentario: {
+    label: 'Comentario',
+    sample: 'Revisa la sección 3...',
+    color: 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-500/30',
+  },
+  diasInactivo: {
+    label: 'Días Inactivo',
+    sample: '7',
+    color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30',
+  },
+  quizTitulo: {
+    label: 'Quiz',
+    sample: 'Cuestionario Final',
+    color: 'bg-pink-500/15 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-500/30',
+  },
+  moduloTitulo: {
+    label: 'Módulo',
+    sample: 'Módulo 1',
+    color: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30',
+  },
+  nota: {
+    label: 'Nota',
+    sample: '2.5',
+    color: 'bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/30',
+  },
 };
 
 const DEFAULT_COLOR = 'bg-slate-500/15 text-foreground border-slate-300 dark:border-slate-500/30';
@@ -203,7 +303,7 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
   return (
     <div className="bg-card border border-border/50 rounded-2xl shadow-xl overflow-hidden flex flex-col h-full animate-in slide-in-from-bottom-4 duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-border/30 bg-muted/10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-b border-border/30 bg-muted/10 gap-3">
         <div>
           <h2 className="text-lg font-bold flex items-center gap-2">
             <FileCode2 className="h-5 w-5 text-primary" />
@@ -237,7 +337,7 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* Editor Area */}
         <div
-          className={`flex-1 p-6 overflow-y-auto ${showPreview ? 'hidden md:block opacity-50 pointer-events-none' : 'block'}`}
+          className={`flex-1 p-4 sm:p-6 overflow-y-auto ${showPreview ? 'hidden md:block opacity-50 pointer-events-none' : 'block'}`}
         >
           <div className="space-y-6">
             <div>

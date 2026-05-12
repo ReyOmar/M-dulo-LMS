@@ -62,7 +62,7 @@ export default function TemaPage() {
       </header>
 
       {/* ======= IDENTITY & BRANDING ======= */}
-      <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
+      <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-4 sm:p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
           <GraduationCap className="h-5 w-5 text-primary" /> Identidad de Marca
         </h2>
@@ -206,7 +206,7 @@ export default function TemaPage() {
       </section>
 
       {/* ======= COLORS ======= */}
-      <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
+      <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-4 sm:p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
           <Palette className="h-5 w-5 text-primary" /> Colores de la Plataforma
         </h2>
@@ -271,7 +271,7 @@ export default function TemaPage() {
       </section>
 
       {/* ======= THEME PRESETS ======= */}
-      <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
+      <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-4 sm:p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" /> Temas Predefinidos
         </h2>
@@ -304,7 +304,7 @@ export default function TemaPage() {
       </section>
 
       {/* ======= TYPOGRAPHY ======= */}
-      <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
+      <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-4 sm:p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
           <Type className="h-5 w-5 text-primary" /> Tipografía
         </h2>
@@ -335,7 +335,7 @@ export default function TemaPage() {
       </section>
 
       {/* ======= BORDER RADIUS ======= */}
-      <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
+      <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-4 sm:p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
           <RectangleHorizontal className="h-5 w-5 text-primary" /> Redondez de Bordes
         </h2>
@@ -396,7 +396,7 @@ export default function TemaPage() {
       </section>
 
       {/* ======= LOGIN CUSTOMIZATION ======= */}
-      <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
+      <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-4 sm:p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
           <Image className="h-5 w-5 text-primary" /> Pantalla de Inicio de Sesión
         </h2>
