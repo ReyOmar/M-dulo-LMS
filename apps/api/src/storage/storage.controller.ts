@@ -118,8 +118,7 @@ export class StorageController {
     const ext = justFilename.split('.').pop()?.toLowerCase();
     let contentType = 'application/octet-stream';
     if (ext === 'pdf') contentType = 'application/pdf';
-    else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext || ''))
-      contentType = `image/${ext}`;
+    else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext || '')) contentType = `image/${ext}`;
     else if (ext === 'svg') contentType = 'image/svg+xml'; // F5.3: SVG gets proper type but forced download
 
     res.header('Content-Type', contentType);

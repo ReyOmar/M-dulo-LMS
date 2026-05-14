@@ -21,38 +21,38 @@ export class EstudiantesService {
           include: {
             lecciones: {
               include: {
-                recursos: { orderBy: { orden: 'asc' }, select: { guid: true, tipo: true, titulo: true } }
-              }
-            }
-          }
-        }
-      }
+                recursos: { orderBy: { orden: 'asc' }, select: { guid: true, tipo: true, titulo: true } },
+              },
+            },
+          },
+        },
+      },
     });
-    if (!curso) return { completados: [], desbloqueados_por_tiempo: [], tareas_pendientes_calificacion: [], total_recursos: 0 };
+    if (!curso)
+      return { completados: [], desbloqueados_por_tiempo: [], tareas_pendientes_calificacion: [], total_recursos: 0 };
 
-    const allRecursos = curso.modulos.flatMap((m: any) =>
-      m.lecciones.flatMap((l: any) => l.recursos)
-    );
+    const allRecursos = curso.modulos.flatMap((m: any) => m.lecciones.flatMap((l: any) => l.recursos));
     const recursoGuids = allRecursos.map((r: any) => r.guid);
     const tareaGuids = allRecursos.filter((r: any) => r.tipo === 'TAREA').map((r: any) => r.guid);
 
     // Fetch real completions
     const progreso = await this.prisma.lms_progreso_recurso.findMany({
-      where: { usuario_guid, recurso_guid: { in: recursoGuids } }
+      where: { usuario_guid, recurso_guid: { in: recursoGuids } },
     });
     const completados = progreso.map((p: any) => p.recurso_guid);
 
     // Fetch pending submissions (ENTREGADA or EN_REVISION, not yet CALIFICADA)
-    const entregasPendientes = tareaGuids.length > 0
-      ? await this.prisma.lms_entregas.findMany({
-          where: {
-            usuario_guid,
-            tarea_guid: { in: tareaGuids },
-            estado: { in: ['ENTREGADA', 'EN_REVISION'] },
-          },
-          select: { tarea_guid: true, fecha_entrega: true, respuesta_texto: true },
-        })
-      : [];
+    const entregasPendientes =
+      tareaGuids.length > 0
+        ? await this.prisma.lms_entregas.findMany({
+            where: {
+              usuario_guid,
+              tarea_guid: { in: tareaGuids },
+              estado: { in: ['ENTREGADA', 'EN_REVISION'] },
+            },
+            select: { tarea_guid: true, fecha_entrega: true, respuesta_texto: true },
+          })
+        : [];
 
     const now = Date.now();
     const unlockThreshold = AUTO_UNLOCK_HOURS * 60 * 60 * 1000;
@@ -134,12 +134,12 @@ export class EstudiantesService {
     const [progresos, entregas] = await Promise.all([
       this.prisma.lms_progreso_recurso.findMany({
         where: { usuario_guid, fecha_completado: { gte: start, lt: end } },
-        select: { fecha_completado: true }
+        select: { fecha_completado: true },
       }),
       this.prisma.lms_entregas.findMany({
         where: { usuario_guid, fecha_entrega: { gte: start, lt: end } },
-        select: { fecha_entrega: true }
-      })
+        select: { fecha_entrega: true },
+      }),
     ]);
 
     const days = new Set<number>();
@@ -157,14 +157,14 @@ export class EstudiantesService {
     return this.prisma.lms_notificaciones.findMany({
       where: { usuario_guid },
       orderBy: { created_at: 'desc' },
-      take: 20
+      take: 20,
     });
   }
 
   async marcarNotificacionLeida(id: number) {
     return this.prisma.lms_notificaciones.update({
       where: { id },
-      data: { leida: true }
+      data: { leida: true },
     });
   }
 
@@ -184,14 +184,14 @@ export class EstudiantesService {
                 include: {
                   lecciones: {
                     include: {
-                      recursos: { select: { guid: true } }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+                      recursos: { select: { guid: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       }),
     ]);
 
@@ -200,7 +200,7 @@ export class EstudiantesService {
 
     for (let i = 0; i < matriculas.length; i++) {
       const recursoGuids = matriculas[i].curso.modulos.flatMap((m: any) =>
-        m.lecciones.flatMap((l: any) => l.recursos.map((r: any) => r.guid))
+        m.lecciones.flatMap((l: any) => l.recursos.map((r: any) => r.guid)),
       );
       allResourceGuids.push(...recursoGuids);
       courseTotals.push({ courseIndex: i, guids: recursoGuids });
@@ -220,7 +220,7 @@ export class EstudiantesService {
 
     for (const ct of courseTotals) {
       if (ct.guids.length === 0) continue;
-      const courseCompleted = ct.guids.filter(g => completedSet.has(g)).length;
+      const courseCompleted = ct.guids.filter((g) => completedSet.has(g)).length;
       if (courseCompleted === ct.guids.length) cursos_completados++;
     }
 
@@ -235,7 +235,7 @@ export class EstudiantesService {
       ...metricas,
       cursos_completados,
       total_cursos: matriculas.length,
-      total_horas_invertidas: Math.round(horasReales * 10) / 10
+      total_horas_invertidas: Math.round(horasReales * 10) / 10,
     };
   }
 

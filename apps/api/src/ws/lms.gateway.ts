@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { WebSocketGateway, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -44,10 +44,11 @@ interface ConnectedClient {
  */
 @WebSocketGateway({ path: '/ws' })
 @Injectable()
-export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit {
+export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit, OnModuleDestroy {
   private clients: ConnectedClient[] = [];
   private readonly logger = new Logger(LmsGateway.name);
   private courseEditors: Map<string, CourseEditor> = new Map();
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private jwtService: JwtService,
@@ -56,18 +57,24 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
   ) {}
 
   onModuleInit() {
-    // Check for ghost connections every 15 seconds (reduced from 30s for faster detection)
-    setInterval(() => {
+    // F9.5: Check for ghost connections every 15 seconds
+    this.heartbeatInterval = setInterval(() => {
       this.clients.forEach((c) => {
         if ((c.socket as any).isAlive === false) {
-          // Client hasn't responded to the last ping, terminate
           return c.socket.terminate();
         }
-        // Mark as false and send a new ping
         (c.socket as any).isAlive = false;
         c.socket.ping();
       });
     }, 15000);
+  }
+
+  // F9.5: Clean up heartbeat interval to prevent leaks
+  onModuleDestroy() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
   }
 
   async handleConnection(client: WebSocket, req: IncomingMessage): Promise<void> {

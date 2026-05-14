@@ -8,6 +8,7 @@
     "dev": "nest start --watch",
     "start:dev": "nest start --watch",
     "lint": "eslint \"src/**/*.ts\" --fix",
+    "lint:check": "eslint \"src/**/*.ts\"",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
