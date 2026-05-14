@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsNumber } from 'class-validator';
+import { IsOptional, IsString, IsNumber, Matches, Max, Min } from 'class-validator';
 
 export class UpdateConfiguracionDto {
   @IsOptional()
@@ -13,17 +13,18 @@ export class UpdateConfiguracionDto {
   @IsString()
   login_fondo_url?: string | null;
 
+  // F1.6: Validate hex color format to prevent XSS via style injection
   @IsOptional()
   @IsString()
+  @Matches(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, { message: 'color_primario debe ser un color hexadecimal válido (ej: #4f46e5)' })
   color_primario?: string;
 
   @IsOptional()
   @IsString()
+  @Matches(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, { message: 'color_secundario debe ser un color hexadecimal válido (ej: #10b981)' })
   color_secundario?: string;
 
-  @IsOptional()
-  @IsString()
-  contrasena_defecto?: string;
+  // F1.2: contrasena_defecto removed — field is deprecated (passwordless onboarding)
 
   @IsOptional()
   @IsString()
@@ -37,8 +38,11 @@ export class UpdateConfiguracionDto {
   @IsString()
   fuente?: string;
 
+  // F1.6: Limit border_radius to prevent layout-breaking values
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(24)
   border_radius?: number;
 
   // Landing Page - Hero
