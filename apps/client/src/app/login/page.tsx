@@ -46,7 +46,14 @@ export default function LoginPage() {
   const [redirecting, setRedirecting] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
   const [view, setView] = useState<
-    'LOGIN' | 'SETUP_PASSWORD' | 'REQUEST_ACCESS' | 'REQUEST_SUCCESS' | 'REVOKED' | 'EXPIRED' | 'DISPLACED' | 'PASSWORD_CHANGED'
+    | 'LOGIN'
+    | 'SETUP_PASSWORD'
+    | 'REQUEST_ACCESS'
+    | 'REQUEST_SUCCESS'
+    | 'REVOKED'
+    | 'EXPIRED'
+    | 'DISPLACED'
+    | 'PASSWORD_CHANGED'
   >('LOGIN');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
