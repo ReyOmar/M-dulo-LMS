@@ -12,7 +12,7 @@ import {
   Paperclip,
   LogOut,
 } from 'lucide-react';
-import api, { API_BASE_URL, resolveDownloadUrl } from '@/lib/api';
+import api, { API_BASE_URL, secureDownload } from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import { sanitizeHTML } from '@/lib/sanitize';
 
@@ -382,9 +382,9 @@ export default function QuizPlayer({
                   </a>
                 )}
                 {archivo_adjunto && (
-                  <a
-                    href={resolveDownloadUrl(archivo_adjunto, archivo_adjunto_nombre || 'archivo') || ''}
-                    className="flex items-center gap-4 p-4 bg-background/50 border border-border rounded-2xl hover:bg-primary/5 hover:border-primary/20 transition-all group"
+                  <button
+                    onClick={() => secureDownload(archivo_adjunto, archivo_adjunto_nombre || 'archivo')}
+                    className="flex items-center gap-4 p-4 bg-background/50 border border-border rounded-2xl hover:bg-primary/5 hover:border-primary/20 transition-all group w-full text-left cursor-pointer"
                   >
                     <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                       <Paperclip className="h-5 w-5 text-primary" />
@@ -397,7 +397,7 @@ export default function QuizPlayer({
                         Recurso de apoyo
                       </span>
                     </div>
-                  </a>
+                  </button>
                 )}
               </div>
             )}

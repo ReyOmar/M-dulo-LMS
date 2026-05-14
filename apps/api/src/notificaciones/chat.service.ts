@@ -165,18 +165,17 @@ export class ChatService {
   }
 
   /**
-   * Delete conversation history between two users.
+   * F2.10: Delete only the requesting user's sent messages (soft-delete pattern).
+   * This preserves the other party's copy of the conversation.
    */
-  async eliminarConversacion(usuario1_guid: string, usuario2_guid: string) {
+  async eliminarConversacion(usuario_guid: string, contacto_guid: string) {
     await this.prisma.lms_mensajes.deleteMany({
       where: {
-        OR: [
-          { remitente_guid: usuario1_guid, destinatario_guid: usuario2_guid },
-          { remitente_guid: usuario2_guid, destinatario_guid: usuario1_guid },
-        ],
+        remitente_guid: usuario_guid,
+        destinatario_guid: contacto_guid,
       },
     });
-    return { message: 'Conversación eliminada.' };
+    return { message: 'Tus mensajes en esta conversación han sido eliminados.' };
   }
 
   // ─── CONTACTOS DE CHAT (Aprobación mutua) ────────────
@@ -290,11 +289,35 @@ export class ChatService {
    * Send a contact request to another user in a shared course.
    */
   async solicitarContacto(solicitante_guid: string, receptor_guid: string, curso_guid: string) {
+    // F2.9: Verify BOTH users belong to the course
     const curso = await this.prisma.lms_cursos.findUnique({
       where: { guid: curso_guid },
       select: { profesor_guid: true },
     });
-    const isProfesor = curso?.profesor_guid === receptor_guid;
+    if (!curso) throw new Error('Curso no encontrado.');
+
+    const isSolicitanteProfesor = curso.profesor_guid === solicitante_guid;
+    const isReceptorProfesor = curso.profesor_guid === receptor_guid;
+
+    // Verify solicitante belongs to the course (enrolled or professor)
+    if (!isSolicitanteProfesor) {
+      const solicitanteMatricula = await this.prisma.lms_matriculas.findUnique({
+        where: { usuario_guid_curso_guid: { usuario_guid: solicitante_guid, curso_guid } },
+      });
+      if (!solicitanteMatricula) {
+        throw new Error('No perteneces a este curso.');
+      }
+    }
+
+    // Verify receptor belongs to the course (enrolled or professor)
+    if (!isReceptorProfesor) {
+      const receptorMatricula = await this.prisma.lms_matriculas.findUnique({
+        where: { usuario_guid_curso_guid: { usuario_guid: receptor_guid, curso_guid } },
+      });
+      if (!receptorMatricula) {
+        throw new Error('El usuario no pertenece a este curso.');
+      }
+    }
 
     const existing = await this.prisma.lms_contacto_chat.findFirst({
       where: {
@@ -309,7 +332,7 @@ export class ChatService {
       if (existing.estado === 'RECHAZADO') {
         return this.prisma.lms_contacto_chat.update({
           where: { id: existing.id },
-          data: { estado: isProfesor ? 'ACEPTADO' : 'PENDIENTE', solicitante_guid, receptor_guid },
+          data: { estado: isReceptorProfesor ? 'ACEPTADO' : 'PENDIENTE', solicitante_guid, receptor_guid },
         });
       }
       return existing;
@@ -320,11 +343,11 @@ export class ChatService {
         solicitante_guid,
         receptor_guid,
         curso_guid,
-        estado: isProfesor ? 'ACEPTADO' : 'PENDIENTE',
+        estado: isReceptorProfesor ? 'ACEPTADO' : 'PENDIENTE',
       },
     });
 
-    if (!isProfesor) {
+    if (!isReceptorProfesor) {
       const solicitante = await this.prisma.usuarios.findUnique({
         where: { guid: solicitante_guid },
         select: { nombre: true, apellido: true },

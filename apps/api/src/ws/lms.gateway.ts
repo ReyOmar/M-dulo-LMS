@@ -156,10 +156,10 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
       this.clients = this.clients.filter((c) => c.guid !== payload.sub);
 
       this.clients.push(connectedClient);
+      // F3.8: Only send affected user status in broadcast (not full online list)
       this.broadcast('presence:update', {
         guid: payload.sub,
         status: 'online',
-        onlineUsers: this.getOnlineUserGuids(),
       });
 
       // Send current course editing state to the newly connected client
@@ -264,10 +264,10 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
             }
           }
 
+          // F3.8: Only send affected user status in broadcast (not full online list)
           this.broadcast('presence:update', {
             guid: disconnectedGuid,
             status: 'offline',
-            onlineUsers: this.getOnlineUserGuids(),
           });
 
           // Release any courses this user was editing

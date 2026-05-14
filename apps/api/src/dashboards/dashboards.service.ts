@@ -5,9 +5,11 @@ import { PrismaService } from '../prisma/prisma.service';
 export class DashboardsService {
   constructor(private prisma: PrismaService) {}
 
-  async getMonitoreoEstudiantes(profesor_guid: string) {
+  async getMonitoreoEstudiantes(usuario_guid: string, role: string) {
+    // F2.11: Admin sees all courses, professor sees only their own
+    const whereClause = role === 'ADMINISTRADOR' ? {} : { profesor_guid: usuario_guid };
     const cursos = await this.prisma.lms_cursos.findMany({
-      where: { profesor_guid },
+      where: whereClause,
       include: {
         modulos: {
           include: {
@@ -149,11 +151,12 @@ export class DashboardsService {
       matriculasByCourse.set(m.curso_guid, (matriculasByCourse.get(m.curso_guid) || 0) + 1);
     }
 
-    const profesoresActivos =
-      [...profGuids].filter((g) => {
-        // Professor is active if they have at least one course
-        return cursos.some((c) => allMatriculas.some((m) => m.curso_guid === c.guid));
-      }).length || profesores.length; // fallback
+    // F2.12: Professor is active if they have at least one course assigned
+    const allCursos = await this.prisma.lms_cursos.findMany({
+      select: { profesor_guid: true },
+    });
+    const profGuidsWithCourses = new Set(allCursos.map((c) => c.profesor_guid).filter(Boolean));
+    const profesoresActivos = [...profGuids].filter((g) => profGuidsWithCourses.has(g)).length || profesores.length;
     const estudiantesActivos = [...estudGuids].filter((g) => matriculasByUser.has(g)).length;
 
     // Average grades from calificadas — use numeric field directly

@@ -14,7 +14,7 @@ import {
   Download,
   Award,
 } from 'lucide-react';
-import api, { API_BASE_URL, resolveDownloadUrl } from '@/lib/api';
+import api, { API_BASE_URL, secureDownload } from '@/lib/api';
 import { useWS } from '@/contexts/WebSocketContext';
 import { sanitizeHTML } from '@/lib/sanitize';
 
@@ -164,9 +164,7 @@ export default function AssignmentPlayer({
 
   const handleDownload = () => {
     if (!entrega?.url_archivo_adjunto) return;
-    const url =
-      resolveDownloadUrl(entrega.url_archivo_adjunto, entrega.respuesta_texto || entrega.url_archivo_adjunto) || '';
-    window.open(url, '_blank');
+    secureDownload(entrega.url_archivo_adjunto, entrega.respuesta_texto || entrega.url_archivo_adjunto);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -261,11 +259,9 @@ export default function AssignmentPlayer({
               </a>
             )}
             {archivo_adjunto && (
-              <a
-                href={resolveDownloadUrl(archivo_adjunto, archivo_adjunto_nombre || 'archivo') || ''}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 p-3 bg-background border border-border rounded-xl hover:border-blue-500/50 hover:shadow-md transition-all group"
+              <button
+                onClick={() => secureDownload(archivo_adjunto, archivo_adjunto_nombre || 'archivo')}
+                className="flex items-center gap-3 p-3 bg-background border border-border rounded-xl hover:border-blue-500/50 hover:shadow-md transition-all group cursor-pointer w-full text-left"
               >
                 <div className="h-10 w-10 bg-blue-500/10 text-blue-500 flex items-center justify-center rounded-lg group-hover:scale-110 transition-transform">
                   <Paperclip className="h-5 w-5" />
@@ -274,7 +270,7 @@ export default function AssignmentPlayer({
                   <div className="text-sm font-bold truncate">{archivo_adjunto_nombre || 'Archivo adjunto'}</div>
                   <div className="text-xs text-muted-foreground">Descargar Documento</div>
                 </div>
-              </a>
+              </button>
             )}
           </div>
         </div>

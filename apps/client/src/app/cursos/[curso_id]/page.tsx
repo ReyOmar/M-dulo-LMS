@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { PageLoader } from '@/components/ui/PageLoader';
 import Link from 'next/link';
-import api, { API_BASE_URL, resolveDownloadUrl } from '@/lib/api';
+import api, { API_BASE_URL, secureDownload } from '@/lib/api';
 import { useWS } from '@/contexts/WebSocketContext';
 import { sanitizeHTML } from '@/lib/sanitize';
 import QuizPlayer from '@/components/quiz/QuizPlayer';
@@ -742,18 +742,17 @@ export default function CursoVisorPage() {
                     </a>
                   )}
                   {selectedRecurso.archivo_adjunto && (
-                    <a
-                      href={
-                        resolveDownloadUrl(selectedRecurso.archivo_adjunto, selectedRecurso.archivo_adjunto_nombre) ||
-                        ''
+                    <button
+                      onClick={() =>
+                        secureDownload(selectedRecurso.archivo_adjunto, selectedRecurso.archivo_adjunto_nombre)
                       }
-                      className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 transition-colors"
+                      className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 transition-colors w-full text-left cursor-pointer"
                     >
                       <Paperclip className="h-4 w-4 text-primary" />
                       <span className="text-sm font-bold">
                         {selectedRecurso.archivo_adjunto_nombre || 'Archivo adjunto'}
                       </span>
-                    </a>
+                    </button>
                   )}
 
                   {!viewOnlyMode && !isRecursoCompleted(selectedRecurso.guid) && (

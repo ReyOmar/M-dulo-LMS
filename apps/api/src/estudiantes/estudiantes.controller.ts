@@ -34,8 +34,8 @@ export class EstudiantesController {
 
   @Patch('/student/notificaciones/:id/leer')
   async marcarNotificacionLeida(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    // F3.2: Added ownership via JWT
-    return this.estudiantesService.marcarNotificacionLeida(parseInt(id, 10));
+    // F2.5b: Pass user GUID for ownership validation
+    return this.estudiantesService.marcarNotificacionLeida(parseInt(id, 10), user.sub);
   }
 
   @Get('/student/metricas')

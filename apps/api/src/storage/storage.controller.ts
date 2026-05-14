@@ -9,9 +9,11 @@ import {
   BadRequestException,
   Req,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { StorageService } from './storage.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -20,14 +22,14 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 /**
- * F5.1/F5.2: Storage access model:
+ * F1.1/F1.2: Storage access model:
  *
  * PUBLIC folders (no auth required):
  *   - portadas: course cover images (shown on landing/catalog)
  *   - logos: platform branding (shown on public pages)
  *   - avatars: profile photos (shown in UI alongside names)
  *
- * PRIVATE folders (auth required):
+ * PRIVATE folders (auth + ownership required):
  *   - entregas: student submissions (only owner, course professor, or admin)
  *   - firmas: instructor signatures (only owner or admin)
  *   - certificados: certificate PDFs (only owner, course professor, or admin)
@@ -41,7 +43,12 @@ const ALL_FOLDERS = [...PUBLIC_FOLDERS, ...PRIVATE_FOLDERS];
 
 @Controller('storage')
 export class StorageController {
-  constructor(private readonly storageService: StorageService) {}
+  private readonly logger = new Logger(StorageController.name);
+
+  constructor(
+    private readonly storageService: StorageService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   /**
    * Upload a file via multipart/form-data.
@@ -110,12 +117,17 @@ export class StorageController {
   }
 
   /**
-   * F5.1/F5.2: Download a file. Supports both public and private folders.
-   * Private folders require authentication (handled by global JWT guard).
-   * Additional ownership checks would require service-level validation
-   * which is deferred to the individual domain controllers (certificates, etc).
+   * F1.1/F1.2: Download a private file with ownership validation.
    *
-   * Three strategies:
+   * Private folders require:
+   *   - entregas: user owns the submission, is course professor, or admin
+   *   - firmas: user owns the signature or is admin
+   *   - certificados: user owns the certificate, is course professor, or admin
+   *   - recursos: user is enrolled in the course, is course professor, or admin
+   *
+   * Public folders and legacy flat files are served without ownership checks.
+   *
+   * Three download strategies:
    * 1. R2 with public URL → 302 redirect to CDN
    * 2. R2 without public URL → proxy stream from R2 through API
    * 3. Local file → serve from filesystem
@@ -144,7 +156,119 @@ export class StorageController {
       throw new BadRequestException('Ruta de archivo inválida.');
     }
 
+    // F1.1/F1.2: Ownership validation for private folders
+    const folder = segments.length === 2 ? segments[0] : null;
+    if (folder && PRIVATE_FOLDERS.includes(folder)) {
+      await this.assertPrivateFileAccess(user, sanitizedKey, folder);
+    }
+
     return this.serveFile(sanitizedKey, originalName, res);
+  }
+
+  /**
+   * F1.2: Verify the requesting user has permission to access a private file.
+   * Resolves ownership by looking up the storage key in the relevant domain table.
+   *
+   * Admins bypass all checks. For each private folder:
+   *   - entregas: matches url_archivo_adjunto → owner or course professor
+   *   - firmas: matches firma_url on usuarios → owner only
+   *   - certificados: matches archivo_pdf on lms_certificados → owner or course professor
+   *   - recursos: matches url_archivo/archivo_adjunto on lms_recursos → enrolled or course professor
+   */
+  private async assertPrivateFileAccess(user: JwtPayload, key: string, folder: string): Promise<void> {
+    // Admins can access all private files
+    if (user.role === 'ADMINISTRADOR') return;
+
+    const userGuid = user.sub;
+
+    if (folder === 'entregas') {
+      // Find the submission that references this file
+      const entrega = await this.prisma.lms_entregas.findFirst({
+        where: { url_archivo_adjunto: key },
+        select: {
+          usuario_guid: true,
+          tarea: {
+            select: {
+              leccion: { select: { modulo: { select: { curso: { select: { profesor_guid: true } } } } } },
+            },
+          },
+        },
+      });
+      if (!entrega) throw new ForbiddenException('Archivo no encontrado o acceso denegado.');
+      const isOwner = entrega.usuario_guid === userGuid;
+      const isCourseProfessor = entrega.tarea?.leccion?.modulo?.curso?.profesor_guid === userGuid;
+      if (!isOwner && !isCourseProfessor) {
+        throw new ForbiddenException('No tienes permisos para acceder a este archivo.');
+      }
+      return;
+    }
+
+    if (folder === 'firmas') {
+      // Signatures: only the owner can access their own signature
+      const owner = await this.prisma.usuarios.findFirst({
+        where: { firma_url: key },
+        select: { guid: true },
+      });
+      if (!owner || owner.guid !== userGuid) {
+        throw new ForbiddenException('No tienes permisos para acceder a esta firma.');
+      }
+      return;
+    }
+
+    if (folder === 'certificados') {
+      // Certificates: owner or course professor
+      const cert = await this.prisma.lms_certificados.findFirst({
+        where: { archivo_pdf: key },
+        select: {
+          usuario_guid: true,
+          curso: { select: { profesor_guid: true } },
+        },
+      });
+      if (!cert) throw new ForbiddenException('Archivo no encontrado o acceso denegado.');
+      const isOwner = cert.usuario_guid === userGuid;
+      const isCourseProfessor = cert.curso?.profesor_guid === userGuid;
+      if (!isOwner && !isCourseProfessor) {
+        throw new ForbiddenException('No tienes permisos para acceder a este certificado.');
+      }
+      return;
+    }
+
+    if (folder === 'recursos') {
+      // Course resources: enrolled student or course professor
+      const recurso = await this.prisma.lms_recursos.findFirst({
+        where: {
+          OR: [{ url_archivo: key }, { archivo_adjunto: key }],
+        },
+        select: {
+          leccion: {
+            select: {
+              modulo: {
+                select: {
+                  curso_guid: true,
+                  curso: { select: { profesor_guid: true } },
+                },
+              },
+            },
+          },
+        },
+      });
+      if (!recurso) throw new ForbiddenException('Archivo no encontrado o acceso denegado.');
+      const cursoGuid = recurso.leccion?.modulo?.curso_guid;
+      const isCourseProfessor = recurso.leccion?.modulo?.curso?.profesor_guid === userGuid;
+      if (isCourseProfessor) return;
+
+      // Check enrollment
+      if (cursoGuid) {
+        const matricula = await this.prisma.lms_matriculas.findUnique({
+          where: { usuario_guid_curso_guid: { usuario_guid: userGuid, curso_guid: cursoGuid } },
+        });
+        if (matricula) return;
+      }
+      throw new ForbiddenException('No tienes permisos para acceder a este recurso.');
+    }
+
+    // Unknown private folder — deny by default
+    throw new ForbiddenException('Acceso denegado.');
   }
 
   /**

@@ -64,7 +64,27 @@ async function bootstrap() {
     if (request.url !== '/api/health') {
       const ms = reply.elapsedTime?.toFixed(0) || '?';
       const status = reply.statusCode;
-      const logLine = `${request.method} ${request.url} ${status} ${ms}ms [${request.id}]`;
+
+      // F3.3: Sanitize sensitive params from logged URL
+      let sanitizedUrl = request.url;
+      try {
+        const urlObj = new URL(request.url, 'http://localhost');
+        const sensitiveParams = ['token', 'authorization', 'access_token'];
+        let hadSensitive = false;
+        for (const param of sensitiveParams) {
+          if (urlObj.searchParams.has(param)) {
+            urlObj.searchParams.set(param, '[REDACTED]');
+            hadSensitive = true;
+          }
+        }
+        if (hadSensitive) {
+          sanitizedUrl = urlObj.pathname + urlObj.search;
+        }
+      } catch {
+        // If URL parsing fails, use the original — safe fallback
+      }
+
+      const logLine = `${request.method} ${sanitizedUrl} ${status} ${ms}ms [${request.id}]`;
 
       if (status >= 500) {
         httpLogger.error(logLine);

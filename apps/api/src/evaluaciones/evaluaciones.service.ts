@@ -143,7 +143,22 @@ export class EvaluacionesService {
     });
   }
 
-  async getTodasEntregasParaTarea(tarea_guid: string) {
+  async getTodasEntregasParaTarea(tarea_guid: string, usuario_guid: string, role: string) {
+    // F1.5/F1.6: Verify the task belongs to a course owned by this professor
+    if (role === 'PROFESOR') {
+      const recurso = await this.prisma.lms_recursos.findUnique({
+        where: { guid: tarea_guid },
+        select: {
+          leccion: { select: { modulo: { select: { curso: { select: { profesor_guid: true } } } } } },
+        },
+      });
+      if (!recurso) throw new BadRequestException('Tarea no encontrada.');
+      const courseProfesor = recurso.leccion?.modulo?.curso?.profesor_guid;
+      if (courseProfesor !== usuario_guid) {
+        throw new BadRequestException('No tienes permisos para ver entregas de esta tarea.');
+      }
+    }
+
     return this.prisma.lms_entregas.findMany({
       where: { tarea_guid },
       select: {

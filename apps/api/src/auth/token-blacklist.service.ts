@@ -89,12 +89,13 @@ export class TokenBlacklistService implements OnModuleInit {
 
   /**
    * Check if a token (identified by user GUID and issued-at timestamp) is revoked.
-   * Returns true if the token was issued BEFORE the most recent revocation.
+   * Returns true if the token was issued AT OR BEFORE the most recent revocation.
+   * F3.5: Uses <= to ensure tokens from the same second as revocation are also invalidated.
    */
   isRevoked(userGuid: string, iat: number): boolean {
     const revokedAt = this.cache.get(userGuid);
     if (!revokedAt) return false;
-    return iat < revokedAt;
+    return iat <= revokedAt;
   }
 
   onModuleDestroy() {

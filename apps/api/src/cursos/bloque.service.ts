@@ -178,6 +178,20 @@ export class BloqueService {
     }
     this.assertDraftAndOwnership(modulo.curso, requestUser);
 
+    // F2.1/F2.2: Validate that ALL provided GUIDs belong to this module's lesson
+    const leccionGuid = modulo.lecciones[0].guid;
+    const validResources = await this.prisma.lms_recursos.findMany({
+      where: { leccion_guid: leccionGuid },
+      select: { guid: true },
+    });
+    const validGuids = new Set(validResources.map((r) => r.guid));
+    const invalidGuids = recursos_guids.filter((guid) => !validGuids.has(guid));
+    if (invalidGuids.length > 0) {
+      throw new BadRequestException(
+        `Los siguientes recursos no pertenecen a este módulo: ${invalidGuids.join(', ')}`,
+      );
+    }
+
     const queries = recursos_guids.map((guid, index) => {
       return this.prisma.lms_recursos.update({
         where: { guid },

@@ -20,7 +20,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import Link from 'next/link';
-import api, { API_BASE_URL, resolveDownloadUrl } from '@/lib/api';
+import api, { API_BASE_URL, resolveFileUrl } from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import { sanitizeHTML } from '@/lib/sanitize';
 import dynamic from 'next/dynamic';
@@ -84,7 +84,7 @@ export default function ModuleEditorPage() {
         const res = await api.post('/storage/upload?folder=recursos', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        setBloqueBase64(resolveDownloadUrl(res.data.filename) || '');
+        setBloqueBase64(resolveFileUrl(res.data.filename) || '');
       } catch (err) {
         console.error('Error uploading image:', err);
       }
@@ -105,7 +105,7 @@ export default function ModuleEditorPage() {
         const res = await api.post('/storage/upload?folder=recursos', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        setBloqueBase64(resolveDownloadUrl(res.data.filename) || '');
+        setBloqueBase64(resolveFileUrl(res.data.filename) || '');
       } catch (err) {
         console.error('Error uploading dropped image:', err);
       }

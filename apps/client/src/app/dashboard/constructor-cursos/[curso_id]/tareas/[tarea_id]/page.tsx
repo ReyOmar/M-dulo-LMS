@@ -16,7 +16,7 @@ import {
   UploadCloud,
   Loader2,
 } from 'lucide-react';
-import api, { API_BASE_URL, resolveDownloadUrl } from '@/lib/api';
+import api, { API_BASE_URL, secureDownload } from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
@@ -216,13 +216,12 @@ export default function ConfigurarTareaPage() {
               {archivoAdjunto ? (
                 <div className="flex items-center gap-3 p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl">
                   <Paperclip className="h-4 w-4 text-blue-500 shrink-0" />
-                  <a
-                    href={resolveDownloadUrl(archivoAdjunto, archivoAdjuntoNombre) || ''}
-                    target="_blank"
-                    className="text-sm font-bold text-blue-600 hover:underline flex-1 truncate"
+                  <button
+                    onClick={() => secureDownload(archivoAdjunto, archivoAdjuntoNombre)}
+                    className="text-sm font-bold text-blue-600 hover:underline flex-1 truncate text-left cursor-pointer"
                   >
                     {archivoAdjuntoNombre}
-                  </a>
+                  </button>
                   <button
                     onClick={() => {
                       setArchivoAdjunto('');

@@ -197,6 +197,7 @@ export class CursosController {
 
   @Get('/student/quiz/:bloque_guid/status')
   async getQuizStatus(@Param('bloque_guid') bloque_guid: string, @CurrentUser() user: JwtPayload) {
+    await this.quizService.verificarMatricula(bloque_guid, user.sub);
     return this.quizService.getQuizStatus(bloque_guid, user.sub);
   }
 }

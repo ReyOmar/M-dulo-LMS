@@ -1,6 +1,6 @@
 import './globals.css';
 import { type Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import Script from 'next/script';
 import { ThemeProvider } from '@/components/ui/ThemeProvider';
 import { RoleProvider } from '@/contexts/RoleContext';
@@ -8,9 +8,9 @@ import { ConfigProvider } from '@/contexts/ConfigContext';
 import { AlertProvider } from '@/contexts/AlertContext';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
 
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
+// F4.3: Use local font to avoid network dependency during builds
+const inter = localFont({
+  src: './fonts/Inter.woff2',
   display: 'swap',
   variable: '--font-inter',
 });

@@ -83,21 +83,20 @@ async function uploadFile(url: string, file: File, fieldName = 'file') {
 }
 
 /**
- * Resolves a file reference to a full download URL.
+ * Resolves a file reference to a display URL.
  *
- * Security model:
+ * F3.1: Security model:
  * - Public folders (portadas, logos, avatars) → /download/public/* (no auth, safe for <img src>)
- * - Private folders (entregas, firmas, certificados, recursos) → /download/* with JWT query param
- *
- * Private files include the JWT token as a query parameter since <a href> and <img src>
- * cannot send Authorization headers. The backend only accepts query tokens on
- * /storage/download/ routes (scoped, industry-standard pattern like S3 presigned URLs).
+ * - Private folders (firmas) → /download/* with JWT query param (ONLY for inline <img> rendering)
+ * - Private downloadable files → use secureDownload() instead (never expose token in URL)
  */
 const PUBLIC_FOLDERS = ['portadas', 'logos', 'avatars'];
 
+// Folders that need inline rendering (e.g. <img src>) and thus require token-in-URL
+const INLINE_PRIVATE_FOLDERS = ['firmas'];
+
 function resolveFileUrl(fileRef: string | null | undefined): string | null {
   if (!fileRef) return null;
-  // Already a full URL (legacy data) — return as-is
   if (fileRef.startsWith('http://') || fileRef.startsWith('https://')) return fileRef;
 
   const folder = fileRef.split('/')[0];
@@ -107,16 +106,22 @@ function resolveFileUrl(fileRef: string | null | undefined): string | null {
     return `${API_BASE_URL}/storage/download/public/${fileRef}`;
   }
 
-  // Private files: attach JWT token for browser-native requests (<a href>, <img src>)
-  const token = typeof window !== 'undefined' ? localStorage.getItem('lms_token') : null;
+  // F3.1: Only attach token for inline private content (signatures need <img src>)
+  const isInlinePrivate = INLINE_PRIVATE_FOLDERS.includes(folder);
   const base = `${API_BASE_URL}/storage/download/${fileRef}`;
-  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+  if (isInlinePrivate) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('lms_token') : null;
+    return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+  }
+
+  // For all other private files, return the URL without token
+  // (callers must use secureDownload() for actual downloads)
+  return base;
 }
 
 /**
- * Builds a complete download URL for <a href> links.
- * Combines resolveFileUrl() with an optional originalName for Content-Disposition.
- * Handles token injection for private files automatically.
+ * Builds a URL for download endpoints (used internally by secureDownload).
+ * F3.2: No longer injects tokens into URLs — tokens are sent via Authorization header.
  */
 function resolveDownloadUrl(fileRef: string | null | undefined, originalName?: string): string | null {
   if (!fileRef) return null;
@@ -129,14 +134,72 @@ function resolveDownloadUrl(fileRef: string | null | undefined, originalName?: s
 
   const params = new URLSearchParams();
   if (originalName) params.set('originalName', originalName);
-  if (!isPublic) {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('lms_token') : null;
-    if (token) params.set('token', token);
-  }
+  // F3.2: Token is NO LONGER added to URL — use secureDownload() instead
 
   const qs = params.toString();
   return qs ? `${base}?${qs}` : base;
 }
 
-export { API_BASE_URL, uploadFile, resolveFileUrl, resolveDownloadUrl };
+/**
+ * F3.1/F3.2: Secure file download using fetch() + Authorization header.
+ * Downloads the file as a blob and triggers a native browser download.
+ * This avoids exposing the JWT token in the URL (referer, logs, browser history).
+ *
+ * @param fileRef - Storage key (e.g. 'entregas/abc123.pdf')
+ * @param fileName - Display name for the downloaded file
+ */
+async function secureDownload(fileRef: string | null | undefined, fileName?: string): Promise<void> {
+  if (!fileRef) return;
+
+  // External URLs — open directly
+  if (fileRef.startsWith('http://') || fileRef.startsWith('https://')) {
+    window.open(fileRef, '_blank');
+    return;
+  }
+
+  const folder = fileRef.split('/')[0];
+  const isPublic = PUBLIC_FOLDERS.includes(folder);
+  const prefix = isPublic ? 'storage/download/public' : 'storage/download';
+
+  const params = new URLSearchParams();
+  if (fileName) params.set('originalName', fileName);
+  const qs = params.toString();
+  const url = `${API_BASE_URL}/${prefix}/${fileRef}${qs ? `?${qs}` : ''}`;
+
+  const headers: Record<string, string> = {};
+  if (!isPublic) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('lms_token') : null;
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    // Create temporary anchor to trigger native download
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = fileName || fileRef.split('/').pop() || 'download';
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(objectUrl);
+    }, 100);
+  } catch (err) {
+    console.error('Secure download failed:', err);
+    // Fallback: open in new tab (will fail for private files without token)
+    window.open(url, '_blank');
+  }
+}
+
+export { API_BASE_URL, uploadFile, resolveFileUrl, resolveDownloadUrl, secureDownload };
 export default api;

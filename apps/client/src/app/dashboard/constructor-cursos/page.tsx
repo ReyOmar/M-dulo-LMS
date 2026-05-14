@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import api, { API_BASE_URL, resolveFileUrl, resolveDownloadUrl } from '@/lib/api';
+import api, { API_BASE_URL, resolveFileUrl, secureDownload } from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import { sanitizeHTML } from '@/lib/sanitize';
 
@@ -449,7 +449,7 @@ export default function ConstructorCursosRoot() {
         const res = await api.post('/storage/upload?folder=recursos', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        setBloqueBase64(resolveDownloadUrl(res.data.filename) || '');
+        setBloqueBase64(resolveFileUrl(res.data.filename) || '');
       } catch (err) {
         console.error('Error uploading image:', err);
       }
@@ -467,7 +467,7 @@ export default function ConstructorCursosRoot() {
         const res = await api.post('/storage/upload?folder=recursos', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        setBloqueBase64(resolveDownloadUrl(res.data.filename) || '');
+        setBloqueBase64(resolveFileUrl(res.data.filename) || '');
       } catch (err) {
         console.error('Error uploading dropped image:', err);
       }
@@ -531,10 +531,10 @@ export default function ConstructorCursosRoot() {
     }
     if (recurso?.archivo_adjunto_nombre && recurso?.archivo_adjunto) {
       extras.push(
-        <a
+        <button
           key="file"
-          href={resolveDownloadUrl(recurso.archivo_adjunto, recurso.archivo_adjunto_nombre) || ''}
-          className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-colors cursor-pointer group"
+          onClick={() => secureDownload(recurso.archivo_adjunto, recurso.archivo_adjunto_nombre)}
+          className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-colors cursor-pointer group w-full text-left"
         >
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
             <Paperclip className="h-4 w-4 text-primary" />
@@ -544,7 +544,7 @@ export default function ConstructorCursosRoot() {
             <span className="text-xs text-muted-foreground">Clic para descargar</span>
           </div>
           <UploadCloud className="h-4 w-4 text-primary rotate-180 flex-shrink-0" />
-        </a>,
+        </button>,
       );
     }
     if (recurso?.archivo_max_size_mb && recurso.tipo === 'TAREA' && !recurso.titulo?.startsWith('[QUIZ]')) {
@@ -836,18 +836,16 @@ export default function ConstructorCursosRoot() {
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                            <a
-                              href={
-                                resolveDownloadUrl(activeCourse.imagen_portada, `portada_${activeCourse.titulo}.png`) ||
-                                ''
-                              }
-                              download
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-2 bg-primary hover:bg-primary/90 text-white rounded-lg shadow-md transition-colors"
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                secureDownload(activeCourse.imagen_portada, `portada_${activeCourse.titulo}.png`);
+                              }}
+                              className="p-2 bg-primary hover:bg-primary/90 text-white rounded-lg shadow-md transition-colors cursor-pointer"
                               title="Descargar Portada"
                             >
                               <Download className="h-4 w-4" />
-                            </a>
+                            </button>
                             <button
                               onClick={async (e) => {
                                 e.preventDefault();

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRole } from '@/contexts/RoleContext';
-import api, { API_BASE_URL, resolveDownloadUrl } from '@/lib/api';
+import api, { API_BASE_URL, secureDownload } from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import { sanitizeHTML } from '@/lib/sanitize';
 
@@ -134,8 +134,7 @@ export default function TareaVisorPage() {
 
   const handleDownload = () => {
     if (!serverFileName) return;
-    const url = resolveDownloadUrl(serverFileName, selectedFileName || serverFileName) || '';
-    window.open(url, '_blank');
+    secureDownload(serverFileName, selectedFileName || serverFileName);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

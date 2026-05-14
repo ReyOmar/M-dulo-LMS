@@ -36,7 +36,7 @@ const Legend = dynamic(() => import('recharts').then((m) => m.Legend), { ssr: fa
 import { PageLoader } from '@/components/ui/PageLoader';
 import { useRole } from '@/contexts/RoleContext';
 import { useWS } from '@/contexts/WebSocketContext';
-import api, { API_BASE_URL, resolveFileUrl, resolveDownloadUrl } from '@/lib/api';
+import api, { API_BASE_URL, resolveFileUrl, secureDownload } from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import { useDebounce } from '@/hooks/usePerformance';
 
@@ -963,23 +963,21 @@ export default function CalificacionManualPage() {
                                         <div className="flex items-center gap-3 shrink-0">
                                           {/* File Button */}
                                           {entrega.archivo_servidor && (
-                                            <a
-                                              href={
-                                                resolveDownloadUrl(
+                                            <button
+                                              onClick={() =>
+                                                secureDownload(
                                                   entrega.archivo_servidor,
                                                   entrega.archivo_nombre || 'archivo',
-                                                ) || ''
+                                                )
                                               }
-                                              className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-xl text-xs font-bold transition-colors"
+                                              className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-xl text-xs font-bold transition-colors cursor-pointer"
                                               title="Descargar entrega"
-                                              target="_blank"
-                                              rel="noopener noreferrer"
                                             >
                                               <Download className="h-4 w-4" />
                                               <span className="hidden sm:inline max-w-[150px] truncate">
                                                 {entrega.archivo_nombre}
                                               </span>
-                                            </a>
+                                            </button>
                                           )}
 
                                           {/* Grade/Calificar */}
@@ -1031,22 +1029,20 @@ export default function CalificacionManualPage() {
                                             </p>
                                           </div>
                                           {entrega.archivo_servidor ? (
-                                            <a
-                                              href={
-                                                resolveDownloadUrl(
+                                            <button
+                                              onClick={() =>
+                                                secureDownload(
                                                   entrega.archivo_servidor,
                                                   entrega.archivo_nombre || 'archivo',
-                                                ) || ''
+                                                )
                                               }
-                                              className="flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold transition-transform hover:-translate-y-0.5 shadow-md shrink-0"
-                                              target="_blank"
-                                              rel="noopener noreferrer"
+                                              className="flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold transition-transform hover:-translate-y-0.5 shadow-md shrink-0 cursor-pointer"
                                             >
                                               <Download className="h-4 w-4" /> Descargar{' '}
                                               {entrega.archivo_nombre
                                                 ? `(${entrega.archivo_nombre.length > 15 ? entrega.archivo_nombre.substring(0, 15) + '...' : entrega.archivo_nombre})`
                                                 : ''}
-                                            </a>
+                                            </button>
                                           ) : (
                                             <span className="text-sm font-medium text-muted-foreground italic">
                                               Sin archivo adjunto

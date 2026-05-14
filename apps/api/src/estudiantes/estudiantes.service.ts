@@ -13,6 +13,14 @@ export class EstudiantesService {
   ) {}
 
   async getProgresoEstudiante(usuario_guid: string, curso_guid: string) {
+    // F2.5: Verify enrollment before exposing progress data
+    const matricula = await this.prisma.lms_matriculas.findUnique({
+      where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
+    });
+    if (!matricula) {
+      throw new ForbiddenException('No estás matriculado en este curso.');
+    }
+
     const curso = await this.prisma.lms_cursos.findUnique({
       where: { guid: curso_guid },
       include: {
@@ -161,9 +169,10 @@ export class EstudiantesService {
     });
   }
 
-  async marcarNotificacionLeida(id: number) {
-    return this.prisma.lms_notificaciones.update({
-      where: { id },
+  async marcarNotificacionLeida(id: number, usuario_guid: string) {
+    // F2.5b: Verify the notification belongs to the authenticated user
+    return this.prisma.lms_notificaciones.updateMany({
+      where: { id, usuario_guid },
       data: { leida: true },
     });
   }
@@ -245,6 +254,14 @@ export class EstudiantesService {
    * If last heartbeat was < 2 min ago, extend the session. Otherwise create a new one.
    */
   async registrarHeartbeat(usuario_guid: string, curso_guid: string) {
+    // F2.6: Verify enrollment before recording heartbeat
+    const matricula = await this.prisma.lms_matriculas.findUnique({
+      where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
+    });
+    if (!matricula) {
+      throw new ForbiddenException('No estás matriculado en este curso.');
+    }
+
     const HEARTBEAT_INTERVAL = 60; // seconds
     const SESSION_TIMEOUT = 120; // seconds - if gap > 2min, start new session
     const cutoff = new Date(Date.now() - SESSION_TIMEOUT * 1000);
