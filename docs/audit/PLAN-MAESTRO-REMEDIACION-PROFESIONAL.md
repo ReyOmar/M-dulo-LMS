@@ -85,57 +85,57 @@ La regla principal es simple: cada tarea debe corregir un riesgo real, mejorar u
 
 ## FASE 0 - Base limpia de trabajo y alcance real (4h)
 
-- [ ] F0.1 - Crear rama de correccion y confirmar `git status` limpio antes de tocar codigo | P0 | git | 10m | Evidencia: salida de `git status --short`.
-- [ ] F0.2 - Registrar comandos base que deben seguir pasando: typecheck, tests API, build cliente/API y audit | P0 | proceso | 20m | Evidencia: comandos documentados en este plan o README.
+- [x] F0.1 - Crear rama de correccion y confirmar `git status` limpio antes de tocar codigo | P0 | git | 10m | Evidencia: salida de `git status --short`.
+- [x] F0.2 - Registrar comandos base que deben seguir pasando: typecheck, tests API, build cliente/API y audit | P0 | proceso | 20m | Evidencia: comandos documentados en este plan o README.
 - [ ] F0.3 - Definir matriz minima de roles y propiedad: admin, profesor propietario, profesor ajeno, estudiante matriculado, estudiante ajeno, visitante | P0 | seguridad | 45m | Evidencia: matriz usada por pruebas.
 - [ ] F0.4 - Definir flujos criticos reales: login, setup de password, cursos, recursos, quiz, tareas, certificados, chat, configuracion, storage | P0 | producto | 45m | Evidencia: lista cerrada sin crear documentos extra.
-- [ ] F0.5 - Marcar archivos generados que no deben quedar trackeados: `.tsbuildinfo`, coverage, backups, dist, uploads de prueba | P1 | repo | 25m | Evidencia: `.gitignore` revisado.
+- [x] F0.5 - Marcar archivos generados que no deben quedar trackeados: `.tsbuildinfo`, coverage, backups, dist, uploads de prueba | P1 | repo | 25m | Evidencia: `.gitignore` revisado.
 - [ ] F0.6 - Eliminar del plan cualquier tarea de staging, release, rollout, monitoreo externo o documentacion temporal | P1 | proceso | 35m | Evidencia: este plan sustituye al anterior.
 - [ ] F0.7 - Crear inventario unico de apartados por rol: publico, admin, profesor y estudiante, incluyendo subrutas, modales y acciones principales | P0 | producto/qa | 1h | Evidencia: checklist usado por seguridad, UX y responsive.
 
 ## FASE 1 - Secretos, configuracion y defaults peligrosos (6h)
 
-- [ ] F1.1 - Eliminar el fallback `pesvauth2026` de backend, cliente y schema Prisma | P0 | auth/prisma/client | 1h | Evidencia: busqueda global sin ese valor.
-- [ ] F1.2 - Reemplazar password global por flujo de invitacion o setup individual de un solo uso | P0 | auth | 1h 30m | Evidencia: pruebas de setup valido, expirado y reutilizado.
-- [ ] F1.3 - Hacer que la aplicacion falle al iniciar si faltan secretos obligatorios (`JWT_SECRET`, SMTP real cuando aplique, R2 cuando aplique) | P0 | config | 45m | Evidencia: test o smoke de arranque.
+- [x] F1.1 - Eliminar el fallback `pesvauth2026` de backend, cliente y schema Prisma | P0 | auth/prisma/client | 1h | Evidencia: busqueda global sin ese valor.
+- [x] F1.2 - Reemplazar password global por flujo de invitacion o setup individual de un solo uso | P0 | auth | 1h 30m | Evidencia: pruebas de setup valido, expirado y reutilizado.
+- [x] F1.3 - Hacer que la aplicacion falle al iniciar si faltan secretos obligatorios (`JWT_SECRET`, SMTP real cuando aplique, R2 cuando aplique) | P0 | config | 45m | Evidencia: test o smoke de arranque.
 - [ ] F1.4 - Revisar `.env.example` para que no incluya valores reutilizables ni passwords con apariencia real | P1 | repo | 30m | Evidencia: ejemplos inocuos.
-- [ ] F1.5 - Evitar que `ConfiguracionService` devuelva o emita por WebSocket campos sensibles como `contrasena_defecto` | P0 | api/ws | 1h | Evidencia: test de payload publico.
+- [x] F1.5 - Evitar que `ConfiguracionService` devuelva o emita por WebSocket campos sensibles como `contrasena_defecto` | P0 | api/ws | 1h | Evidencia: test de payload publico.
 - [ ] F1.6 - Validar y limitar colores, radios, textos y assets configurables para que la configuracion no rompa UX ni contraste | P1 | api/client/design | 1h | Evidencia: tests de DTO y smoke visual.
-- [ ] F1.7 - Quitar logs de credenciales SMTP/Ethereal o degradarlos a mensajes no sensibles | P1 | api/mail | 15m | Evidencia: busqueda de logs sin password/token.
+- [x] F1.7 - Quitar logs de credenciales SMTP/Ethereal o degradarlos a mensajes no sensibles | P1 | api/mail | 15m | Evidencia: busqueda de logs sin password/token.
 
 ## FASE 2 - Autenticacion, sesiones y recuperacion (9h)
 
-- [ ] F2.1 - Persistir revocacion de JWT usando `lms_token_revocations` en vez de solo memoria | P0 | api/auth | 1h 30m | Evidencia: logout invalida token tras reinicio.
+- [x] F2.1 - Persistir revocacion de JWT usando `lms_token_revocations` en vez de solo memoria | P0 | api/auth | 1h 30m | Evidencia: logout invalida token tras reinicio.
 - [ ] F2.2 - Revisar `JwtAuthGuard` para validar usuario activo, token revocado, expiracion y rol actual en cada request sensible | P0 | api/auth | 1h | Evidencia: tests unitarios/e2e.
-- [ ] F2.3 - Hashear tokens de password reset en base de datos y comparar con hash seguro | P0 | api/auth | 1h | Evidencia: DB no guarda token plano.
-- [ ] F2.4 - Generar codigos de verificacion con aleatoriedad criptografica y almacenar hash, expiracion e intentos | P0 | api/auth | 1h 15m | Evidencia: tests de intentos y expiracion.
-- [ ] F2.5 - Invalidar sesiones activas despues de cambio de password, reseteo o desactivacion de usuario | P0 | api/auth/ws | 1h | Evidencia: token viejo rechazado.
-- [ ] F2.6 - Reducir mensajes de error para no permitir enumeracion de usuarios en login, reset y request access | P1 | api/auth | 45m | Evidencia: respuestas equivalentes.
-- [ ] F2.7 - Revisar throttling por IP/usuario para login, reset, setup, verificacion y storage | P1 | api/security | 1h | Evidencia: pruebas de rate limit.
+- [x] F2.3 - Hashear tokens de password reset en base de datos y comparar con hash seguro | P0 | api/auth | 1h | Evidencia: DB no guarda token plano.
+- [x] F2.4 - Generar codigos de verificacion con aleatoriedad criptografica y almacenar hash, expiracion e intentos | P0 | api/auth | 1h 15m | Evidencia: tests de intentos y expiracion.
+- [x] F2.5 - Invalidar sesiones activas despues de cambio de password, reseteo o desactivacion de usuario | P0 | api/auth/ws | 1h | Evidencia: token viejo rechazado.
+- [x] F2.6 - Reducir mensajes de error para no permitir enumeracion de usuarios en login, reset y request access | P1 | api/auth | 45m | Evidencia: respuestas equivalentes.
+- [x] F2.7 - Revisar throttling por IP/usuario para login, reset, setup, verificacion y storage | P1 | api/security | 1h | Evidencia: pruebas de rate limit.
 - [ ] F2.8 - Definir manejo de cookies/httpOnly o, si se mantiene `localStorage`, documentar riesgo y endurecer XSS antes de aceptarlo | P1 | client/auth | 1h 30m | Evidencia: decision tecnica y cambios aplicados.
 
 ## FASE 3 - Autorizacion y ownership en backend (16h)
 
 - [ ] F3.1 - Crear patron unico para resolver usuario actual y negar parametros de identidad enviados por estudiantes/profesores | P0 | api/authz | 1h | Evidencia: helper/guard reutilizado.
-- [ ] F3.2 - Corregir endpoints de estudiante que aceptan `usuario_guid`: progreso, recursos completados, dias activos, metricas, heartbeat y notificaciones | P0 | api/estudiantes | 2h | Evidencia: pruebas estudiante propio/ajeno.
-- [ ] F3.3 - Corregir `CursosController.getCursosPorUsuario` para derivar usuario/rol desde token salvo admin explicito | P0 | api/cursos | 1h | Evidencia: profesor/estudiante no pueden consultar terceros.
-- [ ] F3.4 - Proteger detalle de curso, bloques y recursos con matricula, propiedad de profesor o rol admin | P0 | api/cursos | 2h | Evidencia: curso ajeno devuelve 403/404.
-- [ ] F3.5 - Reforzar quiz: status, inicio y entrega deben exigir matricula y intento valido del usuario actual | P0 | api/evaluaciones | 1h 30m | Evidencia: pruebas de intento ajeno y sin matricula.
-- [ ] F3.6 - Proteger entregas: profesor solo lista/califica tareas de sus cursos; admin conserva acceso global | P0 | api/evaluaciones | 1h 30m | Evidencia: profesor ajeno recibe 403.
-- [ ] F3.7 - Corregir dashboard de monitoreo para no confiar en `profesor_guid` enviado por profesor | P0 | api/dashboards | 1h | Evidencia: profesor solo ve sus cursos.
-- [ ] F3.8 - Proteger firma/configuracion personal: `getFirma` y `updateFirma` deben operar sobre usuario actual salvo admin autorizado | P0 | api/configuracion | 1h | Evidencia: usuario no modifica firma ajena.
-- [ ] F3.9 - Proteger certificados: generar, listar, ver y descargar solo para propietario, profesor del curso o admin | P0 | api/certificados/storage | 2h | Evidencia: PDF ajeno bloqueado.
-- [ ] F3.10 - Proteger notificaciones: marcar como leida solo si pertenece al usuario actual | P0 | api/notificaciones | 45m | Evidencia: id ajeno bloqueado.
-- [ ] F3.11 - Proteger chat: mensajes y conversaciones solo entre contactos aprobados o participantes validos de curso | P0 | api/chat | 1h 45m | Evidencia: mensaje a usuario arbitrario bloqueado.
-- [ ] F3.12 - Revisar cada `@Roles()` y cada ruta sin roles para confirmar que la regla por defecto es intencional | P1 | api/authz | 1h 30m | Evidencia: lista cerrada de rutas publicas/privadas.
+- [x] F3.2 - Corregir endpoints de estudiante que aceptan `usuario_guid`: progreso, recursos completados, dias activos, metricas, heartbeat y notificaciones | P0 | api/estudiantes | 2h | Evidencia: pruebas estudiante propio/ajeno.
+- [x] F3.3 - Corregir `CursosController.getCursosPorUsuario` para derivar usuario/rol desde token salvo admin explicito | P0 | api/cursos | 1h | Evidencia: profesor/estudiante no pueden consultar terceros.
+- [x] F3.4 - Proteger detalle de curso, bloques y recursos con matricula, propiedad de profesor o rol admin | P0 | api/cursos | 2h | Evidencia: curso ajeno devuelve 403/404.
+- [x] F3.5 - Reforzar quiz: status, inicio y entrega deben exigir matricula y intento valido del usuario actual | P0 | api/evaluaciones | 1h 30m | Evidencia: pruebas de intento ajeno y sin matricula.
+- [x] F3.6 - Proteger entregas: profesor solo lista/califica tareas de sus cursos; admin conserva acceso global | P0 | api/evaluaciones | 1h 30m | Evidencia: profesor ajeno recibe 403.
+- [x] F3.7 - Corregir dashboard de monitoreo para no confiar en `profesor_guid` enviado por profesor | P0 | api/dashboards | 1h | Evidencia: profesor solo ve sus cursos.
+- [x] F3.8 - Proteger firma/configuracion personal: `getFirma` y `updateFirma` deben operar sobre usuario actual salvo admin autorizado | P0 | api/configuracion | 1h | Evidencia: usuario no modifica firma ajena.
+- [x] F3.9 - Proteger certificados: generar, listar, ver y descargar solo para propietario, profesor del curso o admin | P0 | api/certificados/storage | 2h | Evidencia: PDF ajeno bloqueado.
+- [x] F3.10 - Proteger notificaciones: marcar como leida solo si pertenece al usuario actual | P0 | api/notificaciones | 45m | Evidencia: id ajeno bloqueado.
+- [x] F3.11 - Proteger chat: mensajes y conversaciones solo entre contactos aprobados o participantes validos de curso | P0 | api/chat | 1h 45m | Evidencia: mensaje a usuario arbitrario bloqueado.
+- [x] F3.12 - Revisar cada `@Roles()` y cada ruta sin roles para confirmar que la regla por defecto es intencional | P1 | api/authz | 1h 30m | Evidencia: lista cerrada de rutas publicas/privadas.
 
 ## FASE 4 - Reglas de negocio LMS y consistencia funcional (10h)
 
-- [ ] F4.1 - Revisar transiciones de quiz para impedir entregar sin intento `BORRADOR` valido | P0 | api/evaluaciones | 1h | Evidencia: test de entrega invalida.
-- [ ] F4.2 - Hacer idempotente y transaccional la generacion de certificados para evitar carreras por `(usuario_guid, curso_guid)` | P0 | api/certificados | 1h | Evidencia: test de doble solicitud.
-- [ ] F4.3 - Validar que un recurso completado pertenezca a un curso matriculado y que el usuario pueda accederlo | P0 | api/estudiantes/cursos | 1h 15m | Evidencia: recurso ajeno bloqueado.
+- [x] F4.1 - Revisar transiciones de quiz para impedir entregar sin intento `BORRADOR` valido | P0 | api/evaluaciones | 1h | Evidencia: test de entrega invalida.
+- [x] F4.2 - Hacer idempotente y transaccional la generacion de certificados para evitar carreras por `(usuario_guid, curso_guid)` | P0 | api/certificados | 1h | Evidencia: test de doble solicitud.
+- [x] F4.3 - Validar que un recurso completado pertenezca a un curso matriculado y que el usuario pueda accederlo | P0 | api/estudiantes/cursos | 1h 15m | Evidencia: recurso ajeno bloqueado.
 - [ ] F4.4 - Definir regla para recalificar entregas ya aprobadas y registrar auditoria minima de cambios de calificacion | P1 | api/evaluaciones | 1h | Evidencia: pruebas de recalificacion permitida/denegada.
-- [ ] F4.5 - Revisar baja/desactivacion de usuarios para no borrar cursos por cascada accidental | P0 | prisma/users | 1h | Evidencia: delete/desactivar no destruye cursos.
+- [x] F4.5 - Revisar baja/desactivacion de usuarios para no borrar cursos por cascada accidental | P0 | prisma/users | 1h | Evidencia: delete/desactivar no destruye cursos.
 - [ ] F4.6 - Normalizar soft delete: decidir por entidad si se usa `deleted_at` o borrado real, y aplicar filtros consistentes | P1 | api/prisma | 1h 30m | Evidencia: queries no devuelven eliminados.
 - [ ] F4.7 - Validar reglas de contacto/chat por curso, profesor y estudiante antes de aceptar solicitudes | P1 | api/chat | 1h | Evidencia: solicitud invalida rechazada.
 - [ ] F4.8 - Revisar calculo de progreso para que no pueda inflarse con recursos duplicados, eliminados o ajenos | P1 | api/progreso | 1h | Evidencia: pruebas de progreso.
@@ -144,13 +144,13 @@ La regla principal es simple: cada tarea debe corregir un riesgo real, mejorar u
 ## FASE 5 - Storage, uploads, HTML enriquecido y correo (11h)
 
 - [ ] F5.1 - Separar archivos publicos, privados y temporales con reglas de acceso distintas | P0 | api/storage | 1h 30m | Evidencia: matriz de permisos aplicada en codigo.
-- [ ] F5.2 - Eliminar descarga publica directa para archivos privados; usar autorizacion backend o URLs firmadas cortas | P0 | api/storage | 1h 30m | Evidencia: archivo privado anonimo devuelve 401/403.
-- [ ] F5.3 - Bloquear SVG subido por usuarios o servirlo siempre como descarga segura sin ejecucion inline | P0 | api/storage/security | 45m | Evidencia: prueba de SVG malicioso.
+- [x] F5.2 - Eliminar descarga publica directa para archivos privados; usar autorizacion backend o URLs firmadas cortas | P0 | api/storage | 1h 30m | Evidencia: archivo privado anonimo devuelve 401/403.
+- [x] F5.3 - Bloquear SVG subido por usuarios o servirlo siempre como descarga segura sin ejecucion inline | P0 | api/storage/security | 45m | Evidencia: prueba de SVG malicioso.
 - [ ] F5.4 - Validar MIME, extension, magic bytes y tamano por tipo de archivo, no solo limite global | P1 | api/storage | 1h 30m | Evidencia: tests por tipo permitido/denegado.
 - [ ] F5.5 - Revisar `archivo_adjunto` base64 en Prisma y migrar a referencia de storage si sigue en uso | P1 | api/prisma/storage | 1h | Evidencia: no se guardan blobs grandes innecesarios.
-- [ ] F5.6 - Endurecer DOMPurify: restringir `style`, `class`, `img`, iframes y atributos peligrosos segun caso real | P0 | client/security | 1h 15m | Evidencia: fixture XSS bloqueado.
+- [x] F5.6 - Endurecer DOMPurify: restringir `style`, `class`, `img`, iframes y atributos peligrosos segun caso real | P0 | client/security | 1h 15m | Evidencia: fixture XSS bloqueado.
 - [ ] F5.7 - Centralizar render de HTML seguro para cursos, quiz, tareas y correos | P1 | client/api/mail | 1h | Evidencia: no hay sanitizacion duplicada contradictoria.
-- [ ] F5.8 - Escapar variables de plantillas de correo por defecto y permitir HTML solo en campos explicitamente seguros | P0 | api/mail | 1h 15m | Evidencia: nombre/comentario con HTML se escapa.
+- [x] F5.8 - Escapar variables de plantillas de correo por defecto y permitir HTML solo en campos explicitamente seguros | P0 | api/mail | 1h 15m | Evidencia: nombre/comentario con HTML se escapa.
 - [ ] F5.9 - Revisar emails fallback y plantillas para no exponer passwords ni datos sensibles mas de lo necesario | P1 | api/mail | 45m | Evidencia: snapshots/fixtures de correo.
 - [ ] F5.10 - Limpiar DTOs duplicados de mail sin cambiar contrato externo | P2 | api/mail | 30m | Evidencia: un solo DTO fuente.
 
@@ -166,13 +166,13 @@ La regla principal es simple: cada tarea debe corregir un riesgo real, mejorar u
 
 ## FASE 7 - TypeScript, lint, CI minima y calidad (8h)
 
-- [ ] F7.1 - Cambiar lint de API para que no use `--fix` como gate de CI | P0 | api/lint | 30m | Evidencia: lint falla sin modificar archivos.
+- [x] F7.1 - Cambiar lint de API para que no use `--fix` como gate de CI | P0 | api/lint | 30m | Evidencia: lint falla sin modificar archivos.
 - [ ] F7.2 - Corregir o reemplazar `next lint` si no es compatible con la version actual de Next | P1 | client/lint | 45m | Evidencia: lint cliente ejecutable.
-- [ ] F7.3 - Asegurar que typecheck no deje `tsconfig.tsbuildinfo` modificado o sacarlo del tracking si corresponde | P1 | client/ts | 45m | Evidencia: `git status` limpio tras typecheck.
-- [ ] F7.4 - Agregar gates minimos en CI existente: API lint/typecheck/test/build, cliente lint/typecheck/build, audit sin dev | P1 | ci | 1h 30m | Evidencia: workflow verde.
+- [x] F7.3 - Asegurar que typecheck no deje `tsconfig.tsbuildinfo` modificado o sacarlo del tracking si corresponde | P1 | client/ts | 45m | Evidencia: `git status` limpio tras typecheck.
+- [x] F7.4 - Agregar gates minimos en CI existente: API lint/typecheck/test/build, cliente lint/typecheck/build, audit sin dev | P1 | ci | 1h 30m | Evidencia: workflow verde.
 - [ ] F7.5 - Corregir imports `any`, casts inseguros y DTOs sin validacion en zonas de auth/storage/evaluaciones | P1 | api/client | 2h | Evidencia: menos excepciones TS en zonas criticas.
-- [ ] F7.6 - Revisar manejo global de errores para no filtrar stack traces o detalles internos al cliente | P1 | api | 1h | Evidencia: respuestas de error consistentes.
-- [ ] F7.7 - Normalizar encoding/mojibake visible en UI, logs y README sin tocar textos correctos | P2 | repo/client/api | 1h 30m | Evidencia: busqueda de `Ã`, `Â`, caracteres rotos.
+- [x] F7.6 - Revisar manejo global de errores para no filtrar stack traces o detalles internos al cliente | P1 | api | 1h | Evidencia: respuestas de error consistentes.
+- [x] F7.7 - Normalizar encoding/mojibake visible en UI, logs y README sin tocar textos correctos | P2 | repo/client/api | 1h 30m | Evidencia: busqueda de `Ã`, `Â`, caracteres rotos.
 
 ## FASE 8 - Prisma, datos y migraciones controladas (8h)
 
@@ -180,10 +180,10 @@ La regla principal es simple: cada tarea debe corregir un riesgo real, mejorar u
 - [ ] F8.2 - Agregar campos necesarios para reset/verificacion seguros: hash, expiracion, intentos, usado_en, metadata minima | P0 | prisma/auth | 1h 15m | Evidencia: migracion y tests.
 - [ ] F8.3 - Revisar indices para ownership frecuente: usuario/curso, profesor/curso, entrega/tarea, certificado/usuario | P1 | prisma/perf | 1h | Evidencia: consultas principales indexadas.
 - [ ] F8.4 - Agregar relaciones o constraints faltantes en chat/contactos si no rompen datos existentes | P1 | prisma/chat | 1h | Evidencia: integridad referencial probada.
-- [ ] F8.5 - Revisar cascadas peligrosas, especialmente profesor -> cursos | P0 | prisma | 1h | Evidencia: delete accidental no borra contenido.
+- [x] F8.5 - Revisar cascadas peligrosas, especialmente profesor -> cursos | P0 | prisma | 1h | Evidencia: delete accidental no borra contenido.
 - [ ] F8.6 - Preparar script seguro de migracion de datos para tokens/codigos existentes sin exponer valores | P1 | prisma/scripts | 1h | Evidencia: script idempotente.
 - [ ] F8.7 - Revisar backups existentes solo para que no contengan credenciales por defecto ni rutas hardcodeadas peligrosas | P2 | scripts | 45m | Evidencia: script no genera basura trackeada.
-- [ ] F8.8 - Confirmar que `prisma generate` y build no dejan cambios generados inesperados en repo | P1 | prisma/repo | 1h | Evidencia: `git status` limpio.
+- [x] F8.8 - Confirmar que `prisma generate` y build no dejan cambios generados inesperados en repo | P1 | prisma/repo | 1h | Evidencia: `git status` limpio.
 
 ## FASE 9 - Backend: arquitectura, tiempo real y rendimiento enfocados (9h)
 
@@ -191,22 +191,22 @@ La regla principal es simple: cada tarea debe corregir un riesgo real, mejorar u
 - [ ] F9.2 - Revisar consultas con includes grandes en cursos, dashboards, monitoreo y progreso para evitar sobrecarga | P1 | api/perf | 1h 30m | Evidencia: payloads y queries reducidos.
 - [ ] F9.3 - Poner limites de paginacion y ordenamiento en listados de usuarios, cursos, entregas, notificaciones y chat | P1 | api | 1h | Evidencia: DTOs con limites.
 - [ ] F9.4 - Revisar cache en configuracion para no cachear datos sensibles ni quedar desactualizada tras updates | P1 | api/config | 45m | Evidencia: invalidacion probada.
-- [ ] F9.5 - Corregir WebSocket heartbeat para limpiar intervalos y manejar desconexiones sin fugas | P1 | api/ws | 45m | Evidencia: `OnModuleDestroy` o equivalente.
-- [ ] F9.6 - Sanitizar payloads WS y eventos para que no emitan config completa, secretos o datos de usuarios ajenos | P0 | api/ws | 1h | Evidencia: tests/fixtures de eventos.
-- [ ] F9.7 - Revisar Swagger y documentacion API para que no quede expuesta fuera de entorno local/desarrollo | P1 | api | 30m | Evidencia: smoke de entorno no-dev.
+- [x] F9.5 - Corregir WebSocket heartbeat para limpiar intervalos y manejar desconexiones sin fugas | P1 | api/ws | 45m | Evidencia: `OnModuleDestroy` o equivalente.
+- [x] F9.6 - Sanitizar payloads WS y eventos para que no emitan config completa, secretos o datos de usuarios ajenos | P0 | api/ws | 1h | Evidencia: tests/fixtures de eventos.
+- [x] F9.7 - Revisar Swagger y documentacion API para que no quede expuesta fuera de entorno local/desarrollo | P1 | api | 30m | Evidencia: smoke de entorno no-dev.
 - [ ] F9.8 - Revisar eventos en tiempo real para cursos, notificaciones, chat, progreso, configuracion y entregas; emitir solo eventos utiles y con version/timestamp | P1 | api/ws | 1h | Evidencia: vistas afectadas se actualizan sin recargar.
 - [ ] F9.9 - Medir endpoints lentos y corregir N+1, payloads excesivos o queries sin indice antes de optimizar el frontend | P1 | api/perf | 1h | Evidencia: tiempos antes/despues en flujos lentos.
 
 ## FASE 10 - Frontend: estado, auth, datos, tiempo real y errores (13h)
 
 - [ ] F10.1 - Separar simulacion de rol de la autorizacion real; no debe influir en rutas protegidas ni decisiones sensibles | P0 | client/auth | 1h | Evidencia: ruta protegida depende de usuario real.
-- [ ] F10.2 - Revisar almacenamiento de token y usuario; minimizar datos en `localStorage` y limpiar en logout/expiracion | P1 | client/auth | 1h | Evidencia: storage limpio tras logout.
+- [x] F10.2 - Revisar almacenamiento de token y usuario; minimizar datos en `localStorage` y limpiar en logout/expiracion | P1 | client/auth | 1h | Evidencia: storage limpio tras logout.
 - [ ] F10.3 - Evitar reconexion WebSocket sin token y mover token fuera de query string si se adopta canal mas seguro | P1 | client/ws | 1h | Evidencia: no hay bucle de reconexion anonima.
-- [ ] F10.4 - Centralizar manejo de 401/403/429/500 para que el usuario reciba mensajes claros sin loops | P1 | client/api | 1h | Evidencia: interceptor o patron unico.
+- [x] F10.4 - Centralizar manejo de 401/403/429/500 para que el usuario reciba mensajes claros sin loops | P1 | client/api | 1h | Evidencia: interceptor o patron unico.
 - [ ] F10.5 - Revisar cache de configuracion en cliente para no persistir campos sensibles ni aplicar CSS global invasivo | P1 | client/config | 1h | Evidencia: cache solo publico.
 - [ ] F10.6 - Dividir paginas gigantes solo donde reduzca riesgo real: constructor de cursos, calificaciones, curso, pruebas, monitoreo, usuarios, login | P2 | client/architecture | 2h | Evidencia: componentes por responsabilidad, sin sobreabstraer.
 - [ ] F10.7 - Consolidar estados de carga, vacio y error en flujos principales sin crear libreria de componentes innecesaria | P2 | client/ux | 1h | Evidencia: patron consistente.
-- [ ] F10.8 - Quitar `console.log`/debug visibles y mensajes internos en cliente | P2 | client | 1h | Evidencia: busqueda limpia salvo logs intencionales.
+- [x] F10.8 - Quitar `console.log`/debug visibles y mensajes internos en cliente | P2 | client | 1h | Evidencia: busqueda limpia salvo logs intencionales.
 - [ ] F10.9 - Corregir acciones que requieren doble clic o no responden al primer intento: navegacion, tabs, botones de guardar, filtros y carga de apartados | P0 | client/ux/data | 1h 30m | Evidencia: QA manual con primer clic exitoso.
 - [ ] F10.10 - Unificar invalidacion/refetch de datos despues de crear, editar, borrar, calificar, completar recurso o recibir evento WebSocket | P1 | client/data/ws | 1h 30m | Evidencia: UI actualizada sin recargar ni repetir clic.
 - [ ] F10.11 - Agregar feedback inmediato en acciones lentas: disabled state correcto, spinner local, optimistic update cuando sea seguro y rollback si falla | P1 | client/ux | 1h | Evidencia: ninguna accion queda muda.
@@ -216,7 +216,7 @@ La regla principal es simple: cada tarea debe corregir un riesgo real, mejorar u
 ## FASE 11 - Sistema visual, responsive y accesibilidad (16h)
 
 - [ ] F11.1 - Definir contrato visual minimo: colores base, semanticos, neutros, estados, radios, sombras, tipografia y focus | P1 | design/client | 1h | Evidencia: tokens en CSS, no documento nuevo.
-- [ ] F11.2 - Eliminar letter-spacing negativo global y ajustar tipografia para legibilidad en mobile/desktop | P1 | client/css | 30m | Evidencia: CSS sin `letter-spacing` negativo.
+- [x] F11.2 - Eliminar letter-spacing negativo global y ajustar tipografia para legibilidad en mobile/desktop | P1 | client/css | 30m | Evidencia: CSS sin `letter-spacing` negativo.
 - [ ] F11.3 - Limitar radios de cards, paneles y controles a 8px salvo elementos circulares justificados | P1 | client/design | 1h 30m | Evidencia: busqueda de `rounded-2xl`, `rounded-3xl`, radios arbitrarios revisada.
 - [ ] F11.4 - Reducir gradientes, blobs, glassmorphism y decoracion que no ayude a tareas LMS | P2 | client/design | 1h | Evidencia: pantallas operativas mas limpias.
 - [ ] F11.5 - Reemplazar superficies tipo landing en dashboards por layouts densos, claros y escaneables | P1 | client/ux | 1h 30m | Evidencia: admin/profesor/estudiante revisados.
@@ -250,7 +250,7 @@ La regla principal es simple: cada tarea debe corregir un riesgo real, mejorar u
 - [ ] F13.2 - Limpiar comentarios obsoletos, mojibake y textos internos visibles al usuario | P2 | repo/client/api | 1h | Evidencia: busqueda limpia.
 - [ ] F13.3 - Revisar Docker, nginx y scripts existentes solo para quitar defaults peligrosos; no agregar despliegue nuevo | P1 | devops | 1h | Evidencia: no passwords por defecto ni puertos inseguros innecesarios.
 - [ ] F13.4 - Dejar README minimo con instalacion local, envs requeridas, comandos y criterios de seguridad; sin guias largas de produccion | P1 | docs | 1h | Evidencia: README unico y util.
-- [ ] F13.5 - Confirmar que no quedan archivos temporales, auditorias duplicadas, backups trackeados, coverage, uploads de test o tsbuildinfo modificados | P0 | repo | 45m | Evidencia: `git status --short` y busquedas.
+- [x] F13.5 - Confirmar que no quedan archivos temporales, auditorias duplicadas, backups trackeados, coverage, uploads de test o tsbuildinfo modificados | P0 | repo | 45m | Evidencia: `git status --short` y busquedas.
 - [ ] F13.6 - Cerrar el plan marcando tareas terminadas y riesgos aceptados con razon concreta, no con texto generico | P1 | proceso | 15m | Evidencia: plan actualizado.
 
 ---

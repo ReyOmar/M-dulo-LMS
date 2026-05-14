@@ -3,6 +3,7 @@ import { WebSocketGateway, OnGatewayConnection, OnGatewayDisconnect } from '@nes
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { TokenBlacklistService } from '../auth/token-blacklist.service';
 import { IncomingMessage } from 'http';
 import * as WebSocket from 'ws';
 
@@ -54,6 +55,7 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
     private jwtService: JwtService,
     private configService: ConfigService,
     private prisma: PrismaService,
+    private tokenBlacklistService: TokenBlacklistService,
   ) {}
 
   onModuleInit() {
@@ -97,8 +99,23 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
           client.close(4002, 'Token inválido');
           return;
         }
+
+        // F2.2: Check if token has been revoked (post-logout/password-change)
+        if (payload.iat && this.tokenBlacklistService.isRevoked(payload.sub, payload.iat)) {
+          client.close(4004, 'Sesión revocada');
+          return;
+        }
+
+        // Verify user still exists and is active
+        const dbUser = await this.prisma.usuarios.findUnique({
+          where: { guid: payload.sub },
+          select: { activo: true },
+        });
+        if (!dbUser || !dbUser.activo) {
+          client.close(4003, 'Usuario inactivo o eliminado');
+          return;
+        }
       } else {
-        // No token provided — reject the connection
         client.close(4001, 'Autenticación requerida');
         return;
       }
