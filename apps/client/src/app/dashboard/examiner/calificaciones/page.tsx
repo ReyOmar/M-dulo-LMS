@@ -36,7 +36,7 @@ const Legend = dynamic(() => import('recharts').then((m) => m.Legend), { ssr: fa
 import { PageLoader } from '@/components/ui/PageLoader';
 import { useRole } from '@/contexts/RoleContext';
 import { useWS } from '@/contexts/WebSocketContext';
-import api, { API_BASE_URL , resolveFileUrl , resolveDownloadUrl} from '@/lib/api';
+import api, { API_BASE_URL, resolveFileUrl, resolveDownloadUrl } from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import { useDebounce } from '@/hooks/usePerformance';
 
@@ -570,7 +570,7 @@ export default function CalificacionManualPage() {
                     <div className="w-24 h-24 shrink-0 rounded-xl overflow-hidden relative group/cover bg-muted flex items-center justify-center border border-border">
                       {curso.imagen_portada ? (
                         <img
-                          src={resolveFileUrl(curso.imagen_portada) || ""}
+                          src={resolveFileUrl(curso.imagen_portada) || ''}
                           alt="Portada"
                           className="w-full h-full object-cover"
                         />
@@ -964,7 +964,12 @@ export default function CalificacionManualPage() {
                                           {/* File Button */}
                                           {entrega.archivo_servidor && (
                                             <a
-                                              href={resolveDownloadUrl(entrega.archivo_servidor, entrega.archivo_nombre || 'archivo') || ''}
+                                              href={
+                                                resolveDownloadUrl(
+                                                  entrega.archivo_servidor,
+                                                  entrega.archivo_nombre || 'archivo',
+                                                ) || ''
+                                              }
                                               className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-xl text-xs font-bold transition-colors"
                                               title="Descargar entrega"
                                               target="_blank"
@@ -1027,7 +1032,12 @@ export default function CalificacionManualPage() {
                                           </div>
                                           {entrega.archivo_servidor ? (
                                             <a
-                                              href={resolveDownloadUrl(entrega.archivo_servidor, entrega.archivo_nombre || 'archivo') || ''}
+                                              href={
+                                                resolveDownloadUrl(
+                                                  entrega.archivo_servidor,
+                                                  entrega.archivo_nombre || 'archivo',
+                                                ) || ''
+                                              }
                                               className="flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold transition-transform hover:-translate-y-0.5 shadow-md shrink-0"
                                               target="_blank"
                                               rel="noopener noreferrer"

@@ -1,4 +1,11 @@
-import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException, OnModuleDestroy } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
@@ -22,12 +29,15 @@ export class JwtAuthGuard implements CanActivate, OnModuleDestroy {
     private tokenBlacklistService: TokenBlacklistService,
   ) {
     // PERF-03: Periodically clean up stale entries to prevent memory leak
-    this.cleanupInterval = setInterval(() => {
-      const cutoff = Date.now() - 10 * 60 * 1000; // 10 minutes
-      for (const [guid, timestamp] of this.lastAccessUpdates) {
-        if (timestamp < cutoff) this.lastAccessUpdates.delete(guid);
-      }
-    }, 60 * 60 * 1000); // Every hour
+    this.cleanupInterval = setInterval(
+      () => {
+        const cutoff = Date.now() - 10 * 60 * 1000; // 10 minutes
+        for (const [guid, timestamp] of this.lastAccessUpdates) {
+          if (timestamp < cutoff) this.lastAccessUpdates.delete(guid);
+        }
+      },
+      60 * 60 * 1000,
+    ); // Every hour
   }
 
   onModuleDestroy() {
@@ -88,10 +98,12 @@ export class JwtAuthGuard implements CanActivate, OnModuleDestroy {
             const lastUpdate = this.lastAccessUpdates.get(payload.sub) || 0;
             if (now - lastUpdate > JwtAuthGuard.ACCESS_UPDATE_INTERVAL_MS) {
               this.lastAccessUpdates.set(payload.sub, now);
-              this.prisma.usuarios.update({
-                where: { guid: payload.sub },
-                data: { ultimo_acceso: new Date() }
-              }).catch(err => Logger.error("Error updating ultimo_acceso", err, 'JwtAuthGuard'));
+              this.prisma.usuarios
+                .update({
+                  where: { guid: payload.sub },
+                  data: { ultimo_acceso: new Date() },
+                })
+                .catch((err) => Logger.error('Error updating ultimo_acceso', err, 'JwtAuthGuard'));
             }
           }
         }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Award, Save, Loader2, ToggleLeft, Type, AlignLeft, Palette, Info, BookOpen } from 'lucide-react';
 import { useAlert } from '@/contexts/AlertContext';
 import { PageLoader } from '@/components/ui/PageLoader';
-import api, { API_BASE_URL , resolveFileUrl } from '@/lib/api';
+import api, { API_BASE_URL, resolveFileUrl } from '@/lib/api';
 
 interface CertConfig {
   cert_titulo_personalizado: string | null;
@@ -324,7 +324,7 @@ export default function CertificadosConfigPage() {
                 <div className="mt-3 flex items-center gap-3 p-3 bg-white dark:bg-background rounded-lg border border-border/50">
                   <div className="h-12 w-28 bg-muted/30 rounded-lg border border-dashed border-border flex items-center justify-center overflow-hidden">
                     <img
-                      src={resolveFileUrl(previewProfesor.firma_url) || ""}
+                      src={resolveFileUrl(previewProfesor.firma_url) || ''}
                       alt="Firma"
                       className="max-h-full max-w-full object-contain"
                     />
@@ -437,7 +437,7 @@ export default function CertificadosConfigPage() {
                   {previewProfesor?.firma_url && (
                     <div className="h-14 w-32 flex items-center justify-center">
                       <img
-                        src={resolveFileUrl(previewProfesor.firma_url) || ""}
+                        src={resolveFileUrl(previewProfesor.firma_url) || ''}
                         alt="Firma del examinador"
                         className="max-h-full max-w-full object-contain"
                       />

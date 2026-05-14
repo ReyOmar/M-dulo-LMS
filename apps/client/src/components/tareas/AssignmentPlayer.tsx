@@ -14,7 +14,7 @@ import {
   Download,
   Award,
 } from 'lucide-react';
-import api, { API_BASE_URL , resolveDownloadUrl} from '@/lib/api';
+import api, { API_BASE_URL, resolveDownloadUrl } from '@/lib/api';
 import { useWS } from '@/contexts/WebSocketContext';
 import { sanitizeHTML } from '@/lib/sanitize';
 
@@ -164,7 +164,8 @@ export default function AssignmentPlayer({
 
   const handleDownload = () => {
     if (!entrega?.url_archivo_adjunto) return;
-    const url = resolveDownloadUrl(entrega.url_archivo_adjunto, entrega.respuesta_texto || entrega.url_archivo_adjunto) || '';
+    const url =
+      resolveDownloadUrl(entrega.url_archivo_adjunto, entrega.respuesta_texto || entrega.url_archivo_adjunto) || '';
     window.open(url, '_blank');
   };
 

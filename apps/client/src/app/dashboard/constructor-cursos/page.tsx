@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import api, { API_BASE_URL , resolveFileUrl , resolveDownloadUrl} from '@/lib/api';
+import api, { API_BASE_URL, resolveFileUrl, resolveDownloadUrl } from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import { sanitizeHTML } from '@/lib/sanitize';
 
@@ -832,12 +832,15 @@ export default function ConstructorCursosRoot() {
                       {activeCourse.imagen_portada ? (
                         <>
                           <img
-                            src={resolveFileUrl(activeCourse.imagen_portada) || ""}
+                            src={resolveFileUrl(activeCourse.imagen_portada) || ''}
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                             <a
-                              href={resolveDownloadUrl(activeCourse.imagen_portada, `portada_${activeCourse.titulo}.png`) || ''}
+                              href={
+                                resolveDownloadUrl(activeCourse.imagen_portada, `portada_${activeCourse.titulo}.png`) ||
+                                ''
+                              }
                               download
                               onClick={(e) => e.stopPropagation()}
                               className="p-2 bg-primary hover:bg-primary/90 text-white rounded-lg shadow-md transition-colors"
@@ -1416,7 +1419,7 @@ export default function ConstructorCursosRoot() {
                       {curso.imagen_portada ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={resolveFileUrl(curso.imagen_portada) || ""}
+                          src={resolveFileUrl(curso.imagen_portada) || ''}
                           alt={curso.titulo}
                           className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
                         />

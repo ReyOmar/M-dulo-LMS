@@ -16,7 +16,7 @@ import {
   UploadCloud,
   Loader2,
 } from 'lucide-react';
-import api, { API_BASE_URL , resolveDownloadUrl} from '@/lib/api';
+import api, { API_BASE_URL, resolveDownloadUrl } from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';

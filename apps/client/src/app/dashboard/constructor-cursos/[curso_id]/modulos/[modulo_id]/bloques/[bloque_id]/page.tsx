@@ -21,7 +21,7 @@ import {
   Settings,
   Lock,
 } from 'lucide-react';
-import api, { API_BASE_URL , resolveDownloadUrl} from '@/lib/api';
+import api, { API_BASE_URL, resolveDownloadUrl } from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import { useWS } from '@/contexts/WebSocketContext';
 import { useRole } from '@/contexts/RoleContext';

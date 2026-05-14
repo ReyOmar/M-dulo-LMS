@@ -20,7 +20,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import Link from 'next/link';
-import api, { API_BASE_URL , resolveDownloadUrl} from '@/lib/api';
+import api, { API_BASE_URL, resolveDownloadUrl } from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import { sanitizeHTML } from '@/lib/sanitize';
 import dynamic from 'next/dynamic';
