@@ -1,7 +1,8 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { DashboardsService } from './dashboards.service';
 import { Roles } from '../common/decorators/roles.decorator';
-import { Public } from '../common/decorators/public.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 
 @Controller('dashboards')
 export class DashboardsController {
@@ -9,8 +10,9 @@ export class DashboardsController {
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Get('/examiner/monitoreo')
-  async getMonitoreoEstudiantes(@Query('profesor_guid') profesor_guid: string) {
-    return this.dashboardsService.getMonitoreoEstudiantes(profesor_guid);
+  async getMonitoreoEstudiantes(@CurrentUser() user: JwtPayload) {
+    // F3.7: Derive professor GUID from JWT — never accept from query params
+    return this.dashboardsService.getMonitoreoEstudiantes(user.sub);
   }
 
   @Roles('ADMINISTRADOR')

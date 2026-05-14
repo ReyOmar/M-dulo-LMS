@@ -45,6 +45,7 @@ const mockJwtService = {
 const mockTokenBlacklist = {
   isBlacklisted: jest.fn().mockReturnValue(false),
   add: jest.fn(),
+  revokeUser: jest.fn().mockResolvedValue(undefined),
 };
 
 const mockLmsGateway = {
@@ -99,6 +100,7 @@ describe('AuthService', () => {
         rol: 'ESTUDIANTE',
         contrasena: hashedPassword,
         usa_clave_defecto: false,
+        activo: true,
       });
 
       const result = await service.login('test@pesv.com', 'MySecure1');
@@ -115,14 +117,11 @@ describe('AuthService', () => {
       await expect(service.login('nobody@pesv.com', 'pass')).rejects.toThrow(UnauthorizedException);
     });
 
-    it('should throw specific message for pending request users', async () => {
+    it('should throw generic UnauthorizedException for pending request users (anti-enumeration)', async () => {
       mockPrisma.usuarios.findUnique.mockResolvedValue(null);
-      mockPrisma.lms_solicitudes_acceso.findUnique.mockResolvedValue({
-        email: 'pending@pesv.com',
-        estado: 'PENDIENTE',
-      });
 
-      await expect(service.login('pending@pesv.com', 'pass')).rejects.toThrow('Aún está en espera de autorización.');
+      // F2.6: No longer reveals whether user has a pending request
+      await expect(service.login('pending@pesv.com', 'pass')).rejects.toThrow('Credenciales inválidas.');
     });
 
     it('should throw for wrong password', async () => {
@@ -130,18 +129,21 @@ describe('AuthService', () => {
         guid: 'user-1',
         email: 'test@pesv.com',
         contrasena: hashedPassword,
+        activo: true,
       });
 
       await expect(service.login('test@pesv.com', 'WrongPass1')).rejects.toThrow(UnauthorizedException);
     });
 
-    it('should require password setup when using temp password', async () => {
+    it('should require password setup when usa_clave_defecto is true', async () => {
       const tempHashed = bcrypt.hashSync('tempPass123', 10);
       mockPrisma.usuarios.findUnique.mockResolvedValue({
         guid: 'user-1',
         email: 'new@pesv.com',
         nombre: 'New',
         contrasena: tempHashed,
+        activo: true,
+        usa_clave_defecto: true,
       });
 
       const result = await service.login('new@pesv.com', 'tempPass123');
@@ -156,6 +158,7 @@ describe('AuthService', () => {
         email: 'nopass@pesv.com',
         nombre: 'NoPass',
         contrasena: null,
+        activo: true,
       });
 
       const result = await service.login('nopass@pesv.com', 'anything');
@@ -163,11 +166,12 @@ describe('AuthService', () => {
       expect(result.requireSetup).toBe(true);
     });
 
-    it('should throw when password is empty', async () => {
+    it('should throw generic error when password is empty', async () => {
       mockPrisma.usuarios.findUnique.mockResolvedValue({
         guid: 'user-1',
         email: 'test@pesv.com',
         contrasena: hashedPassword,
+        activo: true,
       });
 
       await expect(service.login('test@pesv.com', '')).rejects.toThrow('Contraseña requerida.');
@@ -279,7 +283,8 @@ describe('AuthService', () => {
 
       expect(result.message).toContain('aprobada');
       expect(mockPrisma.$transaction).toHaveBeenCalled();
-      expect(mockMailService.sendWelcomeEmail).toHaveBeenCalledWith('new@pesv.com', 'Nuevo', 'tempPass123');
+      // F1.2: No longer passes temp password — user sets their own
+      expect(mockMailService.sendWelcomeEmail).toHaveBeenCalledWith('new@pesv.com', 'Nuevo');
     });
 
     it('should throw NotFoundException for non-existent request', async () => {
@@ -378,21 +383,27 @@ describe('AuthService', () => {
     });
 
     it('should reset password with valid token', async () => {
+      // F2.3: The service now hashes the incoming token before lookup
+      const crypto = require('crypto');
+      const rawToken = 'valid-raw-token';
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
       mockPrisma.lms_password_resets.findUnique.mockResolvedValue({
         id: 1,
-        token: 'valid-token',
+        token: tokenHash,
         email: 'user@pesv.com',
         usado: false,
         expires_at: new Date(Date.now() + 3600000),
       });
+      mockPrisma.usuarios.findUnique.mockResolvedValue({ guid: 'user-guid' });
       mockPrisma.usuarios.update.mockResolvedValue({});
       mockPrisma.lms_password_resets.update.mockResolvedValue({});
-      mockPrisma.usuarios.findUnique.mockResolvedValue({ guid: 'user-guid' });
 
-      const result = await service.resetPassword('valid-token', 'NewPass1234');
+      const result = await service.resetPassword(rawToken, 'NewPass1234');
 
       expect(result.message).toContain('restablecida exitosamente');
       expect(mockPrisma.usuarios.update).toHaveBeenCalled();
+      expect(mockTokenBlacklist.revokeUser).toHaveBeenCalledWith('user-guid');
       expect(mockLmsGateway.forceDisconnect).toHaveBeenCalledWith('user-guid', 'password_reset');
     });
 

@@ -73,7 +73,7 @@ export class UserService {
     if (!user) throw new NotFoundException('Usuario no encontrado.');
 
     // REVOKE all active JWT tokens for this user BEFORE deleting from DB
-    this.tokenBlacklistService.revokeUser(guid);
+    await this.tokenBlacklistService.revokeUser(guid);
 
     // Reasignar cursos si es PROFESOR o ADMIN para no borrarlos
     if (user.rol === 'PROFESOR' || user.rol === 'ADMINISTRADOR') {
@@ -229,21 +229,18 @@ export class UserService {
 
   /**
    * Create a user account directly (admin only).
-   * Bypasses the access request flow entirely.
+   * F1.2: Creates user WITHOUT password — they must set it on first login.
    */
   async createUser(data: {
     nombre: string;
     apellido: string;
     email: string;
     rol: string;
-    contrasena_temporal: string;
   }) {
     const existing = await this.prisma.usuarios.findUnique({ where: { email: data.email } });
     if (existing) {
       throw new BadRequestException('Ya existe un usuario con este correo electrónico.');
     }
-
-    const hashed = await bcrypt.hash(data.contrasena_temporal, 10);
 
     const user = await this.prisma.usuarios.create({
       data: {
@@ -251,7 +248,7 @@ export class UserService {
         nombre: data.nombre,
         apellido: data.apellido,
         rol: data.rol as any,
-        contrasena: hashed,
+        contrasena: null,
         usa_clave_defecto: true,
       },
     });
@@ -262,7 +259,7 @@ export class UserService {
     this.logger.log(`Admin created user: ${data.email} (${data.rol})`);
 
     return {
-      message: `Usuario ${data.nombre} ${data.apellido} creado exitosamente con contraseña temporal.`,
+      message: `Usuario ${data.nombre} ${data.apellido} creado. Deberá configurar su contraseña en el primer inicio de sesión.`,
       user: { guid: user.guid, email: user.email, nombre: user.nombre, apellido: user.apellido, rol: user.rol },
     };
   }

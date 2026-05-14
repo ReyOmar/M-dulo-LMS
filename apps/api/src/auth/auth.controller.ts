@@ -73,7 +73,7 @@ export class AuthController {
 
   @Post('logout')
   async logout(@CurrentUser() user: JwtPayload) {
-    this.tokenBlacklistService.revokeUser(user.sub);
+    await this.tokenBlacklistService.revokeUser(user.sub);
     return { message: 'Sesión cerrada correctamente.' };
   }
 
@@ -124,7 +124,7 @@ export class AuthController {
   @Roles('ADMINISTRADOR')
   @Post('usuarios/crear')
   async createUser(
-    @Body() body: { nombre: string; apellido: string; email: string; rol: string; contrasena_temporal: string },
+    @Body() body: { nombre: string; apellido: string; email: string; rol: string },
   ) {
     return this.userService.createUser(body);
   }

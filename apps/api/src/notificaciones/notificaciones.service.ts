@@ -65,10 +65,11 @@ export class NotificacionesService {
 
   /**
    * Mark a single notification as read.
+   * F3.10: Enforces ownership — only the notification's owner can mark it read.
    */
-  async marcarLeida(id: number) {
-    return this.prisma.lms_notificaciones.update({
-      where: { id },
+  async marcarLeida(id: number, usuario_guid: string) {
+    return this.prisma.lms_notificaciones.updateMany({
+      where: { id, usuario_guid },
       data: { leida: true },
     });
   }

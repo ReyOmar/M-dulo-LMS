@@ -373,7 +373,7 @@ model lms_configuracion {
   idioma             String   @default("es")
   zona_horaria       String   @default("America/Bogota")
   max_archivo_mb     Int      @default(10)
-  contrasena_defecto String   @default("pesvauth2026") // Contraseña por defecto para nuevos usuarios
+  contrasena_defecto String   @default("") // DEPRECATED: No longer used for new users (F1.1)
   email_remitente    String?
   email_nombre       String?
   bienvenida_html    String?            @db.Text

@@ -18,10 +18,9 @@ export class CertificadosController {
   async generarCertificado(
     @CurrentUser() user: JwtPayload,
     @Body() body: { curso_guid: string },
-    @Query('usuario_guid') usuario_guid?: string,
   ) {
-    const guid = usuario_guid || user.sub;
-    return this.certificadosService.generarCertificado(guid, body.curso_guid);
+    // F3.9: Always use authenticated user's GUID — no override
+    return this.certificadosService.generarCertificado(user.sub, body.curso_guid);
   }
 
   /**
@@ -32,10 +31,9 @@ export class CertificadosController {
   async verificarCurso(
     @Param('curso_guid') curso_guid: string,
     @CurrentUser() user: JwtPayload,
-    @Query('usuario_guid') usuario_guid?: string,
   ) {
-    const guid = usuario_guid || user.sub;
-    return this.certificadosService.verificarCursoCompleto(guid, curso_guid);
+    // F3.9: Always use authenticated user's GUID
+    return this.certificadosService.verificarCursoCompleto(user.sub, curso_guid);
   }
 
   /**
@@ -44,10 +42,9 @@ export class CertificadosController {
   @Get()
   async getCertificados(
     @CurrentUser() user: JwtPayload,
-    @Query('usuario_guid') usuario_guid?: string,
   ) {
-    const guid = usuario_guid || user.sub;
-    return this.certificadosService.getCertificadosEstudiante(guid);
+    // F3.9: Always use authenticated user's GUID
+    return this.certificadosService.getCertificadosEstudiante(user.sub);
   }
 
   /**

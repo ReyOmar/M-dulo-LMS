@@ -52,10 +52,7 @@ export class MailService implements OnModuleInit {
         });
         this.fromAddress = testAccount.user;
         this.enabled = true;
-        this.logger.log(`Mail service [DEV/ETHEREAL]: ${testAccount.user}`);
-        this.logger.log(
-          `Preview emails at: https://ethereal.email/login (user: ${testAccount.user}, pass: ${testAccount.pass})`,
-        );
+        this.logger.log(`Mail service [DEV/ETHEREAL]: Messages will be visible at https://ethereal.email`);
       } catch (err) {
         this.logger.warn(
           'Mail service DISABLED — Could not create Ethereal account. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env for production.',
@@ -256,14 +253,13 @@ export class MailService implements OnModuleInit {
   }
 
   /**
-   * BUG-08 FIX: Send welcome email to newly approved users with their temp password.
+   * Send welcome email to newly approved users. User must set their own password.
    */
-  async sendWelcomeEmail(email: string, nombre: string, tempPassword: string) {
+  async sendWelcomeEmail(email: string, nombre: string) {
     // Try template system first (USUARIO_APROBADO)
     const rendered = await this.renderTemplate('USUARIO_APROBADO', {
       nombre,
       email,
-      tempPassword,
       url_campus: this.appUrl,
     });
 
@@ -278,9 +274,8 @@ export class MailService implements OnModuleInit {
       <p style="color:#64748b;font-size:15px;line-height:1.6">Tu solicitud de acceso ha sido <strong style="color:#10b981">aprobada</strong>.</p>
       <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:20px;margin:20px 0">
         <p style="margin:4px 0"><strong>📧 Email:</strong> ${email}</p>
-        <p style="margin:4px 0"><strong>🔑 Contraseña temporal:</strong> <code style="background:#e2e8f0;padding:2px 8px;border-radius:4px">${tempPassword}</code></p>
+        <p style="margin:4px 0"><strong>🔐 Contraseña:</strong> Deberás configurarla en tu primer inicio de sesión.</p>
       </div>
-      <p style="color:#ef4444;font-weight:600">⚠️ Deberás cambiar tu contraseña en el primer inicio de sesión.</p>
       <div style="text-align:center;margin:32px 0">
         <a href="${this.appUrl}" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">Ir al Campus Virtual</a>
       </div>

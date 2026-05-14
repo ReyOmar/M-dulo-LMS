@@ -13,3 +13,21 @@ apps/api/uploads/
 # Generated code (regenerate with: npx prisma generate)
 generated/
 
+# TypeScript build info (regenerated on build)
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# IDE / OS
+.idea/
+*.swp
+*.swo
+Thumbs.db
+
+# Backups and temporary files
+*.bak
+*.backup
+*.tmp
+

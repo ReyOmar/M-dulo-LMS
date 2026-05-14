@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Check, X, ShieldAlert, Clock, KeyRound, Eye, EyeOff, Save, Loader2 } from 'lucide-react';
+import { Check, X, ShieldAlert, Clock, Loader2 } from 'lucide-react';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { useRole } from '@/contexts/RoleContext';
 import Link from 'next/link';
@@ -17,17 +17,9 @@ export default function SolicitudesPendientes() {
   const { showAlert } = useAlert();
   const { subscribe } = useWS();
 
-  // Default password state
-  const [defaultPassword, setDefaultPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [savingPassword, setSavingPassword] = useState(false);
-  const [passwordSaved, setPasswordSaved] = useState(false);
-
   useEffect(() => {
     if (realRole === 'admin') {
       fetchSolicitudes();
-      fetchDefaultPassword();
     }
   }, [realRole]);
 
@@ -56,35 +48,7 @@ export default function SolicitudesPendientes() {
     }
   };
 
-  const fetchDefaultPassword = async () => {
-    try {
-      const res = await api.get('/configuracion/full');
-      const data = res.data;
-      setDefaultPassword(data?.contrasena_defecto || 'pesvauth2026');
-      setNewPassword(data?.contrasena_defecto || 'pesvauth2026');
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
-  const handleSavePassword = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      showAlert.warning('Atención', 'La contraseña debe tener al menos 6 caracteres.');
-      return;
-    }
-    setSavingPassword(true);
-    try {
-      await api.post('/configuracion', { contrasena_defecto: newPassword });
-      setDefaultPassword(newPassword);
-      setPasswordSaved(true);
-      setTimeout(() => setPasswordSaved(false), 3000);
-    } catch (err) {
-      console.error(err);
-      showAlert.error('Error', 'Error al guardar la contraseña.');
-    } finally {
-      setSavingPassword(false);
-    }
-  };
 
   const handleAction = async (id: number, action: 'aprobar' | 'rechazar') => {
     setProcessing(id);
@@ -126,91 +90,11 @@ export default function SolicitudesPendientes() {
         <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Revise y valide las solicitudes de registro manualmente.{' '}
           <span className="hidden sm:inline">
-            Al aprobar, se asignará la clave temporal configurada abajo a la cuenta.
+            Al aprobar, el usuario recibirá un correo y deberá configurar su contraseña en el primer inicio de sesión.
           </span>
         </p>
       </header>
 
-      {/* ===== CONTRASEÑA POR DEFECTO ===== */}
-      <div className="bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden mb-8">
-        <div className="px-6 py-4 border-b border-border/50 bg-muted/20 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
-            <KeyRound className="h-5 w-5 text-amber-500" />
-          </div>
-          <div>
-            <h2 className="font-bold text-sm">Contraseña por Defecto</h2>
-            <p className="text-xs text-muted-foreground">
-              Esta contraseña se asignará automáticamente a cada usuario nuevo aprobado.
-            </p>
-          </div>
-        </div>
-        <div className="p-6">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSavePassword();
-            }}
-            className="flex flex-col sm:flex-row items-start sm:items-end gap-4"
-          >
-            <div className="flex-1 w-full sm:max-w-md">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-2">
-                Contraseña temporal para nuevos usuarios
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-amber-500/50 font-mono text-sm"
-                  placeholder="Ingresa la contraseña por defecto..."
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Mínimo 6 caracteres. Los usuarios deberán cambiarla en su primer inicio de sesión.
-              </p>
-            </div>
-            <button
-              type="submit"
-              disabled={savingPassword || newPassword === defaultPassword || newPassword.length < 6}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-sm whitespace-nowrap
-                ${
-                  passwordSaved
-                    ? 'bg-emerald-500 text-white'
-                    : newPassword !== defaultPassword && newPassword.length >= 6
-                      ? 'bg-amber-500 hover:bg-amber-600 text-white hover:-translate-y-0.5'
-                      : 'bg-muted text-muted-foreground cursor-not-allowed'
-                }`}
-            >
-              {savingPassword ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Guardando...
-                </>
-              ) : passwordSaved ? (
-                <>
-                  <Check className="h-4 w-4" /> ¡Guardada!
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" /> Guardar Contraseña
-                </>
-              )}
-            </button>
-          </form>
-          {newPassword !== defaultPassword && newPassword.length >= 6 && (
-            <div className="mt-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-sm text-amber-600 dark:text-amber-400 font-medium animate-in fade-in duration-300">
-              ⚠️ Has modificado la contraseña. Presiona <strong>&quot;Guardar Contraseña&quot;</strong> para que los
-              próximos usuarios aprobados reciban esta nueva clave.
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* ===== TABLA DE SOLICITUDES ===== */}
       {loading ? (

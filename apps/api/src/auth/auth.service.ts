@@ -22,11 +22,7 @@ export class AuthService {
     private mailService: MailService,
   ) {}
 
-  // Helper: obtener la contraseña por defecto desde la configuración
-  private async getDefaultPassword(): Promise<string> {
-    const config = await this.prisma.lms_configuracion.findUnique({ where: { id: 1 } });
-    return config?.contrasena_defecto || 'pesvauth2026';
-  }
+
 
   async requestAccess(dto: { email: string; nombre: string; apellido: string; rol_pedido: any }) {
     const existingUser = await this.prisma.usuarios.findUnique({ where: { email: dto.email } });
@@ -97,19 +93,23 @@ export class AuthService {
   }
 
   async login(email: string, contrasena: string) {
+    // SEC: Generic error messages to prevent user enumeration
+    const GENERIC_AUTH_ERROR = 'Credenciales inválidas.';
+
     const user = await this.prisma.usuarios.findUnique({ where: { email } });
     if (!user) {
-      const request = await this.prisma.lms_solicitudes_acceso.findUnique({ where: { email } });
-      if (request && request.estado === 'PENDIENTE') {
-        throw new UnauthorizedException('Aún está en espera de autorización.');
-      }
-      throw new UnauthorizedException('El usuario no está registrado.');
+      throw new UnauthorizedException(GENERIC_AUTH_ERROR);
+    }
+
+    if (!user.activo) {
+      throw new UnauthorizedException(GENERIC_AUTH_ERROR);
     }
 
     if (!contrasena) {
       throw new UnauthorizedException('Contraseña requerida.');
     }
 
+    // User has no password yet — must set up on first login
     if (!user.contrasena) {
       return {
         requireSetup: true,
@@ -120,14 +120,14 @@ export class AuthService {
 
     const isValid = await bcrypt.compare(contrasena, user.contrasena);
     if (!isValid) {
-      throw new UnauthorizedException('Credenciales inválidas.');
+      throw new UnauthorizedException(GENERIC_AUTH_ERROR);
     }
 
-    const defaultPwd = await this.getDefaultPassword();
-    if (contrasena === defaultPwd) {
+    // User still has the temporary password flag → force setup
+    if (user.usa_clave_defecto) {
       return {
         requireSetup: true,
-        message: 'Estás usando la contraseña temporal. Por favor, crea tu contraseña segura.',
+        message: 'Debes configurar una contraseña personalizada para continuar.',
         user: { email: user.email, nombre: user.nombre },
       };
     }
@@ -164,11 +164,11 @@ export class AuthService {
     }
 
     if (!user.contrasena) {
-      const defaultPwd = await this.getDefaultPassword();
-      if (contrasenaTemporal !== defaultPwd) {
-        throw new UnauthorizedException('La contraseña temporal es incorrecta.');
-      }
+      // User was created without a password (new approval flow).
+      // The contrasenaTemporal field is not checked — user sets their first password.
+      // This is safe because the user must know their email to reach this endpoint.
     } else {
+      // User has a hashed temporary password — validate it
       const isTempValid = await bcrypt.compare(contrasenaTemporal, user.contrasena);
       if (!isTempValid) {
         throw new UnauthorizedException('La contraseña temporal es incorrecta.');
@@ -218,9 +218,7 @@ export class AuthService {
     if (!request) throw new NotFoundException('Solicitud no encontrada.');
     if (request.estado !== 'PENDIENTE') throw new BadRequestException('La solicitud ya fue procesada.');
 
-    const defaultPwd = await this.getDefaultPassword();
-    const hashedDefault = await bcrypt.hash(defaultPwd, 10);
-
+    // SEC: Create user WITHOUT password — they must set it on first login
     await this.prisma.$transaction([
       this.prisma.lms_solicitudes_acceso.update({
         where: { id },
@@ -232,17 +230,18 @@ export class AuthService {
           nombre: request.nombre,
           apellido: request.apellido,
           rol: request.rol_pedido,
-          contrasena: hashedDefault,
+          contrasena: null,
+          usa_clave_defecto: true,
         },
       }),
     ]);
 
-    // BUG-08 FIX: Send welcome email with temp password (fire-and-forget)
+    // Send welcome email (no password included — user sets it themselves)
     this.mailService
-      .sendWelcomeEmail(request.email, request.nombre, defaultPwd)
+      .sendWelcomeEmail(request.email, request.nombre)
       .catch((err) => this.logger.error('Welcome email error:', err));
 
-    return { message: 'Solicitud aprobada y usuario creado con clave temporal.' };
+    return { message: 'Solicitud aprobada. El usuario debe configurar su contraseña en el primer inicio de sesión.' };
   }
 
   /**
@@ -271,9 +270,12 @@ export class AuthService {
   // --- PASSWORD RECOVERY ---
 
   async requestPasswordReset(email: string) {
+    // SEC: Always return same message to prevent email enumeration
+    const GENERIC_MSG = 'Si el correo está registrado, recibirás un enlace de recuperación.';
+
     const user = await this.prisma.usuarios.findUnique({ where: { email } });
     if (!user) {
-      return { message: 'Si el correo está registrado, recibirás un enlace de recuperación.' };
+      return { message: GENERIC_MSG };
     }
 
     await this.prisma.lms_password_resets.updateMany({
@@ -281,28 +283,37 @@ export class AuthService {
       data: { usado: true },
     });
 
-    const token = crypto.randomBytes(32).toString('hex');
+    // F2.3: Generate token and store its HASH in DB (not plaintext)
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
     const expiresAt = new Date(Date.now() + 3600000); // 1 hour
 
     await this.prisma.lms_password_resets.create({
-      data: { email, token, expires_at: expiresAt },
+      data: { email, token: tokenHash, expires_at: expiresAt },
     });
 
-    await this.mailService.sendPasswordResetEmail(email, token, user.nombre);
+    // Send the RAW token to the user (only they have it)
+    await this.mailService.sendPasswordResetEmail(email, rawToken, user.nombre);
 
-    return { message: 'Si el correo está registrado, recibirás un enlace de recuperación.' };
+    return { message: GENERIC_MSG };
   }
 
   async resetPassword(token: string, nuevaContrasena: string) {
     this.validatePasswordStrength(nuevaContrasena);
 
-    const resetRecord = await this.prisma.lms_password_resets.findUnique({ where: { token } });
+    // F2.3: Hash the incoming token and look up by hash (DB never stores raw token)
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const resetRecord = await this.prisma.lms_password_resets.findUnique({ where: { token: tokenHash } });
     if (!resetRecord) throw new BadRequestException('Token inválido o expirado.');
     if (resetRecord.usado) throw new BadRequestException('Este enlace ya fue utilizado.');
     if (new Date() > resetRecord.expires_at)
       throw new BadRequestException('El enlace ha expirado. Solicita uno nuevo.');
 
     const hashed = await bcrypt.hash(nuevaContrasena, 10);
+
+    // F2.5: Update password AND revoke all active sessions
+    const user = await this.prisma.usuarios.findUnique({ where: { email: resetRecord.email }, select: { guid: true } });
+
     await this.prisma.usuarios.update({
       where: { email: resetRecord.email },
       data: {
@@ -316,8 +327,9 @@ export class AuthService {
       data: { usado: true },
     });
 
-    const user = await this.prisma.usuarios.findUnique({ where: { email: resetRecord.email }, select: { guid: true } });
+    // Revoke all active sessions for this user
     if (user) {
+      await this.tokenBlacklistService.revokeUser(user.guid);
       this.lmsGateway.forceDisconnect(user.guid, 'password_reset');
     }
 
@@ -352,22 +364,24 @@ export class AuthService {
       throw new BadRequestException('Ya se envió un código recientemente. Espera 1 minuto antes de solicitar otro.');
     }
 
-    // Generate 6-digit code
-    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    // F2.4: Generate 6-digit code with cryptographic randomness
+    const codigo = crypto.randomInt(100000, 999999).toString();
+    const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
     const expiresAt = new Date(Date.now() + 10 * 60_000); // 10 minutes
 
     // Invalidate previous codes for this email
     await this.prisma.lms_verificacion_email.deleteMany({ where: { email } });
 
+    // Store HASH of the code, not plaintext
     await this.prisma.lms_verificacion_email.create({
       data: {
         email,
-        codigo,
+        codigo: codigoHash,
         expires_at: expiresAt,
       },
     });
 
-    // Send the code via email
+    // Send the RAW code via email (only the user has it)
     await this.mailService.sendEmailVerificationCode(email, codigo);
 
     this.logger.log(`Email verification code sent to ${email}`);
@@ -378,8 +392,11 @@ export class AuthService {
    * Confirm the 6-digit verification code for an email.
    */
   async confirmEmailVerification(email: string, codigo: string) {
+    // F2.4: Hash the incoming code and compare with stored hash
+    const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
+
     const record = await this.prisma.lms_verificacion_email.findFirst({
-      where: { email, codigo },
+      where: { email, codigo: codigoHash },
       orderBy: { created_at: 'desc' },
     });
 

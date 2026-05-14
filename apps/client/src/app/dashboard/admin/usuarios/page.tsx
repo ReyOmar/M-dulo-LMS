@@ -68,16 +68,10 @@ export default function BaseUsuarios() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ nombre: '', apellido: '', email: '' });
   const [creating, setCreating] = useState(false);
-  const [defaultPassword, setDefaultPassword] = useState('');
 
   useEffect(() => {
     if (realRole === 'admin') {
       fetchUsuarios();
-      // Fetch the default password to use for new admin accounts
-      api
-        .get('/configuracion/full')
-        .then((res) => setDefaultPassword(res.data?.contrasena_defecto || 'pesvauth2026'))
-        .catch(() => setDefaultPassword('pesvauth2026'));
     }
   }, [realRole]);
 
@@ -751,15 +745,15 @@ export default function BaseUsuarios() {
               </div>
 
               {/* Info notice */}
-              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2.5">
-                <Key className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+              <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3 flex items-start gap-2.5">
+                <Key className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
-                    Contraseña por defecto del sistema
+                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                    Seguridad: Sin contraseña por defecto
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
-                    Se usará la contraseña por defecto configurada en Solicitudes. El administrador deberá cambiarla
-                    obligatoriamente al ingresar por primera vez.
+                    El administrador recibirá un correo y deberá configurar su propia contraseña segura
+                    en el primer inicio de sesión.
                   </p>
                 </div>
               </div>
@@ -778,16 +772,11 @@ export default function BaseUsuarios() {
                     showToast.warning('Todos los campos son obligatorios.');
                     return;
                   }
-                  if (!defaultPassword) {
-                    showToast.warning('No se pudo obtener la contraseña por defecto. Verifica la configuración.');
-                    return;
-                  }
                   setCreating(true);
                   try {
                     await api.post('/auth/usuarios/crear', {
                       ...createForm,
                       rol: 'ADMINISTRADOR',
-                      contrasena_temporal: defaultPassword,
                     });
                     showToast.success(
                       `Administrador ${createForm.nombre} ${createForm.apellido} registrado exitosamente.`,
