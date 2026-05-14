@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { StorageService } from '../storage/storage.service';
@@ -14,6 +15,7 @@ export class UserService {
   private readonly logger = new Logger(UserService.name);
   constructor(
     private prisma: PrismaService,
+    private jwtService: JwtService,
     private tokenBlacklistService: TokenBlacklistService,
     private storageService: StorageService,
     private lmsGateway: LmsGateway,
@@ -130,6 +132,7 @@ export class UserService {
     // Email is immutable — cannot be changed after account creation
 
     // Password change
+    let passwordChanged = false;
     if (data.nueva_contrasena) {
       if (data.nueva_contrasena.length < 8) {
         throw new BadRequestException('La contraseña debe tener al menos 8 caracteres.');
@@ -140,8 +143,7 @@ export class UserService {
       if (!valid) throw new BadRequestException('La contraseña actual es incorrecta.');
       updateData.contrasena = await bcrypt.hash(data.nueva_contrasena, 10);
       updateData.usa_clave_defecto = false;
-      // Force disconnect all active sessions so old tokens can't be reused
-      this.lmsGateway.forceDisconnect(guid, 'password_changed');
+      passwordChanged = true;
     }
 
     const updated = await this.prisma.usuarios.update({
@@ -151,6 +153,38 @@ export class UserService {
 
     this.lmsGateway.broadcast('user:updated', { guid: updated.guid });
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_updated' });
+
+    // If password changed: revoke old tokens, issue a fresh one for the current session
+    if (passwordChanged) {
+      // Revoke all existing tokens — old sessions (other devices) will be rejected on:
+      // - Next API call → 401 → redirect to login
+      // - Next WS reconnect → gateway checks isRevoked → connection refused
+      // We intentionally do NOT call forceDisconnect here because it would close
+      // the current session's WebSocket before the HTTP response arrives with the new token.
+      await this.tokenBlacklistService.revokeUser(guid);
+
+      // Issue a fresh JWT for the current session (post-revocation, so it won't be blacklisted)
+      const newToken = this.jwtService.sign({
+        sub: updated.guid,
+        email: updated.email,
+        role: updated.rol,
+      });
+
+      this.logger.log(`Password changed for user ${updated.email} — new token issued, old sessions revoked.`);
+
+      return {
+        message: 'Contraseña actualizada exitosamente.',
+        passwordChanged: true,
+        token: newToken,
+        user: {
+          guid: updated.guid,
+          role: updated.rol,
+          nombre: updated.nombre,
+          apellido: updated.apellido,
+          email: updated.email,
+        },
+      };
+    }
 
     return {
       message: 'Perfil actualizado exitosamente.',

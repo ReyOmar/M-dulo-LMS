@@ -217,7 +217,7 @@ export default function BaseUsuarios() {
 
     const isConfirmed = await showConfirm(
       '¿Eliminar cuenta?',
-      'Esta acción es permanente. Si el usuario es estudiante, perderá todo su progreso. Si es examinador o administrador, sus cursos creados permanecerán en el sistema.',
+      'Esta acción es permanente. Si el usuario es estudiante, perderá todo su progreso. Si es examinador o administrador, sus cursos asignados permanecerán en el sistema.',
     );
 
     if (!isConfirmed) return;
@@ -572,9 +572,11 @@ export default function BaseUsuarios() {
               </div>
               <div className="bg-muted/20 rounded-xl p-4">
                 <p className="text-xs text-muted-foreground font-bold uppercase mb-1">
-                  {selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR'
+                  {selectedUser.rol === 'ADMINISTRADOR'
                     ? 'Cursos Creados'
-                    : 'Cursos Matriculados'}
+                    : selectedUser.rol === 'PROFESOR'
+                      ? 'Cursos Asignados'
+                      : 'Cursos Matriculados'}
                 </p>
                 <p className="text-sm font-bold">{loadingCursos ? '...' : userCourses.length}</p>
               </div>
@@ -592,9 +594,11 @@ export default function BaseUsuarios() {
             <div>
               <h3 className="text-sm font-bold uppercase text-muted-foreground tracking-wider mb-3 flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />{' '}
-                {selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR'
+                {selectedUser.rol === 'ADMINISTRADOR'
                   ? 'Cursos Creados'
-                  : 'Cursos Matriculados'}
+                  : selectedUser.rol === 'PROFESOR'
+                    ? 'Cursos Asignados'
+                    : 'Cursos Matriculados'}
               </h3>
               {loadingCursos ? (
                 <div className="text-center py-6 text-muted-foreground text-sm flex items-center justify-center gap-2">
@@ -604,9 +608,11 @@ export default function BaseUsuarios() {
                 <div className="text-center py-6 bg-muted/10 rounded-xl border border-border/50">
                   <p className="text-sm text-muted-foreground">
                     Este usuario no tiene cursos{' '}
-                    {selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR'
+                    {selectedUser.rol === 'ADMINISTRADOR'
                       ? 'creados'
-                      : 'matriculados'}
+                      : selectedUser.rol === 'PROFESOR'
+                        ? 'asignados'
+                        : 'matriculados'}
                     .
                   </p>
                   {(selectedUser.rol === 'PROFESOR' || selectedUser.rol === 'ADMINISTRADOR') && (

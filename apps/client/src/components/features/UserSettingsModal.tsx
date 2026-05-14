@@ -17,6 +17,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext';
+import { useWS } from '@/contexts/WebSocketContext';
 import api, { API_BASE_URL, resolveFileUrl } from '@/lib/api';
 
 interface Props {
@@ -26,6 +27,7 @@ interface Props {
 
 export function UserSettingsModal({ open, onClose }: Props) {
   const { user, syncSession } = useRole();
+  const { reconnect } = useWS();
 
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
@@ -111,13 +113,24 @@ export function UserSettingsModal({ open, onClose }: Props) {
 
       const data = res.data;
 
-      // Sync session with updated data
-      if (data.user) {
+      // If password was changed, the backend returns a fresh JWT token
+      // Seamlessly swap it so the user stays logged in without interruption
+      if (data.passwordChanged && data.token) {
+        syncSession(data.token, {
+          ...user,
+          nombre: data.user.nombre,
+          apellido: data.user.apellido,
+        });
+        // Reconnect WebSocket with the fresh token
+        reconnect();
+        showFeedback('success', '🔒 Contraseña actualizada. Tu sesión sigue activa con las nuevas credenciales.');
+      } else if (data.user) {
+        // Normal profile update (no password change)
         const token = localStorage.getItem('lms_token') || '';
         syncSession(token, { ...user, nombre: data.user.nombre, apellido: data.user.apellido });
+        showFeedback('success', 'Perfil actualizado exitosamente.');
       }
 
-      showFeedback('success', 'Perfil actualizado exitosamente.');
       setContrasenaActual('');
       setNuevaContrasena('');
       setConfirmarContrasena('');

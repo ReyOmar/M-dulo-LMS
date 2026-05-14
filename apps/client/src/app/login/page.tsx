@@ -18,6 +18,7 @@ import {
   Send,
   Loader2,
   Home,
+  KeyRound,
 } from 'lucide-react';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -45,7 +46,7 @@ export default function LoginPage() {
   const [redirecting, setRedirecting] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
   const [view, setView] = useState<
-    'LOGIN' | 'SETUP_PASSWORD' | 'REQUEST_ACCESS' | 'REQUEST_SUCCESS' | 'REVOKED' | 'EXPIRED' | 'DISPLACED'
+    'LOGIN' | 'SETUP_PASSWORD' | 'REQUEST_ACCESS' | 'REQUEST_SUCCESS' | 'REVOKED' | 'EXPIRED' | 'DISPLACED' | 'PASSWORD_CHANGED'
   >('LOGIN');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -63,9 +64,11 @@ export default function LoginPage() {
     const revoked = searchParams?.get('revoked') === 'true';
     const displaced = searchParams?.get('displaced') === 'true';
     const expired = searchParams?.get('expired') === 'true';
+    const passwordChanged = searchParams?.get('password_changed') === 'true';
 
-    if (revoked || displaced || expired) {
-      if (revoked) setView('REVOKED');
+    if (revoked || displaced || expired || passwordChanged) {
+      if (passwordChanged) setView('PASSWORD_CHANGED');
+      else if (revoked) setView('REVOKED');
       else if (displaced) setView('DISPLACED');
       else if (expired) setView('EXPIRED');
       // Clean the URL params so a page refresh won't re-trigger
@@ -275,6 +278,8 @@ export default function LoginPage() {
                 <ShieldCheck className="h-7 w-7 text-emerald-500" />
               ) : view === 'EXPIRED' ? (
                 <Clock className="h-7 w-7 text-primary" />
+              ) : view === 'PASSWORD_CHANGED' ? (
+                <KeyRound className="h-7 w-7 text-emerald-500" />
               ) : view === 'DISPLACED' ? (
                 <Monitor className="h-7 w-7 text-primary" />
               ) : (
@@ -290,6 +295,7 @@ export default function LoginPage() {
               {view === 'REQUEST_SUCCESS' && 'Petición en Tránsito'}
               {view === 'EXPIRED' && 'Sesión Expirada'}
               {view === 'DISPLACED' && 'Sesión Activa en Otro Dispositivo'}
+              {view === 'PASSWORD_CHANGED' && 'Contraseña Actualizada'}
             </h1>
             <p className="text-sm text-muted-foreground mt-2">
               {view === 'LOGIN' && 'Ingresa tus credenciales para ser validado en base de datos.'}
@@ -303,6 +309,8 @@ export default function LoginPage() {
               {view === 'EXPIRED' && 'Tu sesión anterior ha expirado. Inicia sesión de nuevo para continuar.'}
               {view === 'DISPLACED' &&
                 'Se inició sesión con tu cuenta en otro dispositivo. Solo puedes tener una sesión activa a la vez.'}
+              {view === 'PASSWORD_CHANGED' &&
+                'Tu contraseña fue actualizada correctamente. Por seguridad, necesitas iniciar sesión nuevamente.'}
             </p>
           </div>
         </div>
@@ -695,6 +703,30 @@ export default function LoginPage() {
               className="h-11 w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm shadow-sm transition-colors"
             >
               Volver a Iniciar Sesión
+            </button>
+          </div>
+        )}
+
+        {/* ===================== VIEW: PASSWORD_CHANGED (friendly re-auth) ===================== */}
+        {view === 'PASSWORD_CHANGED' && (
+          <div className="flex flex-col items-center text-center animate-in zoom-in-95">
+            <div className="h-16 w-16 rounded-3xl bg-emerald-500/10 flex items-center justify-center mb-6 ring-1 ring-emerald-500/20">
+              <KeyRound className="h-8 w-8 text-emerald-500" />
+            </div>
+            <div className="text-muted-foreground p-2 mb-6">
+              Tu contraseña ha sido <span className="font-bold text-emerald-600">actualizada exitosamente</span>.
+              <br />
+              Por seguridad, todas las sesiones activas fueron cerradas.
+              <br />
+              <span className="text-xs mt-2 block text-muted-foreground/70">
+                Inicia sesión con tu nueva contraseña para continuar.
+              </span>
+            </div>
+            <button
+              onClick={handleGoToLogin}
+              className="h-11 w-full rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2"
+            >
+              <Lock className="h-4 w-4" /> Iniciar Sesión con Nueva Contraseña
             </button>
           </div>
         )}

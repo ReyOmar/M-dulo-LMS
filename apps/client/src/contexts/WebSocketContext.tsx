@@ -39,6 +39,7 @@ interface WebSocketContextType {
   isConnected: boolean;
   subscribe: (event: WebSocketEvent, callback: (data: any) => void) => () => void;
   send: (action: string, data: any) => void;
+  reconnect: () => void;
   onlineUsers: string[];
   editingCourses: Record<string, CourseEditor>;
   maintenanceCourses: Record<string, string>;
@@ -48,6 +49,7 @@ const WebSocketContext = createContext<WebSocketContextType>({
   isConnected: false,
   subscribe: () => () => {},
   send: () => {},
+  reconnect: () => {},
   onlineUsers: [],
   editingCourses: {},
   maintenanceCourses: {},
@@ -102,7 +104,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           const reason = data?.reason || '';
           if (reason === 'new_session') {
             window.location.href = '/login?displaced=true';
-          } else if (reason === 'account_deleted' || reason === 'password_reset') {
+          } else if (reason === 'password_changed' || reason === 'password_reset') {
+            window.location.href = '/login?password_changed=true';
+          } else if (reason === 'account_deleted') {
             window.location.href = '/login?revoked=true';
           } else {
             window.location.href = '/login?revoked=true';
@@ -266,9 +270,22 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Force reconnection with a fresh token (e.g., after password change)
+  const reconnect = useCallback(() => {
+    if (wsRef.current) {
+      wsRef.current.close(1000, 'Token refreshed');
+      wsRef.current = null;
+    }
+    // Reset revocation flag since this is an intentional reconnect
+    isRevokedRef.current = false;
+    retryCountRef.current = 0;
+    // Small delay to let the close event propagate
+    setTimeout(connect, 200);
+  }, [connect]);
+
   return (
     <WebSocketContext.Provider
-      value={{ isConnected, subscribe, send, onlineUsers, editingCourses, maintenanceCourses }}
+      value={{ isConnected, subscribe, send, reconnect, onlineUsers, editingCourses, maintenanceCourses }}
     >
       {children}
     </WebSocketContext.Provider>
