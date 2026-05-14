@@ -159,13 +159,26 @@ export class AuthService {
 
     const user = await this.prisma.usuarios.findUnique({ where: { email } });
     if (!user) {
-      throw new NotFoundException('Usuario no existe.');
+      // SEC: Generic error to prevent email enumeration
+      throw new BadRequestException('Token de invitación inválido o expirado.');
     }
 
     if (!user.contrasena) {
-      // User was created without a password (new approval flow).
-      // The contrasenaTemporal field is not checked — user sets their first password.
-      // This is safe because the user must know their email to reach this endpoint.
+      // F2.9: User was created without a password (new approval flow).
+      // Require a valid invitation token — knowing just the email is NOT enough.
+      if (!contrasenaTemporal) {
+        throw new BadRequestException('Token de invitación requerido.');
+      }
+
+      if (!user.invitacion_token_hash) {
+        throw new BadRequestException('Token de invitación inválido o ya utilizado.');
+      }
+
+      // Verify the invitation token against the stored hash
+      const tokenHash = crypto.createHash('sha256').update(contrasenaTemporal).digest('hex');
+      if (tokenHash !== user.invitacion_token_hash) {
+        throw new UnauthorizedException('Token de invitación inválido o expirado.');
+      }
     } else {
       // User has a hashed temporary password — validate it
       const isTempValid = await bcrypt.compare(contrasenaTemporal, user.contrasena);
@@ -183,7 +196,11 @@ export class AuthService {
     const hashed = await bcrypt.hash(nuevaContrasena, 10);
     const updatedUser = await this.prisma.usuarios.update({
       where: { email },
-      data: { contrasena: hashed, usa_clave_defecto: false },
+      data: {
+        contrasena: hashed,
+        usa_clave_defecto: false,
+        invitacion_token_hash: null, // F2.9: Invalidate token after use (one-time)
+      },
     });
 
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_password_setup' });
@@ -203,6 +220,7 @@ export class AuthService {
     };
   }
 
+
   // --- ACCESS REQUEST MANAGEMENT ---
 
   async getPendingRequests() {
@@ -217,7 +235,11 @@ export class AuthService {
     if (!request) throw new NotFoundException('Solicitud no encontrada.');
     if (request.estado !== 'PENDIENTE') throw new BadRequestException('La solicitud ya fue procesada.');
 
-    // SEC: Create user WITHOUT password — they must set it on first login
+    // F2.9: Generate a one-time invitation token for first password setup
+    const rawInvitationToken = crypto.randomBytes(32).toString('hex');
+    const invitationTokenHash = crypto.createHash('sha256').update(rawInvitationToken).digest('hex');
+
+    // SEC: Create user WITHOUT password — they must use the invitation token to set it
     await this.prisma.$transaction([
       this.prisma.lms_solicitudes_acceso.update({
         where: { id },
@@ -231,13 +253,14 @@ export class AuthService {
           rol: request.rol_pedido,
           contrasena: null,
           usa_clave_defecto: true,
+          invitacion_token_hash: invitationTokenHash,
         },
       }),
     ]);
 
-    // Send welcome email (no password included — user sets it themselves)
+    // Send welcome email with invitation token (user needs it to set password)
     this.mailService
-      .sendWelcomeEmail(request.email, request.nombre)
+      .sendWelcomeEmail(request.email, request.nombre, rawInvitationToken)
       .catch((err) => this.logger.error('Welcome email error:', err));
 
     return { message: 'Solicitud aprobada. El usuario debe configurar su contraseña en el primer inicio de sesión.' };
@@ -391,11 +414,11 @@ export class AuthService {
    * Confirm the 6-digit verification code for an email.
    */
   async confirmEmailVerification(email: string, codigo: string) {
-    // F2.4: Hash the incoming code and compare with stored hash
-    const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
+    const MAX_ATTEMPTS = 5;
 
+    // F2.4: Find the most recent code for this email
     const record = await this.prisma.lms_verificacion_email.findFirst({
-      where: { email, codigo: codigoHash },
+      where: { email },
       orderBy: { created_at: 'desc' },
     });
 
@@ -409,6 +432,30 @@ export class AuthService {
 
     if (record.verificado) {
       return { message: 'Este correo ya fue verificado.', verificado: true };
+    }
+
+    // F2.4: Check attempt limit before comparing
+    if (record.intentos >= MAX_ATTEMPTS) {
+      // Invalidate the code — force requesting a new one
+      await this.prisma.lms_verificacion_email.delete({ where: { id: record.id } });
+      throw new BadRequestException('Demasiados intentos fallidos. Solicita un nuevo código.');
+    }
+
+    // F2.4: Hash the incoming code and compare with stored hash
+    const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
+
+    if (record.codigo !== codigoHash) {
+      // Increment attempt counter
+      await this.prisma.lms_verificacion_email.update({
+        where: { id: record.id },
+        data: { intentos: { increment: 1 } },
+      });
+      const remaining = MAX_ATTEMPTS - record.intentos - 1;
+      throw new BadRequestException(
+        remaining > 0
+          ? `Código incorrecto. Te quedan ${remaining} intento(s).`
+          : 'Código incorrecto. Demasiados intentos fallidos. Solicita un nuevo código.',
+      );
     }
 
     await this.prisma.lms_verificacion_email.update({

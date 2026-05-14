@@ -26,13 +26,14 @@
 | Chat/mensajes | ✅ | ✅ contactos | ✅ contactos | ✅ contactos | ✅ contactos | ❌ 401 |
 | Config plataforma | ✅ | ❌ 403 | ❌ 403 | ❌ 403 | ❌ 403 | ❌ 401 |
 | Upload archivos | ✅ | ✅ | ✅ | ❌ 403 | ❌ 403 | ❌ 401 |
-| Download archivos | ✅ público (UUID) | ✅ público (UUID) | ✅ público (UUID) | ✅ público (UUID) | ✅ público (UUID) | ✅ público (UUID) |
+| Download público | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ portadas/logos/avatars |
+| Download privado | ✅ | ✅ JWT | ✅ JWT | ✅ JWT | ✅ JWT | ❌ 401 |
 | Monitoreo dashboard | ✅ todos | ✅ sus cursos | ❌ 403 | ❌ 403 | ❌ 403 | ❌ 401 |
 | Asignación cursos | ✅ | ❌ 403 | ❌ 403 | ❌ 403 | ❌ 403 | ❌ 401 |
 | Solicitudes acceso | ✅ | ❌ 403 | ❌ 403 | ❌ 403 | ❌ 403 | ❌ 401 |
 | Correos/plantillas | ✅ | ❌ 403 | ❌ 403 | ❌ 403 | ❌ 403 | ❌ 401 |
 
-> **Riesgo aceptado en Download:** Archivos se sirven como `@Public()` porque `<img>`, `<video>` y `<a>` no envían JWT headers. Los nombres son UUID aleatorios (no enumerables). SVG/HTML forzados a `attachment`.
+> **Storage:** Archivos públicos (portadas, logos, avatars) accesibles sin JWT via `/download/public/*`. Archivos privados (entregas, firmas, certificados, recursos) requieren JWT via `/download/*`. Nombres UUID (no enumerables). SVG/HTML forzados a `attachment`. `X-Content-Type-Options: nosniff`.
 
 > **F2.8 — Decisión: localStorage para JWT (riesgo aceptado)**
 > Se mantiene `localStorage` para almacenar el JWT token en lugar de cookies httpOnly. Razones:
@@ -46,7 +47,7 @@
 ## F0.4 — Flujos Críticos del Sistema
 
 1. **Login** → POST /auth/login → JWT → localStorage → redirect por rol
-2. **Setup password** → POST /auth/setup-password → hash bcrypt → login automático
+2. **Setup password** → POST /auth/setup-password → token de invitación SHA-256 → hash bcrypt → login automático
 3. **Reset password** → POST /auth/forgot → email con token SHA-256 → POST /auth/reset → invalida sesiones
 4. **Verificación email** → POST /auth/verify-email → código crypto 6 dígitos → hash + expiración + intentos
 5. **Request access** → POST /auth/request-access → aprobación admin → crear usuario
@@ -57,7 +58,7 @@
 10. **Certificado** → completar 100% recursos → generar PDF → download
 11. **Chat** → solicitud contacto → aceptar → mensajes WS
 12. **Config plataforma** → admin only → colores hex validados → broadcast WS sanitizado
-13. **Storage** → upload (ADMIN/PROF) → UUID rename → download público (UUID unguessable)
+13. **Storage** → upload (ADMIN/PROF) → UUID rename → público (portadas/logos/avatars) o privado (JWT requerido)
 14. **Logout** → revocar token en DB → limpiar localStorage → WS session:revoked
 
 ---

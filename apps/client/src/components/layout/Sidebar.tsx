@@ -39,7 +39,7 @@ import { useWS } from '@/contexts/WebSocketContext';
 import { NotificationCenter } from '@/components/features/NotificationCenter';
 
 export function Sidebar() {
-  const { role, realRole, simulatedRole, setSimulatedRole, user, logout } = useRole();
+  const { role, user, logout } = useRole();
   const { config } = useConfig();
   const pathname = usePathname() || '';
 
@@ -66,7 +66,7 @@ export function Sidebar() {
 
   // Real-time solicitudes count for admin
   useEffect(() => {
-    if (realRole !== 'admin') return;
+    if (role !== 'admin') return;
 
     const fetchCount = async () => {
       try {
@@ -88,7 +88,7 @@ export function Sidebar() {
       unsub2();
       unsub3();
     };
-  }, [realRole, subscribe]);
+  }, [role, subscribe]);
 
   // Real-time unread messages count
   useEffect(() => {
@@ -197,7 +197,6 @@ export function Sidebar() {
             )}
             <span className={`truncate font-semibold text-foreground ${config?.logo_url ? 'hidden sm:inline' : ''}`}>
               {config?.nombre_plataforma || 'PESV Education'}
-              {simulatedRole && <span className="text-[10px] ml-1 text-accent font-bold">(SIM)</span>}
             </span>
           </div>
           <div className="shrink-0 flex items-center gap-1">
@@ -477,13 +476,11 @@ export function Sidebar() {
                   {userName} {userLastName}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1 truncate">
-                  {simulatedRole
-                    ? 'Simulación Activa'
-                    : role === 'student'
-                      ? 'En Capacitación'
-                      : role === 'teacher'
-                        ? 'Examinador'
-                        : 'Administrador'}
+                  {role === 'student'
+                    ? 'En Capacitación'
+                    : role === 'teacher'
+                      ? 'Examinador'
+                      : 'Administrador'}
                 </p>
               </div>
               <ChevronUp

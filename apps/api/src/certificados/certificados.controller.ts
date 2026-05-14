@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Res, Query } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Res, ForbiddenException } from '@nestjs/common';
 import { CertificadosService } from './certificados.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
@@ -41,10 +41,20 @@ export class CertificadosController {
 
   /**
    * Download the PDF file for a certificate.
+   * F3.9: Validates that the requesting user is the certificate owner,
+   * the course professor, or an admin.
    */
   @Get('/:guid/pdf')
-  async downloadPDF(@Param('guid') guid: string, @Res() reply: FastifyReply) {
+  async downloadPDF(
+    @Param('guid') guid: string,
+    @CurrentUser() user: JwtPayload,
+    @Res() reply: FastifyReply,
+  ) {
     const cert = await this.certificadosService.getCertificado(guid);
+
+    // F3.9: Ownership validation — only owner, course professor, or admin can download
+    await this.certificadosService.validateCertificateAccess(cert, user);
+
     const filePath = this.certificadosService.getArchivoPDF(cert.archivo_pdf);
 
     const stream = fs.createReadStream(filePath);
@@ -68,9 +78,15 @@ export class CertificadosController {
 
   /**
    * Get details for a specific certificate.
+   * F3.9: Validates ownership — only the certificate owner, course professor, or admin.
    */
   @Get('/:guid')
-  async getCertificado(@Param('guid') guid: string) {
-    return this.certificadosService.getCertificado(guid);
+  async getCertificado(@Param('guid') guid: string, @CurrentUser() user: JwtPayload) {
+    const cert = await this.certificadosService.getCertificado(guid);
+
+    // F3.9: Ownership validation
+    await this.certificadosService.validateCertificateAccess(cert, user);
+
+    return cert;
   }
 }

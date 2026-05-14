@@ -16,12 +16,12 @@ const THEME_PRESETS = [
 
 export default function TemaPage() {
   const { config, updateLocalTheme, updateConfig, saveConfigToServer } = useConfig();
-  const { realRole } = useRole();
+  const { role } = useRole();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const loginBgInputRef = useRef<HTMLInputElement>(null);
 
-  if (realRole !== 'admin') {
+  if (role !== 'admin') {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <p className="text-muted-foreground font-bold">No tienes permisos para acceder a esta sección.</p>

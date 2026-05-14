@@ -9,9 +9,6 @@ export type Role = 'admin' | 'teacher' | 'student';
 
 interface RoleContextType {
   role: Role;
-  realRole: Role;
-  simulatedRole: Role | null;
-  setSimulatedRole: (role: Role | null) => void;
   user: any;
   logout: () => void;
   syncSession: (tokenStr: string, userData: any) => void;
@@ -21,7 +18,6 @@ const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<Role>('student');
-  const [simulatedRole, setSimulatedRole] = useState<Role | null>(null);
   const [user, setUser] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -102,11 +98,8 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     const keysToRemove = Object.keys(localStorage).filter((k) => k.startsWith('lms_'));
     keysToRemove.forEach((k) => localStorage.removeItem(k));
     setUser(null);
-    setSimulatedRole(null);
     window.location.href = '/login';
   };
-
-  const activeRole = simulatedRole || role;
 
   if (!mounted) return <div className="min-h-screen bg-muted/20" />;
 
@@ -120,10 +113,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   return (
     <RoleContext.Provider
       value={{
-        role: activeRole,
-        realRole: role, // allow components like Simulator to know who they actually are
-        simulatedRole,
-        setSimulatedRole,
+        role,
         user,
         logout,
         syncSession,

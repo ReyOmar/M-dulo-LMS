@@ -1,10 +1,32 @@
-import { Controller, Post, Get, Param, Res, Query, StreamableFile, BadRequestException, Req } from '@nestjs/common';
+import { Controller, Post, Get, Param, Res, Query, StreamableFile, BadRequestException, Req, ForbiddenException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { StorageService } from './storage.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import * as path from 'path';
 import * as fs from 'fs';
+
+/**
+ * F5.1/F5.2: Storage access model:
+ *
+ * PUBLIC folders (no auth required):
+ *   - portadas: course cover images (shown on landing/catalog)
+ *   - logos: platform branding (shown on public pages)
+ *   - avatars: profile photos (shown in UI alongside names)
+ *
+ * PRIVATE folders (auth required):
+ *   - entregas: student submissions (only owner, course professor, or admin)
+ *   - firmas: instructor signatures (only owner or admin)
+ *   - certificados: certificate PDFs (only owner, course professor, or admin)
+ *   - recursos: course resources (only enrolled students, course professor, or admin)
+ *
+ * Legacy flat files (no folder prefix): treated as public for backward compatibility.
+ */
+const PUBLIC_FOLDERS = ['portadas', 'logos', 'avatars'];
+const PRIVATE_FOLDERS = ['entregas', 'firmas', 'certificados', 'recursos'];
+const ALL_FOLDERS = [...PUBLIC_FOLDERS, ...PRIVATE_FOLDERS];
 
 @Controller('storage')
 export class StorageController {
@@ -43,45 +65,81 @@ export class StorageController {
   }
 
   /**
-   * Download/serve a file. Public because <img>, <video>, <a> tags
-   * cannot send JWT headers — filenames are UUID-based (unguessable).
+   * Download/serve a public file. No auth required.
+   * Only serves files from PUBLIC_FOLDERS or legacy flat files.
    *
    * Security model:
-   * - Upload: requires ADMINISTRADOR/PROFESOR role (auth protected)
-   * - Download: public read (filenames are random UUIDs, not enumerable)
+   * - Public folders (portadas, logos, avatars): accessible without auth
+   * - Filenames are UUID-based (unguessable)
    * - Path traversal: prevented by folder whitelist + basename sanitization
+   */
+  @Public()
+  @Get('/download/public/*')
+  async downloadPublicFile(
+    @Req() req: any,
+    @Query('originalName') originalName: string,
+    @Res({ passthrough: true }) res: any,
+  ) {
+    const rawKey: string = req.params['*'] || '';
+    if (!rawKey) throw new BadRequestException('Nombre de archivo requerido.');
+
+    const segments = rawKey.split('/');
+    let sanitizedKey: string;
+
+    if (segments.length === 1) {
+      // Legacy flat file
+      sanitizedKey = path.basename(segments[0]);
+    } else if (segments.length === 2 && PUBLIC_FOLDERS.includes(segments[0])) {
+      sanitizedKey = `${segments[0]}/${path.basename(segments[1])}`;
+    } else {
+      throw new ForbiddenException('Acceso denegado a esta ruta de archivo.');
+    }
+
+    return this.serveFile(sanitizedKey, originalName, res);
+  }
+
+  /**
+   * F5.1/F5.2: Download a file. Supports both public and private folders.
+   * Private folders require authentication (handled by global JWT guard).
+   * Additional ownership checks would require service-level validation
+   * which is deferred to the individual domain controllers (certificates, etc).
    *
    * Three strategies:
    * 1. R2 with public URL → 302 redirect to CDN
    * 2. R2 without public URL → proxy stream from R2 through API
    * 3. Local file → serve from filesystem
    */
-  @Public()
   @Get('/download/*')
   async downloadFile(
     @Req() req: any,
     @Query('originalName') originalName: string,
+    @CurrentUser() user: JwtPayload,
     @Res({ passthrough: true }) res: any,
   ) {
-    // Extract the full key from the URL path (supports 'file.png' and 'folder/file.png')
     const rawKey: string = req.params['*'] || '';
     if (!rawKey) throw new BadRequestException('Nombre de archivo requerido.');
 
     // Validate each path segment to prevent directory traversal
     const segments = rawKey.split('/');
-    const ALLOWED_FOLDERS = ['portadas', 'recursos', 'entregas', 'firmas', 'logos', 'certificados', 'avatars'];
 
     let sanitizedKey: string;
     if (segments.length === 1) {
       // Legacy flat file: "123-abc.pdf"
       sanitizedKey = path.basename(segments[0]);
-    } else if (segments.length === 2 && ALLOWED_FOLDERS.includes(segments[0])) {
+    } else if (segments.length === 2 && ALL_FOLDERS.includes(segments[0])) {
       // Folder-prefixed: "portadas/123-abc.png"
       sanitizedKey = `${segments[0]}/${path.basename(segments[1])}`;
     } else {
       throw new BadRequestException('Ruta de archivo inválida.');
     }
 
+    return this.serveFile(sanitizedKey, originalName, res);
+  }
+
+  /**
+   * Internal: serve a file using the 3-strategy approach.
+   */
+  private async serveFile(sanitizedKey: string, originalName: string | undefined, res: any) {
     const justFilename = path.basename(sanitizedKey);
     const downloadName = originalName ? path.basename(originalName).replace(/"/g, '') : justFilename;
 
@@ -92,14 +150,14 @@ export class StorageController {
     const disposition = FORCE_DOWNLOAD_EXTS.includes(fileExt) ? 'attachment' : 'inline';
 
     // Strategy 1: R2 with public CDN URL → redirect
-    if (this.storageService.hasPublicUrl() && !this.storageService.existsLocally(justFilename)) {
+    if (this.storageService.hasPublicUrl() && !this.storageService.existsLocally(sanitizedKey)) {
       const publicUrl = this.storageService.getFileUrl(sanitizedKey);
       res.redirect(302, publicUrl);
       return;
     }
 
     // Strategy 2: R2 without public URL → proxy stream from R2
-    if (this.storageService.isCloudStorageActive() && !this.storageService.existsLocally(justFilename)) {
+    if (this.storageService.isCloudStorageActive() && !this.storageService.existsLocally(sanitizedKey)) {
       const r2File = await this.storageService.streamFromR2(sanitizedKey);
       if (r2File) {
         res.header('Content-Type', r2File.contentType);
@@ -111,8 +169,8 @@ export class StorageController {
       }
     }
 
-    // Strategy 3: Serve from local filesystem
-    const filePath = this.storageService.getUploadPath(justFilename);
+    // Strategy 3: Serve from local filesystem (checks organized path, then flat legacy)
+    const filePath = this.storageService.getUploadPath(sanitizedKey);
     const stream = fs.createReadStream(filePath);
 
     const ext = justFilename.split('.').pop()?.toLowerCase();

@@ -245,7 +245,7 @@ CREATE TABLE `lms_configuracion` (
     `idioma` VARCHAR(191) NOT NULL DEFAULT 'es',
     `zona_horaria` VARCHAR(191) NOT NULL DEFAULT 'America/Bogota',
     `max_archivo_mb` INTEGER NOT NULL DEFAULT 10,
-    `contrasena_defecto` VARCHAR(191) NOT NULL DEFAULT 'pesvauth2026',
+    `contrasena_defecto` VARCHAR(191) NOT NULL DEFAULT '',
     `email_remitente` VARCHAR(191) NULL,
     `email_nombre` VARCHAR(191) NULL,
     `bienvenida_html` TEXT NULL,

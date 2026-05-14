@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LmsGateway } from '../ws/lms.gateway';
 import { ConfiguracionService } from '../configuracion/configuracion.service';
@@ -452,6 +452,26 @@ export class CertificadosService {
     if (!cert) throw new NotFoundException('Certificado no encontrado.');
     return cert;
   }
+
+  /**
+   * F3.9: Validate that a user has access to a certificate.
+   * Allowed: certificate owner, course professor, or admin.
+   */
+  async validateCertificateAccess(cert: any, user: { sub: string; role: string }): Promise<void> {
+    // Certificate owner
+    if (cert.usuario_guid === user.sub) return;
+    // Admin
+    if (user.role === 'ADMINISTRADOR') return;
+    // Course professor
+    const course = await this.prisma.lms_cursos.findUnique({
+      where: { guid: cert.curso_guid },
+      select: { profesor_guid: true },
+    });
+    if (course && course.profesor_guid === user.sub) return;
+
+    throw new ForbiddenException('No tienes permiso para acceder a este certificado.');
+  }
+
 
   /**
    * Public certificate verification by unique verification code.

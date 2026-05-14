@@ -10,7 +10,7 @@ import { useAlert } from '@/contexts/AlertContext';
 import { useWS } from '@/contexts/WebSocketContext';
 
 export default function SolicitudesPendientes() {
-  const { realRole } = useRole();
+  const { role } = useRole();
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<number | null>(null);
@@ -18,13 +18,13 @@ export default function SolicitudesPendientes() {
   const { subscribe } = useWS();
 
   useEffect(() => {
-    if (realRole === 'admin') {
+    if (role === 'admin') {
       fetchSolicitudes();
     }
-  }, [realRole]);
+  }, [role]);
 
   useEffect(() => {
-    if (realRole !== 'admin') return;
+    if (role !== 'admin') return;
 
     // Subscribe to new requests or resolutions to auto-update the list
     const unsub1 = subscribe('request:new', fetchSolicitudes);
@@ -34,7 +34,7 @@ export default function SolicitudesPendientes() {
       unsub1();
       unsub2();
     };
-  }, [realRole, subscribe]);
+  }, [role, subscribe]);
 
   const fetchSolicitudes = async () => {
     try {
@@ -60,7 +60,7 @@ export default function SolicitudesPendientes() {
     }
   };
 
-  if (realRole !== 'admin') {
+  if (role !== 'admin') {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] animate-in fade-in">
         <ShieldAlert className="h-16 w-16 text-red-500 mb-4" />

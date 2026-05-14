@@ -8,7 +8,10 @@ dist
 # Database and Uploads
 apps/api/prisma/*.db
 *.sqlite
-apps/api/uploads/
+# Uploads: ignore content but keep folder structure via .gitkeep
+apps/api/uploads/**
+!apps/api/uploads/**/
+!apps/api/uploads/**/.gitkeep
 
 # Generated code (regenerate with: npx prisma generate)
 generated/

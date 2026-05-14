@@ -105,7 +105,7 @@ export class StorageService {
     this.validateMagicBytes(buffer, ext);
 
     const uniqueName = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`;
-    // In R2, organize files by folder prefix (e.g. "portadas/123-abc.png")
+    // Both R2 and local use the same folder structure
     const r2Key = folder ? `${folder}/${uniqueName}` : uniqueName;
     const contentType = MIME_MAP[ext] || 'application/octet-stream';
 
@@ -121,9 +121,13 @@ export class StorageService {
       );
       this.logger.log(`☁️  Uploaded to R2: ${r2Key} (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
     } else {
-      // Fallback: save to local uploads directory (flat, no subfolders for simplicity)
-      await fs.promises.writeFile(path.join(UPLOADS_DIR, uniqueName), buffer);
-      this.logger.log(`💾 Saved locally: ${uniqueName} (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
+      // Fallback: save to local uploads directory with matching folder structure
+      const localDir = folder ? path.join(UPLOADS_DIR, folder) : UPLOADS_DIR;
+      if (!fs.existsSync(localDir)) {
+        fs.mkdirSync(localDir, { recursive: true });
+      }
+      await fs.promises.writeFile(path.join(localDir, uniqueName), buffer);
+      this.logger.log(`💾 Saved locally: ${r2Key} (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
     }
 
     // Return the key with folder prefix so downloads resolve correctly
@@ -164,19 +168,35 @@ export class StorageService {
   }
 
   /**
-   * Get the local file path for legacy/fallback downloads.
+   * Resolve the local file path for a key.
+   * Checks organized folder path first (e.g., uploads/entregas/file.pdf),
+   * then falls back to flat path (uploads/file.pdf) for legacy files.
    */
-  getUploadPath(filename: string): string {
-    const fullPath = path.join(UPLOADS_DIR, filename);
-    if (!fs.existsSync(fullPath)) throw new NotFoundException('Archivo no encontrado');
-    return fullPath;
+  getUploadPath(key: string): string {
+    // Try organized path first (key may be "entregas/123-abc.pdf")
+    const organizedPath = path.join(UPLOADS_DIR, key);
+    if (fs.existsSync(organizedPath) && !fs.statSync(organizedPath).isDirectory()) {
+      return organizedPath;
+    }
+
+    // Fallback: flat legacy path (just the basename)
+    const flatPath = path.join(UPLOADS_DIR, path.basename(key));
+    if (fs.existsSync(flatPath)) {
+      return flatPath;
+    }
+
+    throw new NotFoundException('Archivo no encontrado');
   }
 
   /**
-   * Check if a file exists locally (for legacy fallback).
+   * Check if a file exists locally (organized or legacy flat).
    */
-  existsLocally(filename: string): boolean {
-    return fs.existsSync(path.join(UPLOADS_DIR, filename));
+  existsLocally(key: string): boolean {
+    const organizedPath = path.join(UPLOADS_DIR, key);
+    if (fs.existsSync(organizedPath) && !fs.statSync(organizedPath).isDirectory()) {
+      return true;
+    }
+    return fs.existsSync(path.join(UPLOADS_DIR, path.basename(key)));
   }
 
   /**
@@ -230,21 +250,17 @@ export class StorageService {
   }
 
   /**
-   * R2-02: Delete a file from storage (R2 or local filesystem).
+   * Delete a file from storage (R2 and/or local filesystem).
    * Silently ignores if the file doesn't exist.
    */
   async deleteFile(filename: string): Promise<void> {
     if (!filename) return;
 
-    // For R2: use the full key (may include folder prefix like 'entregas/123-abc.docx')
-    // For local: use just the basename (flat storage)
-    const localName = path.basename(filename);
-
     if (this.useR2 && this.s3Client) {
       try {
         await this.s3Client.send(
           new DeleteObjectCommand({
-            Bucket: process.env.R2_BUCKET_NAME!,
+            Bucket: this.bucketName,
             Key: filename, // Full key including folder prefix
           }),
         );
@@ -254,14 +270,19 @@ export class StorageService {
       }
     }
 
-    // Always try local cleanup too (might exist as fallback copy)
-    const localPath = path.join(UPLOADS_DIR, localName);
-    if (fs.existsSync(localPath)) {
-      try {
-        fs.unlinkSync(localPath);
-        this.logger.log(`Deleted local file: ${localName}`);
-      } catch (err) {
-        this.logger.warn(`Failed to delete local file: ${localName}`, err);
+    // Try organized path first, then flat legacy path
+    const organizedPath = path.join(UPLOADS_DIR, filename);
+    const flatPath = path.join(UPLOADS_DIR, path.basename(filename));
+
+    for (const localPath of [organizedPath, flatPath]) {
+      if (fs.existsSync(localPath) && !fs.statSync(localPath).isDirectory()) {
+        try {
+          fs.unlinkSync(localPath);
+          this.logger.log(`Deleted local file: ${localPath}`);
+          break; // Only delete once
+        } catch (err) {
+          this.logger.warn(`Failed to delete local file: ${localPath}`, err);
+        }
       }
     }
   }

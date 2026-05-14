@@ -266,14 +266,20 @@ export class MailService implements OnModuleInit {
   }
 
   /**
-   * Send welcome email to newly approved users. User must set their own password.
+   * Send welcome email to newly approved users.
+   * F2.9: Includes a one-time invitation token for first password setup.
    */
-  async sendWelcomeEmail(email: string, nombre: string) {
+  async sendWelcomeEmail(email: string, nombre: string, invitationToken?: string) {
+    // Build the setup URL with the invitation token if provided
+    const setupUrl = invitationToken
+      ? `${this.appUrl}/login?setup=true&email=${encodeURIComponent(email)}&token=${invitationToken}`
+      : `${this.appUrl}/login`;
+
     // Try template system first (USUARIO_APROBADO)
     const rendered = await this.renderTemplate('USUARIO_APROBADO', {
       nombre,
       email,
-      url_campus: this.appUrl,
+      url_campus: setupUrl,
     });
 
     if (rendered) {
@@ -282,15 +288,18 @@ export class MailService implements OnModuleInit {
 
     // Fallback: hardcoded template if USUARIO_APROBADO event not seeded yet
     const subject = '🎓 ¡Bienvenido al Campus Virtual!';
+    const tokenNote = invitationToken
+      ? `<p style="margin:4px 0"><strong>🔐 Token de configuración:</strong> Tu enlace de acceso incluye un token de un solo uso para configurar tu contraseña.</p>`
+      : `<p style="margin:4px 0"><strong>🔐 Contraseña:</strong> Deberás configurarla en tu primer inicio de sesión.</p>`;
     const fallbackHtml = await this.wrapTemplate(`
-      <h2 style="color:#1e293b;margin:0 0 16px">¡Hola ${nombre}! 👋</h2>
+      <h2 style="color:#1e293b;margin:0 0 16px">¡Hola ${this.escapeHtml(nombre)}! 👋</h2>
       <p style="color:#64748b;font-size:15px;line-height:1.6">Tu solicitud de acceso ha sido <strong style="color:#10b981">aprobada</strong>.</p>
-      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:20px;margin:20px 0">
-        <p style="margin:4px 0"><strong>📧 Email:</strong> ${email}</p>
-        <p style="margin:4px 0"><strong>🔐 Contraseña:</strong> Deberás configurarla en tu primer inicio de sesión.</p>
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:20px;margin:20px 0">
+        <p style="margin:4px 0"><strong>📧 Email:</strong> ${this.escapeHtml(email)}</p>
+        ${tokenNote}
       </div>
       <div style="text-align:center;margin:32px 0">
-        <a href="${this.appUrl}" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px">Ir al Campus Virtual</a>
+        <a href="${setupUrl}" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:14px 36px;border-radius:8px;text-decoration:none;font-size:15px">Configurar Mi Contraseña</a>
       </div>
     `);
     return this.sendMail(email, subject, fallbackHtml);

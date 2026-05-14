@@ -229,13 +229,19 @@ export class UserService {
 
   /**
    * Create a user account directly (admin only).
-   * F1.2: Creates user WITHOUT password — they must set it on first login.
+   * F1.2/F2.9: Creates user WITHOUT password — generates a one-time invitation token
+   * that the user must use to set their first password.
    */
   async createUser(data: { nombre: string; apellido: string; email: string; rol: string }) {
     const existing = await this.prisma.usuarios.findUnique({ where: { email: data.email } });
     if (existing) {
       throw new BadRequestException('Ya existe un usuario con este correo electrónico.');
     }
+
+    // F2.9: Generate a one-time invitation token
+    const crypto = await import('crypto');
+    const rawInvitationToken = crypto.randomBytes(32).toString('hex');
+    const invitationTokenHash = crypto.createHash('sha256').update(rawInvitationToken).digest('hex');
 
     const user = await this.prisma.usuarios.create({
       data: {
@@ -245,6 +251,7 @@ export class UserService {
         rol: data.rol as any,
         contrasena: null,
         usa_clave_defecto: true,
+        invitacion_token_hash: invitationTokenHash,
       },
     });
 
@@ -254,8 +261,10 @@ export class UserService {
     this.logger.log(`Admin created user: ${data.email} (${data.rol})`);
 
     return {
-      message: `Usuario ${data.nombre} ${data.apellido} creado. Deberá configurar su contraseña en el primer inicio de sesión.`,
+      message: `Usuario ${data.nombre} ${data.apellido} creado. Deberá usar el token de invitación para configurar su contraseña.`,
       user: { guid: user.guid, email: user.email, nombre: user.nombre, apellido: user.apellido, rol: user.rol },
+      invitacionToken: rawInvitationToken, // Admin can share this with the user
     };
   }
 }
+

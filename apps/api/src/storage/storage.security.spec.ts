@@ -3,9 +3,14 @@
  * Tests the storage controller's Content-Disposition logic.
  */
 import { StorageService } from './storage.service';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 
 describe('StorageService — Sanitization (F12.5)', () => {
   let service: StorageService;
+  const createdFiles: string[] = [];
 
   beforeEach(() => {
     delete process.env.R2_ACCOUNT_ID;
@@ -13,6 +18,13 @@ describe('StorageService — Sanitization (F12.5)', () => {
     delete process.env.R2_SECRET_ACCESS_KEY;
     delete process.env.R2_PUBLIC_URL;
     service = new StorageService();
+  });
+
+  afterAll(() => {
+    for (const file of createdFiles) {
+      const fullPath = path.join(UPLOADS_DIR, file);
+      if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+    }
   });
 
   describe('file extension validation', () => {
@@ -68,6 +80,7 @@ describe('StorageService — Sanitization (F12.5)', () => {
       validPdf.write('%PDF-1.4');
 
       const result = await service.uploadFromBuffer(validPdf, 'doc.pdf');
+      createdFiles.push(result);
       expect(result).toContain('.pdf');
     });
   });
@@ -79,6 +92,7 @@ describe('StorageService — Sanitization (F12.5)', () => {
 
       // Folder should be sanitized or rejected
       const result = await service.uploadFromBuffer(buffer, 'test.pdf', 'portadas');
+      createdFiles.push(result);
       expect(result).toContain('portadas/');
       expect(result).not.toContain('..');
     });
@@ -89,6 +103,7 @@ describe('StorageService — Sanitization (F12.5)', () => {
     it('should allow .svg upload (security is at download layer: Content-Disposition: attachment)', async () => {
       const svgContent = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert("xss")</script></svg>');
       const result = await service.uploadFromBuffer(svgContent, 'malicious.svg');
+      createdFiles.push(result);
       expect(result).toContain('.svg');
     });
 

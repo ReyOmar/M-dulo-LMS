@@ -1,11 +1,16 @@
 import { StorageService } from './storage.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 
 // We test the StorageService in LOCAL mode (no R2 credentials in env)
 // This tests validation logic, file URL generation, and magic bytes
 
 describe('StorageService', () => {
   let service: StorageService;
+  const createdFiles: string[] = [];
 
   beforeEach(() => {
     // Clear R2 env vars to force local mode
@@ -14,6 +19,16 @@ describe('StorageService', () => {
     delete process.env.R2_SECRET_ACCESS_KEY;
     delete process.env.R2_PUBLIC_URL;
     service = new StorageService();
+  });
+
+  // Cleanup test-generated files
+  afterAll(() => {
+    for (const file of createdFiles) {
+      const fullPath = path.join(UPLOADS_DIR, file);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+    }
   });
 
   // ── UPLOAD VALIDATION ──────────────────────────────────
@@ -46,6 +61,7 @@ describe('StorageService', () => {
       pdfBuffer.write('%PDF-1.4');
 
       const result = await service.uploadFromBuffer(pdfBuffer, 'document.pdf', 'entregas');
+      createdFiles.push(result);
 
       expect(result).toContain('.pdf');
       expect(result).toContain('entregas/');
@@ -60,6 +76,7 @@ describe('StorageService', () => {
       pngBuffer[3] = 0x47;
 
       const result = await service.uploadFromBuffer(pngBuffer, 'photo.png');
+      createdFiles.push(result);
 
       expect(result).toContain('.png');
     });
@@ -84,6 +101,7 @@ describe('StorageService', () => {
       const txtBuffer = Buffer.from('Hello, this is a plain text file content for testing');
 
       const result = await service.uploadFromBuffer(txtBuffer, 'notes.txt');
+      createdFiles.push(result);
 
       expect(result).toContain('.txt');
     });
@@ -94,6 +112,7 @@ describe('StorageService', () => {
 
       const result1 = await service.uploadFromBuffer(buffer, 'test.pdf');
       const result2 = await service.uploadFromBuffer(buffer, 'test.pdf');
+      createdFiles.push(result1, result2);
 
       expect(result1).not.toBe(result2);
     });

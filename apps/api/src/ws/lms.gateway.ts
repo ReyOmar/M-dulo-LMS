@@ -189,6 +189,26 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
         try {
           const msg = JSON.parse(raw.toString());
           if (msg.action === 'course:lock' && msg.curso_guid && connectedClient.guid) {
+            // F9.10: Only ADMINISTRADOR and PROFESOR can lock courses
+            if (connectedClient.role !== 'ADMINISTRADOR' && connectedClient.role !== 'PROFESOR') {
+              return; // Silently ignore — students cannot lock courses
+            }
+
+            // F9.10: PROFESOR must own the course
+            if (connectedClient.role === 'PROFESOR') {
+              try {
+                const course = await this.prisma.lms_cursos.findUnique({
+                  where: { guid: msg.curso_guid },
+                  select: { profesor_guid: true },
+                });
+                if (!course || course.profesor_guid !== connectedClient.guid) {
+                  return; // Professor doesn't own this course — silently ignore
+                }
+              } catch {
+                return;
+              }
+            }
+
             // Look up user name
             let nombre = 'Usuario';
             try {
@@ -205,7 +225,8 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
           }
           if (msg.action === 'course:unlock' && msg.curso_guid) {
             const current = this.courseEditors.get(msg.curso_guid);
-            if (current && current.guid === connectedClient.guid) {
+            // F9.10: Only the current editor or an admin can unlock
+            if (current && (current.guid === connectedClient.guid || connectedClient.role === 'ADMINISTRADOR')) {
               this.courseEditors.delete(msg.curso_guid);
               this.broadcast('course:editing-released', { curso_guid: msg.curso_guid });
             }

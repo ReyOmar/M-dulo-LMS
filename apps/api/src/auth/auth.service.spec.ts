@@ -283,8 +283,8 @@ describe('AuthService', () => {
 
       expect(result.message).toContain('aprobada');
       expect(mockPrisma.$transaction).toHaveBeenCalled();
-      // F1.2: No longer passes temp password — user sets their own
-      expect(mockMailService.sendWelcomeEmail).toHaveBeenCalledWith('new@pesv.com', 'Nuevo');
+      // F2.9: Now passes invitation token for secure password setup
+      expect(mockMailService.sendWelcomeEmail).toHaveBeenCalledWith('new@pesv.com', 'Nuevo', expect.any(String));
     });
 
     it('should throw NotFoundException for non-existent request', async () => {

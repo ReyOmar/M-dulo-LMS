@@ -52,7 +52,7 @@ interface CursoAsignado {
 type TabType = 'ADMINISTRADOR' | 'PROFESOR' | 'ESTUDIANTE';
 
 export default function BaseUsuarios() {
-  const { realRole, user } = useRole();
+  const { role, user } = useRole();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
@@ -70,13 +70,13 @@ export default function BaseUsuarios() {
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    if (realRole === 'admin') {
+    if (role === 'admin') {
       fetchUsuarios();
     }
-  }, [realRole]);
+  }, [role]);
 
   useEffect(() => {
-    if (realRole !== 'admin') return;
+    if (role !== 'admin') return;
 
     // Auto-refresh user list when new users are created or deleted via WS
     const unsub1 = subscribe('user:created', fetchUsuarios);
@@ -113,7 +113,7 @@ export default function BaseUsuarios() {
       unsub4();
       unsub_presence();
     };
-  }, [realRole, subscribe, selectedUser]);
+  }, [role, subscribe, selectedUser]);
 
   // Tick every 60s to re-render relative time labels ("Hace X min")
   const [, setTick] = useState(0);
@@ -238,7 +238,7 @@ export default function BaseUsuarios() {
     return matchesSearch && matchesTab;
   });
 
-  if (realRole !== 'admin') {
+  if (role !== 'admin') {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] animate-in fade-in">
         <ShieldAlert className="h-16 w-16 text-red-500 mb-4" />
