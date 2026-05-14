@@ -68,16 +68,20 @@ export class ChatService {
     });
 
     // Also broadcast the message event directly
-    this.lmsGateway.broadcast('message:new', {
-      id: mensaje.id,
-      remitente_guid: data.remitente_guid,
-      remitente_nombre: nombreRemitente,
-      asunto: data.asunto,
-      contenido: data.contenido,
-      ref_tipo: data.ref_tipo,
-      ref_guid: data.ref_guid,
-      created_at: mensaje.created_at,
-    }, [data.destinatario_guid]);
+    this.lmsGateway.broadcast(
+      'message:new',
+      {
+        id: mensaje.id,
+        remitente_guid: data.remitente_guid,
+        remitente_nombre: nombreRemitente,
+        asunto: data.asunto,
+        contenido: data.contenido,
+        ref_tipo: data.ref_tipo,
+        ref_guid: data.ref_guid,
+        created_at: mensaje.created_at,
+      },
+      [data.destinatario_guid],
+    );
 
     return mensaje;
   }
@@ -106,10 +110,7 @@ export class ChatService {
   async getContactos(usuario_guid: string) {
     const mensajes = await this.prisma.lms_mensajes.findMany({
       where: {
-        OR: [
-          { remitente_guid: usuario_guid },
-          { destinatario_guid: usuario_guid },
-        ],
+        OR: [{ remitente_guid: usuario_guid }, { destinatario_guid: usuario_guid }],
       },
       orderBy: { created_at: 'desc' },
       include: {
@@ -197,18 +198,18 @@ export class ChatService {
         where: { usuario_guid },
         select: { curso_guid: true },
       });
-      courseGuids = matriculas.map(m => m.curso_guid);
+      courseGuids = matriculas.map((m) => m.curso_guid);
     } else {
       const cursos = await this.prisma.lms_cursos.findMany({
         where: { profesor_guid: usuario_guid },
         select: { guid: true },
       });
-      courseGuids = cursos.map(c => c.guid);
+      courseGuids = cursos.map((c) => c.guid);
       const matriculas = await this.prisma.lms_matriculas.findMany({
         where: { usuario_guid },
         select: { curso_guid: true },
       });
-      courseGuids.push(...matriculas.map(m => m.curso_guid));
+      courseGuids.push(...matriculas.map((m) => m.curso_guid));
     }
 
     if (courseGuids.length === 0) return [];
@@ -237,7 +238,10 @@ export class ChatService {
       }),
     ]);
 
-    const userMap = new Map<string, { guid: string; nombre: string; apellido: string; email: string; rol: string; cursos: string[] }>();
+    const userMap = new Map<
+      string,
+      { guid: string; nombre: string; apellido: string; email: string; rol: string; cursos: string[] }
+    >();
     for (const m of enrolledStudents) {
       const u = m.usuario;
       if (!userMap.has(u.guid)) {
@@ -258,23 +262,21 @@ export class ChatService {
     }
 
     const searchLower = search.toLowerCase();
-    const results = Array.from(userMap.values()).filter(u =>
-      `${u.nombre} ${u.apellido} ${u.email}`.toLowerCase().includes(searchLower)
+    const results = Array.from(userMap.values()).filter((u) =>
+      `${u.nombre} ${u.apellido} ${u.email}`.toLowerCase().includes(searchLower),
     );
 
     const existingContacts = await this.prisma.lms_contacto_chat.findMany({
       where: {
-        OR: [
-          { solicitante_guid: usuario_guid },
-          { receptor_guid: usuario_guid },
-        ],
+        OR: [{ solicitante_guid: usuario_guid }, { receptor_guid: usuario_guid }],
       },
     });
 
-    return results.map(u => {
-      const contact = existingContacts.find(c =>
-        (c.solicitante_guid === usuario_guid && c.receptor_guid === u.guid) ||
-        (c.receptor_guid === usuario_guid && c.solicitante_guid === u.guid)
+    return results.map((u) => {
+      const contact = existingContacts.find(
+        (c) =>
+          (c.solicitante_guid === usuario_guid && c.receptor_guid === u.guid) ||
+          (c.receptor_guid === usuario_guid && c.solicitante_guid === u.guid),
       );
       return {
         ...u,
@@ -379,15 +381,18 @@ export class ChatService {
       orderBy: { created_at: 'desc' },
     });
 
-    const guids = solicitudes.map(s => s.solicitante_guid);
-    const usuarios = guids.length > 0 ? await this.prisma.usuarios.findMany({
-      where: { guid: { in: guids } },
-      select: { guid: true, nombre: true, apellido: true, email: true, rol: true },
-    }) : [];
+    const guids = solicitudes.map((s) => s.solicitante_guid);
+    const usuarios =
+      guids.length > 0
+        ? await this.prisma.usuarios.findMany({
+            where: { guid: { in: guids } },
+            select: { guid: true, nombre: true, apellido: true, email: true, rol: true },
+          })
+        : [];
 
-    const userMap = new Map(usuarios.map(u => [u.guid, u]));
+    const userMap = new Map(usuarios.map((u) => [u.guid, u]));
 
-    return solicitudes.map(s => ({
+    return solicitudes.map((s) => ({
       ...s,
       solicitante: userMap.get(s.solicitante_guid) || null,
     }));
@@ -400,16 +405,13 @@ export class ChatService {
     const contactos = await this.prisma.lms_contacto_chat.findMany({
       where: {
         estado: 'ACEPTADO',
-        OR: [
-          { solicitante_guid: usuario_guid },
-          { receptor_guid: usuario_guid },
-        ],
+        OR: [{ solicitante_guid: usuario_guid }, { receptor_guid: usuario_guid }],
       },
     });
 
-    const contactGuids = [...new Set(contactos.map(c =>
-      c.solicitante_guid === usuario_guid ? c.receptor_guid : c.solicitante_guid
-    ))];
+    const contactGuids = [
+      ...new Set(contactos.map((c) => (c.solicitante_guid === usuario_guid ? c.receptor_guid : c.solicitante_guid))),
+    ];
 
     if (contactGuids.length === 0) return [];
 
@@ -452,7 +454,7 @@ export class ChatService {
       }
     }
 
-    const result = usuarios.map(u => {
+    const result = usuarios.map((u) => {
       const lastMsg = lastMsgMap.get(u.guid);
       return {
         guid: u.guid,
