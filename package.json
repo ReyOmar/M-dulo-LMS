@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "LMS PESV Education — Sistema de Gestión de Aprendizaje",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "init": "npm ci && concurrently --success all -n api,client -c green,cyan \"cd apps/api && npm ci && npx prisma generate\" \"cd apps/client && npm ci\"",
     "dev:api": "dotenv -e .env -- npm run dev --prefix apps/api",
