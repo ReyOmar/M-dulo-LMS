@@ -209,7 +209,7 @@ describe('AuthService', () => {
       email: 'new@pesv.com',
       nombre: 'Nuevo',
       apellido: 'Usuario',
-      rol_pedido: 'ESTUDIANTE',
+      rol_pedido: 'ESTUDIANTE' as const,
     };
 
     it('should create access request and return success', async () => {

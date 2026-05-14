@@ -10,6 +10,7 @@ import {
   BadRequestException,
   Req,
 } from '@nestjs/common';
+import { FastifyRequest } from 'fastify';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { UserService } from './user.service';
@@ -117,7 +118,7 @@ export class AuthController {
 
   @Roles('ADMINISTRADOR')
   @Delete('usuarios/:guid')
-  async deleteUser(@Param('guid') guid: string, @CurrentUser() currentUser: any) {
+  async deleteUser(@Param('guid') guid: string, @CurrentUser() currentUser: JwtPayload) {
     return this.userService.deleteUser(guid, currentUser?.sub);
   }
 
@@ -154,7 +155,7 @@ export class AuthController {
   // ── Profile photo management (Fastify multipart) ──
 
   @Post('perfil/:guid/foto')
-  async uploadPhoto(@Param('guid') guid: string, @CurrentUser() user: JwtPayload, @Req() req: any) {
+  async uploadPhoto(@Param('guid') guid: string, @CurrentUser() user: JwtPayload, @Req() req: FastifyRequest) {
     if (user && user.sub !== guid && user.role !== 'ADMINISTRADOR') {
       throw new ForbiddenException('No tienes permiso para modificar este perfil.');
     }

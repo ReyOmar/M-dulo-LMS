@@ -33,19 +33,15 @@ describe('CursosService — IDOR & Ownership (F12.1)', () => {
         profesor_guid: 'prof-guid',
       });
 
-      await expect(
-        service.verificarAccesoCurso('curso-1', 'prof-guid', 'PROFESOR'),
-      ).resolves.not.toThrow();
+      await expect(service.verificarAccesoCurso('curso-1', 'prof-guid', 'PROFESOR')).resolves.not.toThrow();
     });
 
-    it('F12.1: should DENY PROFESOR access to another professor\'s course', async () => {
+    it("F12.1: should DENY PROFESOR access to another professor's course", async () => {
       mockPrisma.lms_cursos.findUnique.mockResolvedValue({
         profesor_guid: 'other-prof-guid',
       });
 
-      await expect(
-        service.verificarAccesoCurso('curso-1', 'prof-guid', 'PROFESOR'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.verificarAccesoCurso('curso-1', 'prof-guid', 'PROFESOR')).rejects.toThrow(NotFoundException);
     });
 
     it('F12.1: should allow ESTUDIANTE to access enrolled course', async () => {
@@ -57,9 +53,7 @@ describe('CursosService — IDOR & Ownership (F12.1)', () => {
         curso_guid: 'curso-1',
       });
 
-      await expect(
-        service.verificarAccesoCurso('curso-1', 'student-guid', 'ESTUDIANTE'),
-      ).resolves.not.toThrow();
+      await expect(service.verificarAccesoCurso('curso-1', 'student-guid', 'ESTUDIANTE')).resolves.not.toThrow();
     });
 
     it('F12.1: should DENY ESTUDIANTE access to non-enrolled course', async () => {
@@ -68,17 +62,17 @@ describe('CursosService — IDOR & Ownership (F12.1)', () => {
       });
       mockPrisma.lms_matriculas.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.verificarAccesoCurso('curso-1', 'ajeno-guid', 'ESTUDIANTE'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.verificarAccesoCurso('curso-1', 'ajeno-guid', 'ESTUDIANTE')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('F12.1: should throw NotFoundException for non-existent course', async () => {
       mockPrisma.lms_cursos.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.verificarAccesoCurso('nonexistent', 'any-guid', 'ESTUDIANTE'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.verificarAccesoCurso('nonexistent', 'any-guid', 'ESTUDIANTE')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('F12.1: IDOR — error message should NOT reveal course exists', async () => {

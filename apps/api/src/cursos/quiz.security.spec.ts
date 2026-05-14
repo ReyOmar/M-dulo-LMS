@@ -40,9 +40,9 @@ describe('QuizService — Business Logic (F12.4)', () => {
       });
       mockPrisma.lms_matriculas.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.verificarMatricula('recurso-1', 'student-not-enrolled'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.verificarMatricula('recurso-1', 'student-not-enrolled')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should allow enrolled student', async () => {
@@ -54,17 +54,13 @@ describe('QuizService — Business Logic (F12.4)', () => {
         curso_guid: 'curso-1',
       });
 
-      await expect(
-        service.verificarMatricula('recurso-1', 'student-enrolled'),
-      ).resolves.not.toThrow();
+      await expect(service.verificarMatricula('recurso-1', 'student-enrolled')).resolves.not.toThrow();
     });
 
     it('should reject non-existent resource', async () => {
       mockPrisma.lms_recursos.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.verificarMatricula('fake-recurso', 'any-user'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.verificarMatricula('fake-recurso', 'any-user')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -76,9 +72,7 @@ describe('QuizService — Business Logic (F12.4)', () => {
         quiz_config: null,
       });
 
-      await expect(
-        service.startQuiz('recurso-1', 'user-1'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.startQuiz('recurso-1', 'user-1')).rejects.toThrow(BadRequestException);
     });
 
     it('should reject when max attempts reached', async () => {
@@ -94,9 +88,7 @@ describe('QuizService — Business Logic (F12.4)', () => {
       // Progress exists (so not stale)
       mockPrisma.lms_progreso_recurso.findFirst.mockResolvedValue({ id: 1 });
 
-      await expect(
-        service.startQuiz('recurso-1', 'user-1'),
-      ).rejects.toThrow('límite');
+      await expect(service.startQuiz('recurso-1', 'user-1')).rejects.toThrow('límite');
     });
 
     it('should return existing BORRADOR if one exists', async () => {

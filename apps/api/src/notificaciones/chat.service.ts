@@ -26,6 +26,27 @@ export class ChatService {
     ref_tipo?: string;
     ref_guid?: string;
   }) {
+    // F4.7: Validate contact relationship — users can only message approved contacts
+    const contacto = await this.prisma.lms_contacto_chat.findFirst({
+      where: {
+        estado: 'ACEPTADO',
+        OR: [
+          { solicitante_guid: data.remitente_guid, receptor_guid: data.destinatario_guid },
+          { solicitante_guid: data.destinatario_guid, receptor_guid: data.remitente_guid },
+        ],
+      },
+    });
+    if (!contacto) {
+      // Also allow if sender is ADMIN (bypass contact requirement)
+      const sender = await this.prisma.usuarios.findUnique({
+        where: { guid: data.remitente_guid },
+        select: { rol: true },
+      });
+      if (!sender || sender.rol !== 'ADMINISTRADOR') {
+        throw new Error('No puedes enviar mensajes a este usuario. Debes ser contacto aprobado.');
+      }
+    }
+
     const mensaje = await this.prisma.lms_mensajes.create({ data });
 
     // Look up sender name for the notification

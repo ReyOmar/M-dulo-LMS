@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { LmsGateway } from '../ws/lms.gateway';
+import { lms_rol_usuario } from '@prisma/client';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
@@ -22,7 +23,7 @@ export class AuthService {
     private mailService: MailService,
   ) {}
 
-  async requestAccess(dto: { email: string; nombre: string; apellido: string; rol_pedido: any }) {
+  async requestAccess(dto: { email: string; nombre: string; apellido: string; rol_pedido: lms_rol_usuario }) {
     const existingUser = await this.prisma.usuarios.findUnique({ where: { email: dto.email } });
     if (existingUser) {
       throw new BadRequestException('El usuario ya existe en el sistema.');
@@ -245,7 +246,7 @@ export class AuthService {
   /**
    * Notify via WebSocket after approve/reject outside the transaction.
    */
-  notifyRequestResolved(action: 'approved' | 'rejected', requestData?: any): void {
+  notifyRequestResolved(action: 'approved' | 'rejected', requestData?: Record<string, unknown>): void {
     this.lmsGateway.broadcast('request:resolved', { action, ...requestData });
     if (action === 'approved') {
       this.lmsGateway.broadcast('user:created', requestData);

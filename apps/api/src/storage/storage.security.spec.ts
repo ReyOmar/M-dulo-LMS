@@ -17,28 +17,23 @@ describe('StorageService — Sanitization (F12.5)', () => {
 
   describe('file extension validation', () => {
     it('should block .exe files', async () => {
-      await expect(service.uploadFromBuffer(Buffer.from('MZ'), 'virus.exe'))
-        .rejects.toThrow('no permitido');
+      await expect(service.uploadFromBuffer(Buffer.from('MZ'), 'virus.exe')).rejects.toThrow('no permitido');
     });
 
     it('should block .sh files', async () => {
-      await expect(service.uploadFromBuffer(Buffer.from('#!/bin/bash'), 'hack.sh'))
-        .rejects.toThrow();
+      await expect(service.uploadFromBuffer(Buffer.from('#!/bin/bash'), 'hack.sh')).rejects.toThrow();
     });
 
     it('should block .bat files', async () => {
-      await expect(service.uploadFromBuffer(Buffer.from('@echo off'), 'run.bat'))
-        .rejects.toThrow();
+      await expect(service.uploadFromBuffer(Buffer.from('@echo off'), 'run.bat')).rejects.toThrow();
     });
 
     it('should block .php files', async () => {
-      await expect(service.uploadFromBuffer(Buffer.from('<?php'), 'shell.php'))
-        .rejects.toThrow();
+      await expect(service.uploadFromBuffer(Buffer.from('<?php'), 'shell.php')).rejects.toThrow();
     });
 
     it('should block .js files', async () => {
-      await expect(service.uploadFromBuffer(Buffer.from('alert(1)'), 'xss.js'))
-        .rejects.toThrow();
+      await expect(service.uploadFromBuffer(Buffer.from('alert(1)'), 'xss.js')).rejects.toThrow();
     });
   });
 
@@ -47,19 +42,17 @@ describe('StorageService — Sanitization (F12.5)', () => {
       const spoofBuffer = Buffer.alloc(1024);
       spoofBuffer.write('%PDF-1.4');
 
-      await expect(service.uploadFromBuffer(spoofBuffer, 'fake.png'))
-        .rejects.toThrow('no coincide');
+      await expect(service.uploadFromBuffer(spoofBuffer, 'fake.png')).rejects.toThrow('no coincide');
     });
 
     it('should reject PNG content disguised as .jpg', async () => {
       const pngBuffer = Buffer.alloc(1024);
       pngBuffer[0] = 0x89;
       pngBuffer[1] = 0x50;
-      pngBuffer[2] = 0x4E;
+      pngBuffer[2] = 0x4e;
       pngBuffer[3] = 0x47;
 
-      await expect(service.uploadFromBuffer(pngBuffer, 'disguised.jpg'))
-        .rejects.toThrow();
+      await expect(service.uploadFromBuffer(pngBuffer, 'disguised.jpg')).rejects.toThrow();
     });
   });
 
@@ -67,8 +60,7 @@ describe('StorageService — Sanitization (F12.5)', () => {
     it('should reject files over 50MB', async () => {
       const massive = Buffer.alloc(51 * 1024 * 1024);
 
-      await expect(service.uploadFromBuffer(massive, 'huge.pdf'))
-        .rejects.toThrow('tamaño máximo');
+      await expect(service.uploadFromBuffer(massive, 'huge.pdf')).rejects.toThrow('tamaño máximo');
     });
 
     it('should accept files under 50MB', async () => {
