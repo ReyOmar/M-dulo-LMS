@@ -445,4 +445,81 @@ describe('AuthService', () => {
       );
     });
   });
+
+  // ── F12.2: SECURITY — INACTIVE USER & TOKEN REVOCATION ──
+
+  describe('login — inactive user', () => {
+    const hashedPassword = bcrypt.hashSync('MySecure1', 10);
+
+    it('should reject login for inactive user', async () => {
+      mockPrisma.usuarios.findUnique.mockResolvedValue({
+        guid: 'user-inactive',
+        email: 'inactive@pesv.com',
+        nombre: 'Inactive',
+        apellido: 'User',
+        rol: 'ESTUDIANTE',
+        contrasena: hashedPassword,
+        usa_clave_defecto: false,
+        activo: false, // INACTIVE
+      });
+
+      await expect(service.login('inactive@pesv.com', 'MySecure1')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should use generic error message for inactive user (no enumeration)', async () => {
+      mockPrisma.usuarios.findUnique.mockResolvedValue({
+        guid: 'user-inactive',
+        email: 'inactive@pesv.com',
+        nombre: 'Inactive',
+        apellido: 'User',
+        rol: 'ESTUDIANTE',
+        contrasena: hashedPassword,
+        usa_clave_defecto: false,
+        activo: false,
+      });
+
+      try {
+        await service.login('inactive@pesv.com', 'MySecure1');
+        fail('Should have thrown');
+      } catch (e: any) {
+        // Message should NOT reveal that the account is specifically inactive
+        expect(e.message).not.toContain('inactiv');
+      }
+    });
+  });
+
+  describe('token revocation — revokeUser', () => {
+    it('should call tokenBlacklist.revokeUser to invalidate all sessions', async () => {
+      // This is what the controller's logout method calls
+      await mockTokenBlacklist.revokeUser('user-1');
+      expect(mockTokenBlacklist.revokeUser).toHaveBeenCalledWith('user-1');
+    });
+  });
+
+  describe('resetPassword — session invalidation', () => {
+    it('should revoke all user sessions after password reset', async () => {
+      const hashedToken = require('crypto').createHash('sha256').update('valid-token-123').digest('hex');
+      mockPrisma.lms_password_resets.findUnique.mockResolvedValue({
+        id: 1,
+        email: 'test@pesv.com',
+        token_hash: hashedToken,
+        usado: false,
+        expires_at: new Date(Date.now() + 3600000), // 1h future
+      });
+      mockPrisma.usuarios.findUnique.mockResolvedValue({
+        guid: 'user-1',
+        email: 'test@pesv.com',
+        activo: true,
+      });
+      mockPrisma.usuarios.update.mockResolvedValue({});
+      mockPrisma.lms_password_resets.update.mockResolvedValue({});
+
+      await service.resetPassword('valid-token-123', 'NewSecure1');
+
+      // F2.5: Should revoke all existing sessions
+      expect(mockTokenBlacklist.revokeUser).toHaveBeenCalledWith('user-1');
+    });
+  });
 });

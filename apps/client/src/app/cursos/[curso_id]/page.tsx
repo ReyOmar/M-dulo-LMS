@@ -769,22 +769,40 @@ export default function CursoVisorPage() {
               {/* ENLACE (Video) */}
               {selectedRecurso.tipo === 'ENLACE' && (
                 <div className="space-y-6">
-                  {selectedRecurso.contenido_html?.includes('youtube.com/watch?v=') && (
-                    <div
-                      className="w-full rounded-2xl overflow-hidden border border-border shadow-sm"
-                      dangerouslySetInnerHTML={{
-                        __html: `<lite-youtube videoid="${new URL(selectedRecurso.contenido_html).searchParams.get('v')}"></lite-youtube>`,
-                      }}
-                    />
-                  )}
-                  {selectedRecurso.contenido_html?.includes('youtu.be/') && (
-                    <div
-                      className="w-full rounded-2xl overflow-hidden border border-border shadow-sm"
-                      dangerouslySetInnerHTML={{
-                        __html: `<lite-youtube videoid="${selectedRecurso.contenido_html.split('youtu.be/')[1].split('?')[0]}"></lite-youtube>`,
-                      }}
-                    />
-                  )}
+                  {selectedRecurso.contenido_html?.includes('youtube.com/watch?v=') && (() => {
+                    try {
+                      const videoId = new URL(selectedRecurso.contenido_html).searchParams.get('v')?.replace(/[^a-zA-Z0-9_-]/g, '') || '';
+                      return (
+                        <div className="w-full rounded-2xl overflow-hidden border border-border shadow-sm">
+                          <iframe
+                            src={`https://www.youtube-nocookie.com/embed/${videoId}`}
+                            className="w-full aspect-video"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            loading="lazy"
+                            title="Video del recurso"
+                          />
+                        </div>
+                      );
+                    } catch { return null; }
+                  })()}
+                  {selectedRecurso.contenido_html?.includes('youtu.be/') && (() => {
+                    try {
+                      const videoId = (selectedRecurso.contenido_html.split('youtu.be/')[1]?.split('?')[0] || '').replace(/[^a-zA-Z0-9_-]/g, '');
+                      return (
+                        <div className="w-full rounded-2xl overflow-hidden border border-border shadow-sm">
+                          <iframe
+                            src={`https://www.youtube-nocookie.com/embed/${videoId}`}
+                            className="w-full aspect-video"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            loading="lazy"
+                            title="Video del recurso"
+                          />
+                        </div>
+                      );
+                    } catch { return null; }
+                  })()}
                   {!selectedRecurso.contenido_html && (
                     <div className="w-full h-64 bg-muted/20 border border-dashed border-border rounded-2xl flex items-center justify-center text-muted-foreground">
                       <PlayCircle className="h-12 w-12 opacity-30" />

@@ -83,4 +83,23 @@ describe('StorageService — Sanitization (F12.5)', () => {
       expect(result).not.toContain('..');
     });
   });
+
+  // F12.3: SVG malicious content
+  describe('SVG blocking (F5.3)', () => {
+    it('should allow .svg upload (security is at download layer: Content-Disposition: attachment)', async () => {
+      const svgContent = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert("xss")</script></svg>');
+      const result = await service.uploadFromBuffer(svgContent, 'malicious.svg');
+      expect(result).toContain('.svg');
+    });
+
+    it('should block .html files', async () => {
+      const htmlContent = Buffer.from('<html><body><script>alert(1)</script></body></html>');
+      await expect(service.uploadFromBuffer(htmlContent, 'page.html')).rejects.toThrow();
+    });
+
+    it('should block double extensions like .pdf.exe', async () => {
+      const buffer = Buffer.from('MZ');
+      await expect(service.uploadFromBuffer(buffer, 'report.pdf.exe')).rejects.toThrow();
+    });
+  });
 });
