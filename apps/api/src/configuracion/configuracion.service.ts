@@ -7,6 +7,19 @@ import { UpdateConfiguracionDto } from './dto/update-configuracion.dto';
 /** Fields in lms_configuracion that reference uploaded files */
 const FILE_FIELDS = ['logo_url', 'favicon_url', 'login_fondo_url'] as const;
 
+// F9.6: Fields that must NEVER be broadcast via WebSocket
+const SENSITIVE_CONFIG_FIELDS = ['contrasena_defecto', 'email_remitente', 'email_nombre'];
+
+/** Strip sensitive fields before broadcasting config via WS */
+function sanitizeConfigForBroadcast(config: any): any {
+  if (!config) return config;
+  const clean = { ...config };
+  for (const field of SENSITIVE_CONFIG_FIELDS) {
+    delete clean[field];
+  }
+  return clean;
+}
+
 @Injectable()
 export class ConfiguracionService implements OnModuleInit {
   private readonly logger = new Logger(ConfiguracionService.name);
@@ -117,7 +130,7 @@ export class ConfiguracionService implements OnModuleInit {
     });
 
     this.invalidateCache();
-    this.lmsGateway.broadcast('config:updated', updated);
+    this.lmsGateway.broadcast('config:updated', sanitizeConfigForBroadcast(updated));
     return updated;
   }
 
@@ -188,7 +201,7 @@ export class ConfiguracionService implements OnModuleInit {
       where: { id: 1 },
       data,
     });
-    this.lmsGateway.broadcast('config:updated', updated);
+    this.lmsGateway.broadcast('config:updated', sanitizeConfigForBroadcast(updated));
     return updated;
   }
 

@@ -7,9 +7,24 @@ import * as crypto from 'crypto';
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 
 const ALLOWED_EXTENSIONS = [
-  '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx',
-  '.txt', '.zip', '.rar', '.png', '.jpg', '.jpeg', '.gif', '.webp',
-  '.mp4', '.mp3', '.svg',
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.ppt',
+  '.pptx',
+  '.xls',
+  '.xlsx',
+  '.txt',
+  '.zip',
+  '.rar',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.mp4',
+  '.mp3',
+  '.svg',
 ];
 
 const MIME_MAP: Record<string, string> = {
@@ -96,12 +111,14 @@ export class StorageService {
 
     if (this.useR2 && this.s3Client) {
       // Upload to Cloudflare R2 with folder prefix
-      await this.s3Client.send(new PutObjectCommand({
-        Bucket: this.bucketName,
-        Key: r2Key,
-        Body: buffer,
-        ContentType: contentType,
-      }));
+      await this.s3Client.send(
+        new PutObjectCommand({
+          Bucket: this.bucketName,
+          Key: r2Key,
+          Body: buffer,
+          ContentType: contentType,
+        }),
+      );
       this.logger.log(`☁️  Uploaded to R2: ${r2Key} (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
     } else {
       // Fallback: save to local uploads directory (flat, no subfolders for simplicity)
@@ -121,16 +138,17 @@ export class StorageService {
   async uploadToR2WithKey(buffer: Buffer, key: string, contentType = 'application/octet-stream'): Promise<boolean> {
     if (!this.useR2 || !this.s3Client) return false;
 
-    await this.s3Client.send(new PutObjectCommand({
-      Bucket: this.bucketName,
-      Key: key,
-      Body: buffer,
-      ContentType: contentType,
-    }));
+    await this.s3Client.send(
+      new PutObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+      }),
+    );
     this.logger.log(`☁️  Uploaded to R2: ${key} (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
     return true;
   }
-
 
   /**
    * Get the public URL for a file.
@@ -185,10 +203,12 @@ export class StorageService {
 
     try {
       const { GetObjectCommand } = await import('@aws-sdk/client-s3');
-      const response = await this.s3Client.send(new GetObjectCommand({
-        Bucket: this.bucketName,
-        Key: key,
-      }));
+      const response = await this.s3Client.send(
+        new GetObjectCommand({
+          Bucket: this.bucketName,
+          Key: key,
+        }),
+      );
 
       if (!response.Body) return null;
 
@@ -222,10 +242,12 @@ export class StorageService {
 
     if (this.useR2 && this.s3Client) {
       try {
-        await this.s3Client.send(new DeleteObjectCommand({
-          Bucket: process.env.R2_BUCKET_NAME!,
-          Key: filename, // Full key including folder prefix
-        }));
+        await this.s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME!,
+            Key: filename, // Full key including folder prefix
+          }),
+        );
         this.logger.log(`Deleted from R2: ${filename}`);
       } catch (err) {
         this.logger.warn(`Failed to delete from R2: ${filename}`, err);
@@ -254,27 +276,33 @@ export class StorageService {
 
     const SIGNATURES: Record<string, number[][]> = {
       '.pdf': [[0x25, 0x50, 0x44, 0x46]], // %PDF
-      '.png': [[0x89, 0x50, 0x4E, 0x47]], // PNG header
-      '.jpg': [[0xFF, 0xD8, 0xFF]],
-      '.jpeg': [[0xFF, 0xD8, 0xFF]],
+      '.png': [[0x89, 0x50, 0x4e, 0x47]], // PNG header
+      '.jpg': [[0xff, 0xd8, 0xff]],
+      '.jpeg': [[0xff, 0xd8, 0xff]],
       '.gif': [[0x47, 0x49, 0x46, 0x38]], // GIF8
-      '.zip': [[0x50, 0x4B, 0x03, 0x04], [0x50, 0x4B, 0x05, 0x06]], // PK
+      '.zip': [
+        [0x50, 0x4b, 0x03, 0x04],
+        [0x50, 0x4b, 0x05, 0x06],
+      ], // PK
       '.webp': [[0x52, 0x49, 0x46, 0x46]], // RIFF
       '.mp4': [], // MP4 has variable headers, skip check
-      '.mp3': [[0xFF, 0xFB], [0xFF, 0xF3], [0xFF, 0xF2], [0x49, 0x44, 0x33]], // MP3 frame sync or ID3
+      '.mp3': [
+        [0xff, 0xfb],
+        [0xff, 0xf3],
+        [0xff, 0xf2],
+        [0x49, 0x44, 0x33],
+      ], // MP3 frame sync or ID3
     };
 
     const expected = SIGNATURES[ext];
     if (!expected || expected.length === 0) return; // No signature to check
 
-    const matches = expected.some(sig =>
-      sig.every((byte, i) => buffer[i] === byte)
-    );
+    const matches = expected.some((sig) => sig.every((byte, i) => buffer[i] === byte));
 
     if (!matches) {
       this.logger.warn(`Magic byte mismatch for extension ${ext}: got ${buffer.slice(0, 4).toString('hex')}`);
       throw new BadRequestException(
-        `El contenido del archivo no coincide con la extensión ${ext}. Posible archivo corrupto o renombrado.`
+        `El contenido del archivo no coincide con la extensión ${ext}. Posible archivo corrupto o renombrado.`,
       );
     }
   }

@@ -8,26 +8,65 @@ import DOMPurify from 'dompurify';
 const DOMPURIFY_CONFIG = {
   ALLOWED_TAGS: [
     // Block elements
-    'p', 'div', 'br', 'hr',
-    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-    'blockquote', 'pre', 'code',
+    'p',
+    'div',
+    'br',
+    'hr',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'blockquote',
+    'pre',
+    'code',
     // Inline formatting
-    'b', 'i', 'u', 's', 'em', 'strong', 'sub', 'sup', 'mark', 'small', 'span',
+    'b',
+    'i',
+    'u',
+    's',
+    'em',
+    'strong',
+    'sub',
+    'sup',
+    'mark',
+    'small',
+    'span',
     // Lists
-    'ul', 'ol', 'li',
+    'ul',
+    'ol',
+    'li',
     // Links
     'a',
     // Media (images only)
     'img',
     // Tables
-    'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
+    'table',
+    'thead',
+    'tbody',
+    'tfoot',
+    'tr',
+    'th',
+    'td',
+    'caption',
+    'colgroup',
+    'col',
   ],
   ALLOWED_ATTR: [
-    'href', 'target', 'rel', 'title', 'alt',
-    'src', 'width', 'height',
+    'href',
+    'target',
+    'rel',
+    'title',
+    'alt',
+    'src',
+    'width',
+    'height',
     'class',
     // F5.6: 'style' handled via hook sanitization below
-    'colspan', 'rowspan', 'scope',
+    'colspan',
+    'rowspan',
+    'scope',
   ],
   ALLOW_DATA_ATTR: false,
   ADD_ATTR: ['target'],
@@ -36,7 +75,8 @@ const DOMPURIFY_CONFIG = {
 };
 
 // F5.6: CSS properties that are safe for rich text styling
-const SAFE_CSS_PROPS = /^(color|background-color|font-size|font-weight|font-style|text-align|text-decoration|margin|padding|border|line-height|display|width|height|max-width|min-height)$/i;
+const SAFE_CSS_PROPS =
+  /^(color|background-color|font-size|font-weight|font-style|text-align|text-decoration|margin|padding|border|line-height|display|width|height|max-width|min-height)$/i;
 const DANGEROUS_CSS_VALUES = /expression|url\s*\(|javascript:|behavior|moz-binding|-o-link/i;
 
 /**
@@ -72,8 +112,8 @@ export function sanitizeHTML(dirty: string): { __html: string } {
       } else {
         const safeParts = style
           .split(';')
-          .map(s => s.trim())
-          .filter(s => {
+          .map((s) => s.trim())
+          .filter((s) => {
             const [prop] = s.split(':');
             return prop && SAFE_CSS_PROPS.test(prop.trim());
           });
@@ -86,7 +126,10 @@ export function sanitizeHTML(dirty: string): { __html: string } {
     }
   });
 
-  const clean = DOMPurify.sanitize(dirty, { ...DOMPURIFY_CONFIG, ALLOWED_ATTR: [...DOMPURIFY_CONFIG.ALLOWED_ATTR, 'style'] });
+  const clean = DOMPurify.sanitize(dirty, {
+    ...DOMPURIFY_CONFIG,
+    ALLOWED_ATTR: [...DOMPURIFY_CONFIG.ALLOWED_ATTR, 'style'],
+  });
 
   // Remove the hook to avoid stacking on repeated calls
   DOMPurify.removeHook('afterSanitizeAttributes');

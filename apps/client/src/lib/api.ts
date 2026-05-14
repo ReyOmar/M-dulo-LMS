@@ -25,37 +25,41 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor — handle 401 by clearing session
+// Response interceptor — handle 401/403/429 centrally
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+    const status = error.response?.status;
+
+    if (status === 401 && typeof window !== 'undefined') {
       // Only redirect if not already on login page
       if (!window.location.pathname.includes('/login')) {
-        localStorage.removeItem('lms_token');
-        localStorage.removeItem('lms_user');
+        // F10.2: Clean ALL LMS-related localStorage keys
+        const keysToRemove = Object.keys(localStorage).filter((k) => k.startsWith('lms_'));
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
 
         // Differentiate between active revocation and normal token expiry.
-        // Backend sends specific messages for revoked/deleted accounts.
         const serverMessage = (error.response?.data?.message || '').toLowerCase();
         const isActiveRevocation =
           serverMessage.includes('revocada') ||
           serverMessage.includes('eliminada') ||
           serverMessage.includes('desactivada');
 
-        // Only redirect with expired/revoked params if user was on a protected page
         const isOnDashboard = window.location.pathname.startsWith('/dashboard');
         if (isOnDashboard) {
-          if (isActiveRevocation) {
-            window.location.href = '/login?revoked=true';
-          } else {
-            window.location.href = '/login?expired=true';
-          }
+          window.location.href = isActiveRevocation ? '/login?revoked=true' : '/login?expired=true';
         } else if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
       }
     }
+
+    // F10.4: Rate limiting — log but don't redirect
+    if (status === 429 && typeof window !== 'undefined') {
+      const retryAfter = error.response?.headers?.['retry-after'] || '60';
+      error.message = `Demasiadas solicitudes. Intenta de nuevo en ${retryAfter} segundos.`;
+    }
+
     return Promise.reject(error);
   },
 );
