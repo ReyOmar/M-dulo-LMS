@@ -66,17 +66,17 @@ describe('EvaluacionesService — Security', () => {
         leccion: { modulo: { curso: { profesor_guid: 'prof-1' } } },
       });
 
-      await expect(
-        service.getTodasEntregasParaTarea('tarea-1', 'prof-OTHER', 'PROFESOR'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.getTodasEntregasParaTarea('tarea-1', 'prof-OTHER', 'PROFESOR')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should DENY professor when tarea does not exist', async () => {
       mockPrisma.lms_recursos.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.getTodasEntregasParaTarea('nonexistent', 'prof-1', 'PROFESOR'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.getTodasEntregasParaTarea('nonexistent', 'prof-1', 'PROFESOR')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should allow admin to list submissions for ANY course', async () => {
@@ -119,9 +119,9 @@ describe('EvaluacionesService — Security', () => {
         tarea: { leccion: { modulo: { curso: { profesor_guid: 'prof-1' } } } },
       });
 
-      await expect(
-        service.calificarEntrega('e1', { calificacion: 4.0 }, 'prof-OTHER', 'PROFESOR'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.calificarEntrega('e1', { calificacion: 4.0 }, 'prof-OTHER', 'PROFESOR')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should allow admin to grade any submission', async () => {

@@ -163,7 +163,10 @@ describe('StorageController — F1.1/F1.2 Ownership Validation', () => {
       mockPrisma.lms_recursos.findFirst.mockResolvedValue({
         leccion: { modulo: { curso_guid: 'curso-guid', curso: { profesor_guid: 'prof-guid' } } },
       });
-      mockPrisma.lms_matriculas.findUnique.mockResolvedValue({ usuario_guid: 'student-guid', curso_guid: 'curso-guid' });
+      mockPrisma.lms_matriculas.findUnique.mockResolvedValue({
+        usuario_guid: 'student-guid',
+        curso_guid: 'curso-guid',
+      });
 
       await expect(callDownloadFile(studentOwner, 'recursos/doc.pdf')).resolves.toBeUndefined();
     });

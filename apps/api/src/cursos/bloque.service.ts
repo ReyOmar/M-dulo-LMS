@@ -187,9 +187,7 @@ export class BloqueService {
     const validGuids = new Set(validResources.map((r) => r.guid));
     const invalidGuids = recursos_guids.filter((guid) => !validGuids.has(guid));
     if (invalidGuids.length > 0) {
-      throw new BadRequestException(
-        `Los siguientes recursos no pertenecen a este módulo: ${invalidGuids.join(', ')}`,
-      );
+      throw new BadRequestException(`Los siguientes recursos no pertenecen a este módulo: ${invalidGuids.join(', ')}`);
     }
 
     const queries = recursos_guids.map((guid, index) => {

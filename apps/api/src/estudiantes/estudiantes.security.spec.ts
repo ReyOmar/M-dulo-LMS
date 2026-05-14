@@ -41,9 +41,7 @@ describe('EstudiantesService — Security', () => {
     it('should DENY unenrolled student', async () => {
       mockPrisma.lms_matriculas.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.getProgresoEstudiante('student-1', 'curso-1'),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.getProgresoEstudiante('student-1', 'curso-1')).rejects.toThrow(ForbiddenException);
     });
 
     it('should ALLOW enrolled student', async () => {
@@ -70,9 +68,7 @@ describe('EstudiantesService — Security', () => {
     it('should DENY unenrolled student', async () => {
       mockPrisma.lms_matriculas.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.registrarHeartbeat('student-1', 'curso-1'),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.registrarHeartbeat('student-1', 'curso-1')).rejects.toThrow(ForbiddenException);
     });
 
     it('should ALLOW enrolled student (new session)', async () => {
@@ -120,17 +116,13 @@ describe('EstudiantesService — Security', () => {
       });
       mockPrisma.lms_matriculas.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.marcarRecursoCompletado('student-1', 'recurso-1'),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.marcarRecursoCompletado('student-1', 'recurso-1')).rejects.toThrow(ForbiddenException);
     });
 
     it('should DENY when resource does not exist', async () => {
       mockPrisma.lms_recursos.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.marcarRecursoCompletado('student-1', 'nonexistent'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.marcarRecursoCompletado('student-1', 'nonexistent')).rejects.toThrow(NotFoundException);
     });
 
     it('should ALLOW enrolled student to mark resource complete', async () => {

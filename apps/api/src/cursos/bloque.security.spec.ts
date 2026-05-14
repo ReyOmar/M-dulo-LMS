@@ -47,37 +47,28 @@ describe('BloqueService — Security', () => {
 
     it('should accept valid GUIDs that belong to the module', async () => {
       mockPrisma.lms_modulos.findUnique.mockResolvedValue(mockModule);
-      mockPrisma.lms_recursos.findMany.mockResolvedValue([
-        { guid: 'r1' },
-        { guid: 'r2' },
-        { guid: 'r3' },
-      ]);
+      mockPrisma.lms_recursos.findMany.mockResolvedValue([{ guid: 'r1' }, { guid: 'r2' }, { guid: 'r3' }]);
       mockPrisma.lms_recursos.update.mockResolvedValue({});
 
-      await expect(
-        service.reorderBloques('mod-1', ['r1', 'r2', 'r3'], profOwner),
-      ).resolves.toBeDefined();
+      await expect(service.reorderBloques('mod-1', ['r1', 'r2', 'r3'], profOwner)).resolves.toBeDefined();
     });
 
     it('should REJECT external GUIDs not belonging to the module', async () => {
       mockPrisma.lms_modulos.findUnique.mockResolvedValue(mockModule);
-      mockPrisma.lms_recursos.findMany.mockResolvedValue([
-        { guid: 'r1' },
-        { guid: 'r2' },
-      ]);
+      mockPrisma.lms_recursos.findMany.mockResolvedValue([{ guid: 'r1' }, { guid: 'r2' }]);
 
-      await expect(
-        service.reorderBloques('mod-1', ['r1', 'r2', 'INJECTED-GUID'], profOwner),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.reorderBloques('mod-1', ['r1', 'r2', 'INJECTED-GUID'], profOwner)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should REJECT when all GUIDs are external', async () => {
       mockPrisma.lms_modulos.findUnique.mockResolvedValue(mockModule);
       mockPrisma.lms_recursos.findMany.mockResolvedValue([{ guid: 'r1' }]);
 
-      await expect(
-        service.reorderBloques('mod-1', ['fake-1', 'fake-2'], profOwner),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.reorderBloques('mod-1', ['fake-1', 'fake-2'], profOwner)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -91,9 +82,7 @@ describe('BloqueService — Security', () => {
         lecciones: [{ guid: 'leccion-1' }],
       });
 
-      await expect(
-        service.reorderBloques('mod-1', ['r1'], profOwner),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.reorderBloques('mod-1', ['r1'], profOwner)).rejects.toThrow(BadRequestException);
     });
 
     it('should BLOCK creating modules on published courses', async () => {
@@ -102,24 +91,24 @@ describe('BloqueService — Security', () => {
         profesor_guid: 'prof-1',
       });
 
-      await expect(
-        service.createModuloParaCurso('curso-1', { titulo: 'New' }, profOwner),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.createModuloParaCurso('curso-1', { titulo: 'New' }, profOwner)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   // ── Ownership ──
 
   describe('Professor ownership', () => {
-    it('should DENY professor modifying another professor\'s course', async () => {
+    it("should DENY professor modifying another professor's course", async () => {
       mockPrisma.lms_cursos.findUnique.mockResolvedValue({
         estado: 'BORRADOR',
         profesor_guid: 'prof-1',
       });
 
-      await expect(
-        service.createModuloParaCurso('curso-1', { titulo: 'Hack' }, profOther),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.createModuloParaCurso('curso-1', { titulo: 'Hack' }, profOther)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should ALLOW admin to modify any course', async () => {
@@ -131,9 +120,7 @@ describe('BloqueService — Security', () => {
       mockPrisma.lms_modulos.create.mockResolvedValue({ guid: 'new-mod' });
       mockPrisma.lms_lecciones.create.mockResolvedValue({});
 
-      await expect(
-        service.createModuloParaCurso('curso-1', { titulo: 'Admin Module' }, admin),
-      ).resolves.toBeDefined();
+      await expect(service.createModuloParaCurso('curso-1', { titulo: 'Admin Module' }, admin)).resolves.toBeDefined();
     });
 
     it('should DENY delete of a resource by non-owner professor', async () => {
@@ -142,9 +129,7 @@ describe('BloqueService — Security', () => {
         leccion: { modulo: { curso: { estado: 'BORRADOR', profesor_guid: 'prof-1' } } },
       });
 
-      await expect(
-        service.deleteBloque('r1', profOther),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.deleteBloque('r1', profOther)).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -154,17 +139,13 @@ describe('BloqueService — Security', () => {
     it('should throw NotFoundException for non-existent module', async () => {
       mockPrisma.lms_modulos.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.reorderBloques('nonexistent', ['r1'], profOwner),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.reorderBloques('nonexistent', ['r1'], profOwner)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException for non-existent resource', async () => {
       mockPrisma.lms_recursos.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.deleteBloque('nonexistent', profOwner),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.deleteBloque('nonexistent', profOwner)).rejects.toThrow(NotFoundException);
     });
   });
 });

@@ -67,10 +67,7 @@ export class EvaluacionesController {
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Get('/tareas/:tarea_guid/entregas')
-  async getTodasEntregasParaTarea(
-    @Param('tarea_guid') tarea_guid: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
+  async getTodasEntregasParaTarea(@Param('tarea_guid') tarea_guid: string, @CurrentUser() user: JwtPayload) {
     return this.evaluacionesService.getTodasEntregasParaTarea(tarea_guid, user.sub, user.role);
   }
 

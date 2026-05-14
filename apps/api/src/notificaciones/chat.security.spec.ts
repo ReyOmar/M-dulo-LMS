@@ -60,9 +60,9 @@ describe('ChatService — Security', () => {
       // Solicitante is not enrolled and not the professor
       mockPrisma.lms_matriculas.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.solicitarContacto('outsider', 'prof-1', 'curso-1'),
-      ).rejects.toThrow('No perteneces a este curso.');
+      await expect(service.solicitarContacto('outsider', 'prof-1', 'curso-1')).rejects.toThrow(
+        'No perteneces a este curso.',
+      );
     });
 
     it('should DENY when receptor is NOT in the course', async () => {
@@ -70,17 +70,17 @@ describe('ChatService — Security', () => {
       // Solicitante IS the professor, receptor is not enrolled
       mockPrisma.lms_matriculas.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.solicitarContacto('prof-1', 'outsider', 'curso-1'),
-      ).rejects.toThrow('El usuario no pertenece a este curso.');
+      await expect(service.solicitarContacto('prof-1', 'outsider', 'curso-1')).rejects.toThrow(
+        'El usuario no pertenece a este curso.',
+      );
     });
 
     it('should DENY when course does not exist', async () => {
       mockPrisma.lms_cursos.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.solicitarContacto('student-1', 'prof-1', 'nonexistent'),
-      ).rejects.toThrow('Curso no encontrado.');
+      await expect(service.solicitarContacto('student-1', 'prof-1', 'nonexistent')).rejects.toThrow(
+        'Curso no encontrado.',
+      );
     });
   });
 

@@ -1,8 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import {
-  FastifyAdapter,
-  NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -17,7 +14,7 @@ import { randomUUID } from 'crypto';
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ bodyLimit: 10485760 }) // 10MB for JSON bodies only
+    new FastifyAdapter({ bodyLimit: 10485760 }), // 10MB for JSON bodies only
   );
 
   // Enable gzip/brotli compression for all responses
@@ -29,7 +26,7 @@ async function bootstrap() {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],  // Swagger UI needs inline styles
+        styleSrc: ["'self'", "'unsafe-inline'"], // Swagger UI needs inline styles
         imgSrc: ["'self'", 'data:'],
         connectSrc: ["'self'"],
         fontSrc: ["'self'"],
@@ -40,7 +37,7 @@ async function bootstrap() {
       },
     },
     crossOriginEmbedderPolicy: false, // Allow embedding resources (images, fonts)
-    crossOriginResourcePolicy: false,  // Allow cross-origin <img>/<video> from frontend (different port/domain)
+    crossOriginResourcePolicy: false, // Allow cross-origin <img>/<video> from frontend (different port/domain)
   });
 
   // Enable multipart/form-data for file uploads (50MB limit)
@@ -96,7 +93,7 @@ async function bootstrap() {
     }
     done();
   });
-  
+
   const configService = app.get(ConfigService);
 
   // ── Security: Validate JWT_SECRET at startup ──
@@ -104,11 +101,13 @@ async function bootstrap() {
   const INSECURE_DEFAULTS = ['change_this_in_production', 'lms-super-secret-key-2026', 'secret', 'jwt_secret'];
   if (!jwtSecret || jwtSecret.length < 16 || INSECURE_DEFAULTS.includes(jwtSecret)) {
     console.error('\n❌ FATAL: JWT_SECRET is missing, too short (<16 chars), or using an insecure default.');
-    console.error('   Generate a secure one with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
+    console.error(
+      "   Generate a secure one with: node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\"",
+    );
     console.error('   Then set it in your .env file.\n');
     process.exit(1);
   }
-  
+
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalPipes(
@@ -134,7 +133,7 @@ async function bootstrap() {
       .setVersion('1.0')
       .addBearerAuth()
       .build();
-    
+
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('docs', app, document);
   }
