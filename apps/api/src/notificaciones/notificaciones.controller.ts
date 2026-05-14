@@ -85,7 +85,11 @@ export class NotificacionesController {
   }
 
   @Patch('chat/responder/:id')
-  async responderContacto(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Body() body: ResponderContactoDto) {
+  async responderContacto(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() body: ResponderContactoDto,
+  ) {
     return this.chatService.responderContacto(user.sub, parseInt(id, 10), body.aceptar);
   }
 

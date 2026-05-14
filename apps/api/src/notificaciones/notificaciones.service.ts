@@ -29,15 +29,19 @@ export class NotificacionesService {
     const notif = await this.prisma.lms_notificaciones.create({ data });
 
     // Broadcast to the specific user in real-time
-    this.lmsGateway.broadcast('notification:new', {
-      id: notif.id,
-      tipo: notif.tipo,
-      titulo: notif.titulo,
-      mensaje: notif.mensaje,
-      url_accion: notif.url_accion,
-      leida: false,
-      created_at: notif.created_at,
-    }, [data.usuario_guid]);
+    this.lmsGateway.broadcast(
+      'notification:new',
+      {
+        id: notif.id,
+        tipo: notif.tipo,
+        titulo: notif.titulo,
+        mensaje: notif.mensaje,
+        url_accion: notif.url_accion,
+        leida: false,
+        created_at: notif.created_at,
+      },
+      [data.usuario_guid],
+    );
 
     return notif;
   }

@@ -70,7 +70,7 @@ export default function MonitoreoEstudiantesPage() {
   const fetchMonitoreo = async (showLoading = true) => {
     try {
       if (showLoading && estudiantes.length === 0) setLoading(true);
-      const res = await api.get(`/dashboards/examiner/monitoreo?profesor_guid=${user?.guid}`);
+      const res = await api.get('/dashboards/examiner/monitoreo');
       const data = res.data;
       setEstudiantes(Array.isArray(data) ? data : []);
     } catch (err) {

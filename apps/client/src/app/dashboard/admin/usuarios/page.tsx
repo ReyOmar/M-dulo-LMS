@@ -752,8 +752,8 @@ export default function BaseUsuarios() {
                     Seguridad: Sin contraseña por defecto
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
-                    El administrador recibirá un correo y deberá configurar su propia contraseña segura
-                    en el primer inicio de sesión.
+                    El administrador recibirá un correo y deberá configurar su propia contraseña segura en el primer
+                    inicio de sesión.
                   </p>
                 </div>
               </div>

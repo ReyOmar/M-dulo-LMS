@@ -11,6 +11,7 @@ import { BadRequestException } from '@nestjs/common';
 const mockPrisma = {
   lms_entregas: {
     findFirst: jest.fn(),
+    findUnique: jest.fn(),
     findMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
@@ -201,7 +202,7 @@ describe('EvaluacionesService', () => {
         nombre: 'Student',
       });
 
-      const result = await service.calificarEntrega('entrega-1', { calificacion: 4.0 });
+      const result = await service.calificarEntrega('entrega-1', { calificacion: 4.0 }, 'admin-1', 'ADMINISTRADOR');
 
       expect(result.estado).toBe('CALIFICADA');
       expect(mockPrisma.lms_progreso_recurso.create).toHaveBeenCalled();
@@ -225,7 +226,7 @@ describe('EvaluacionesService', () => {
       });
       mockPrisma.usuarios.findUnique.mockResolvedValue(null);
 
-      await service.calificarEntrega('entrega-1', { calificacion: 2.0, comentario: 'Debe mejorar' });
+      await service.calificarEntrega('entrega-1', { calificacion: 2.0, comentario: 'Debe mejorar' }, 'admin-1', 'ADMINISTRADOR');
 
       expect(mockPrisma.lms_progreso_recurso.create).not.toHaveBeenCalled();
     });
@@ -245,7 +246,7 @@ describe('EvaluacionesService', () => {
       mockPrisma.lms_progreso_recurso.create.mockResolvedValue({});
       mockPrisma.usuarios.findUnique.mockResolvedValue(null);
 
-      await service.calificarEntrega('entrega-1', { calificacion: 3.5, comentario: 'Buen trabajo' });
+      await service.calificarEntrega('entrega-1', { calificacion: 3.5, comentario: 'Buen trabajo' }, 'admin-1', 'ADMINISTRADOR');
 
       expect(mockPrisma.lms_entregas.update).toHaveBeenCalledWith({
         where: { guid: 'entrega-1' },

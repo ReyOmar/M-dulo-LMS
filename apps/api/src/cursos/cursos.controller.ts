@@ -39,14 +39,15 @@ export class CursosController {
     throw new BadRequestException(`Rol no reconocido: ${userRole}`);
   }
 
+  @Roles('ADMINISTRADOR')
   @Get('/usuario-cursos')
   async getCursosPorUsuario(@Query('usuario_guid') usuario_guid: string, @Query('rol') rol: string) {
+    // F3.3: Admin-only endpoint for viewing another user's courses
     if (rol === 'ESTUDIANTE') {
       return this.cursosService.getCursosDeEstudianteConFecha(usuario_guid);
     } else if (rol === 'PROFESOR') {
       return this.cursosService.getCursosDeProfesorConFecha(usuario_guid);
     } else if (rol === 'ADMINISTRADOR') {
-      // Admin "created" courses = courses where they are profesor_guid (the owner/assignee)
       return this.cursosService.getCursosDeProfesorConFecha(usuario_guid);
     }
     return [];

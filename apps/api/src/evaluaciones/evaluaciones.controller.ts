@@ -75,7 +75,12 @@ export class EvaluacionesController {
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Patch('/entregas/:guid/calificar')
-  async calificarEntrega(@Param('guid') guid: string, @Body() body: CalificarEntregaDto) {
-    return this.evaluacionesService.calificarEntrega(guid, body);
+  async calificarEntrega(
+    @Param('guid') guid: string,
+    @Body() body: CalificarEntregaDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    // F3.6: Pass professor's GUID for ownership verification
+    return this.evaluacionesService.calificarEntrega(guid, body, user.sub, user.role);
   }
 }

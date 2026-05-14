@@ -22,8 +22,6 @@ export class AuthService {
     private mailService: MailService,
   ) {}
 
-
-
   async requestAccess(dto: { email: string; nombre: string; apellido: string; rol_pedido: any }) {
     const existingUser = await this.prisma.usuarios.findUnique({ where: { email: dto.email } });
     if (existingUser) {

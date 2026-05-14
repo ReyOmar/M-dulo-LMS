@@ -123,9 +123,7 @@ export class AuthController {
 
   @Roles('ADMINISTRADOR')
   @Post('usuarios/crear')
-  async createUser(
-    @Body() body: { nombre: string; apellido: string; email: string; rol: string },
-  ) {
+  async createUser(@Body() body: { nombre: string; apellido: string; email: string; rol: string }) {
     return this.userService.createUser(body);
   }
 

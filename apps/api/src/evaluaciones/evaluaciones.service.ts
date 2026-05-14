@@ -247,7 +247,30 @@ export class EvaluacionesService {
    * - Fire-and-forget: sends notification + grade email to student.
    * - If passing: triggers async certificate check for course completion.
    */
-  async calificarEntrega(guid: string, data: { calificacion: number; comentario?: string }) {
+  async calificarEntrega(
+    guid: string,
+    data: { calificacion: number; comentario?: string },
+    profesor_guid: string,
+    role: string,
+  ) {
+    // F3.6: Verify professor owns the course (admins skip this check)
+    if (role === 'PROFESOR') {
+      const submission = await this.prisma.lms_entregas.findUnique({
+        where: { guid },
+        select: {
+          tarea: {
+            select: {
+              leccion: { select: { modulo: { select: { curso: { select: { profesor_guid: true } } } } } },
+            },
+          },
+        },
+      });
+      const courseProfesorGuid = submission?.tarea?.leccion?.modulo?.curso?.profesor_guid;
+      if (courseProfesorGuid && courseProfesorGuid !== profesor_guid) {
+        throw new BadRequestException('No tienes permisos para calificar entregas de este curso.');
+      }
+    }
+
     const entrega = await this.prisma.lms_entregas.update({
       where: { guid },
       data: {

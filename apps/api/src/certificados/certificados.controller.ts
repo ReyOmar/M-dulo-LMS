@@ -15,10 +15,7 @@ export class CertificadosController {
    * Idempotent: returns existing certificate if already generated.
    */
   @Post('/generar')
-  async generarCertificado(
-    @CurrentUser() user: JwtPayload,
-    @Body() body: { curso_guid: string },
-  ) {
+  async generarCertificado(@CurrentUser() user: JwtPayload, @Body() body: { curso_guid: string }) {
     // F3.9: Always use authenticated user's GUID — no override
     return this.certificadosService.generarCertificado(user.sub, body.curso_guid);
   }
@@ -28,10 +25,7 @@ export class CertificadosController {
    * Must be defined BEFORE /:guid to avoid route conflict.
    */
   @Get('/verificar/:curso_guid')
-  async verificarCurso(
-    @Param('curso_guid') curso_guid: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
+  async verificarCurso(@Param('curso_guid') curso_guid: string, @CurrentUser() user: JwtPayload) {
     // F3.9: Always use authenticated user's GUID
     return this.certificadosService.verificarCursoCompleto(user.sub, curso_guid);
   }
@@ -40,9 +34,7 @@ export class CertificadosController {
    * List all certificates for the authenticated student.
    */
   @Get()
-  async getCertificados(
-    @CurrentUser() user: JwtPayload,
-  ) {
+  async getCertificados(@CurrentUser() user: JwtPayload) {
     // F3.9: Always use authenticated user's GUID
     return this.certificadosService.getCertificadosEstudiante(user.sub);
   }
@@ -57,7 +49,10 @@ export class CertificadosController {
 
     const stream = fs.createReadStream(filePath);
     reply.header('Content-Type', 'application/pdf');
-    reply.header('Content-Disposition', `attachment; filename="Certificado-${cert.curso.titulo.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, '')}.pdf"`);
+    reply.header(
+      'Content-Disposition',
+      `attachment; filename="Certificado-${cert.curso.titulo.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, '')}.pdf"`,
+    );
     return reply.send(stream);
   }
 

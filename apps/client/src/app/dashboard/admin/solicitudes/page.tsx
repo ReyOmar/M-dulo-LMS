@@ -48,8 +48,6 @@ export default function SolicitudesPendientes() {
     }
   };
 
-
-
   const handleAction = async (id: number, action: 'aprobar' | 'rechazar') => {
     setProcessing(id);
     try {
@@ -94,7 +92,6 @@ export default function SolicitudesPendientes() {
           </span>
         </p>
       </header>
-
 
       {/* ===== TABLA DE SOLICITUDES ===== */}
       {loading ? (

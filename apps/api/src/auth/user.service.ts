@@ -231,12 +231,7 @@ export class UserService {
    * Create a user account directly (admin only).
    * F1.2: Creates user WITHOUT password — they must set it on first login.
    */
-  async createUser(data: {
-    nombre: string;
-    apellido: string;
-    email: string;
-    rol: string;
-  }) {
+  async createUser(data: { nombre: string; apellido: string; email: string; rol: string }) {
     const existing = await this.prisma.usuarios.findUnique({ where: { email: data.email } });
     if (existing) {
       throw new BadRequestException('Ya existe un usuario con este correo electrónico.');
