@@ -82,7 +82,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     ws.onopen = () => {
       setIsConnected(true);
       retryCountRef.current = 0; // reset backoff
-      console.log('✅ LMS WebSocket conectado');
+      if (process.env.NODE_ENV === 'development') console.debug('WS: connected');
     };
 
     ws.onmessage = (evt) => {
@@ -189,7 +189,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000);
       retryCountRef.current += 1;
 
-      console.log(`🔌 WS Desconectado. Reconectando en ${delay / 1000}s...`);
+      if (process.env.NODE_ENV === 'development') console.debug(`WS: reconnecting in ${delay / 1000}s...`);
       reconnectTimeoutRef.current = setTimeout(connect, delay);
     };
 

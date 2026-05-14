@@ -25,13 +25,19 @@ const DOMPURIFY_CONFIG = {
   ALLOWED_ATTR: [
     'href', 'target', 'rel', 'title', 'alt',
     'src', 'width', 'height',
-    'class', 'style',
+    'class',
+    // F5.6: 'style' handled via hook sanitization below
     'colspan', 'rowspan', 'scope',
   ],
   ALLOW_DATA_ATTR: false,
-  // Force all links to open in new tab with noopener
   ADD_ATTR: ['target'],
+  // F5.6: Block protocols that could be abused
+  ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
 };
+
+// F5.6: CSS properties that are safe for rich text styling
+const SAFE_CSS_PROPS = /^(color|background-color|font-size|font-weight|font-style|text-align|text-decoration|margin|padding|border|line-height|display|width|height|max-width|min-height)$/i;
+const DANGEROUS_CSS_VALUES = /expression|url\s*\(|javascript:|behavior|moz-binding|-o-link/i;
 
 /**
  * Sanitize HTML content to prevent XSS attacks.
@@ -58,9 +64,29 @@ export function sanitizeHTML(dirty: string): { __html: string } {
       node.setAttribute('target', '_blank');
       node.setAttribute('rel', 'noopener noreferrer');
     }
+    // F5.6: Sanitize inline styles — only allow safe CSS properties
+    if (node.hasAttribute && node.hasAttribute('style')) {
+      const style = node.getAttribute('style') || '';
+      if (DANGEROUS_CSS_VALUES.test(style)) {
+        node.removeAttribute('style');
+      } else {
+        const safeParts = style
+          .split(';')
+          .map(s => s.trim())
+          .filter(s => {
+            const [prop] = s.split(':');
+            return prop && SAFE_CSS_PROPS.test(prop.trim());
+          });
+        if (safeParts.length > 0) {
+          node.setAttribute('style', safeParts.join('; '));
+        } else {
+          node.removeAttribute('style');
+        }
+      }
+    }
   });
 
-  const clean = DOMPurify.sanitize(dirty, DOMPURIFY_CONFIG);
+  const clean = DOMPurify.sanitize(dirty, { ...DOMPURIFY_CONFIG, ALLOWED_ATTR: [...DOMPURIFY_CONFIG.ALLOWED_ATTR, 'style'] });
 
   // Remove the hook to avoid stacking on repeated calls
   DOMPurify.removeHook('afterSanitizeAttributes');

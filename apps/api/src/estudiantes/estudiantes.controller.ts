@@ -45,10 +45,7 @@ export class EstudiantesController {
   }
 
   @Post('/student/heartbeat')
-  async registrarHeartbeat(
-    @CurrentUser() user: JwtPayload,
-    @Body() body: { curso_guid: string },
-  ) {
+  async registrarHeartbeat(@CurrentUser() user: JwtPayload, @Body() body: { curso_guid: string }) {
     // F3.2: Always use JWT identity
     return this.estudiantesService.registrarHeartbeat(user.sub, body.curso_guid);
   }

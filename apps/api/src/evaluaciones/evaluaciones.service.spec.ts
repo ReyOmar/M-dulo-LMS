@@ -84,13 +84,11 @@ describe('EvaluacionesService', () => {
 
       expect(result.estado).toBe('ENTREGADA');
       expect(mockStorage.uploadFromBuffer).toHaveBeenCalledWith(
-        submitData.buffer, submitData.nombre_archivo, 'entregas',
+        submitData.buffer,
+        submitData.nombre_archivo,
+        'entregas',
       );
-      expect(mockGateway.broadcastToRole).toHaveBeenCalledWith(
-        'submission:new',
-        expect.any(Object),
-        'PROFESOR',
-      );
+      expect(mockGateway.broadcastToRole).toHaveBeenCalledWith('submission:new', expect.any(Object), 'PROFESOR');
     });
 
     it('should update existing entrega on resubmission', async () => {
@@ -123,8 +121,7 @@ describe('EvaluacionesService', () => {
         leccion: { modulo: { curso: { nota_aprobacion: 3.0 } } },
       });
 
-      await expect(service.submitEntrega('tarea-1', submitData))
-        .rejects.toThrow(BadRequestException);
+      await expect(service.submitEntrega('tarea-1', submitData)).rejects.toThrow(BadRequestException);
     });
 
     it('should allow resubmission when grade was below threshold', async () => {
@@ -144,7 +141,8 @@ describe('EvaluacionesService', () => {
         estado: 'EN_REVISION',
       });
       mockPrisma.usuarios.findUnique.mockResolvedValue({
-        nombre: 'Juan', apellido: 'Pérez',
+        nombre: 'Juan',
+        apellido: 'Pérez',
       });
 
       const result = await service.submitEntrega('tarea-1', submitData);
@@ -226,7 +224,12 @@ describe('EvaluacionesService', () => {
       });
       mockPrisma.usuarios.findUnique.mockResolvedValue(null);
 
-      await service.calificarEntrega('entrega-1', { calificacion: 2.0, comentario: 'Debe mejorar' }, 'admin-1', 'ADMINISTRADOR');
+      await service.calificarEntrega(
+        'entrega-1',
+        { calificacion: 2.0, comentario: 'Debe mejorar' },
+        'admin-1',
+        'ADMINISTRADOR',
+      );
 
       expect(mockPrisma.lms_progreso_recurso.create).not.toHaveBeenCalled();
     });
@@ -246,7 +249,12 @@ describe('EvaluacionesService', () => {
       mockPrisma.lms_progreso_recurso.create.mockResolvedValue({});
       mockPrisma.usuarios.findUnique.mockResolvedValue(null);
 
-      await service.calificarEntrega('entrega-1', { calificacion: 3.5, comentario: 'Buen trabajo' }, 'admin-1', 'ADMINISTRADOR');
+      await service.calificarEntrega(
+        'entrega-1',
+        { calificacion: 3.5, comentario: 'Buen trabajo' },
+        'admin-1',
+        'ADMINISTRADOR',
+      );
 
       expect(mockPrisma.lms_entregas.update).toHaveBeenCalledWith({
         where: { guid: 'entrega-1' },

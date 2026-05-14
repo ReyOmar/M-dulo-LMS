@@ -169,7 +169,7 @@ model lms_cursos {
 
   // Relaciones
   profesor_guid     String
-  profesor          usuarios           @relation(fields: [profesor_guid], references: [guid], onDelete: Cascade)
+  profesor          usuarios           @relation(fields: [profesor_guid], references: [guid], onDelete: Restrict) // F8.5: Prevent accidental deletion of all courses
   modulos           lms_modulos[]
   matriculas        lms_matriculas[]
   certificados      lms_certificados[]

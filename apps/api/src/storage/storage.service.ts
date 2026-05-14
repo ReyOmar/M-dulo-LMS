@@ -30,8 +30,12 @@ const MIME_MAP: Record<string, string> = {
   '.webp': 'image/webp',
   '.mp4': 'video/mp4',
   '.mp3': 'audio/mpeg',
+  // F5.2: SVG served as attachment to prevent inline script execution
   '.svg': 'image/svg+xml',
 };
+
+// F5.2: Extensions that must be served with Content-Disposition: attachment
+const FORCE_DOWNLOAD_EXTENSIONS = ['.svg'];
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 

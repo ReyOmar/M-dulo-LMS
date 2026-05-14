@@ -117,7 +117,18 @@ export class MailService implements OnModuleInit {
     return false;
   }
 
-  // ─── TEMPLATE RENDERING ──────────────────────────────────
+  // F5.8: HTML escape helper for template variables
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // F5.8: Keys that contain URLs or pre-formatted HTML — skip escaping
+  private readonly SAFE_TEMPLATE_KEYS = new Set(['url_campus', 'resetUrl', 'url_accion']);
 
   private async renderTemplate(identificador: string, variables: Record<string, string | number>) {
     const evento = await this.prisma.lms_eventos_correo.findUnique({
@@ -133,8 +144,10 @@ export class MailService implements OnModuleInit {
 
     for (const [key, value] of Object.entries(variables)) {
       const regex = new RegExp(`{{${key}}}`, 'g');
-      html = html.replace(regex, String(value));
-      asunto = asunto.replace(regex, String(value));
+      // F5.8: Escape by default, skip only for known safe keys (URLs)
+      const safeValue = this.SAFE_TEMPLATE_KEYS.has(key) ? String(value) : this.escapeHtml(String(value));
+      html = html.replace(regex, safeValue);
+      asunto = asunto.replace(regex, this.escapeHtml(String(value)));
     }
 
     return { html: await this.wrapTemplate(html), asunto };
