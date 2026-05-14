@@ -84,18 +84,59 @@ async function uploadFile(url: string, file: File, fieldName = 'file') {
 
 /**
  * Resolves a file reference to a full download URL.
- * Handles both:
- * - Relative R2 keys: "logos/123-abc.png" → "{API_BASE_URL}/storage/download/logos/123-abc.png"
- * - Legacy absolute URLs: "http://..." → returned as-is
- * This ensures images work across environments (localhost, devtunnel, production).
+ *
+ * Security model:
+ * - Public folders (portadas, logos, avatars) → /download/public/* (no auth, safe for <img src>)
+ * - Private folders (entregas, firmas, certificados, recursos) → /download/* with JWT query param
+ *
+ * Private files include the JWT token as a query parameter since <a href> and <img src>
+ * cannot send Authorization headers. The backend only accepts query tokens on
+ * /storage/download/ routes (scoped, industry-standard pattern like S3 presigned URLs).
  */
+const PUBLIC_FOLDERS = ['portadas', 'logos', 'avatars'];
+
 function resolveFileUrl(fileRef: string | null | undefined): string | null {
   if (!fileRef) return null;
   // Already a full URL (legacy data) — return as-is
   if (fileRef.startsWith('http://') || fileRef.startsWith('https://')) return fileRef;
-  // Relative key — build the download URL using current API base
-  return `${API_BASE_URL}/storage/download/${fileRef}`;
+
+  const folder = fileRef.split('/')[0];
+  const isPublic = PUBLIC_FOLDERS.includes(folder);
+
+  if (isPublic) {
+    return `${API_BASE_URL}/storage/download/public/${fileRef}`;
+  }
+
+  // Private files: attach JWT token for browser-native requests (<a href>, <img src>)
+  const token = typeof window !== 'undefined' ? localStorage.getItem('lms_token') : null;
+  const base = `${API_BASE_URL}/storage/download/${fileRef}`;
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
 }
 
-export { API_BASE_URL, uploadFile, resolveFileUrl };
+/**
+ * Builds a complete download URL for <a href> links.
+ * Combines resolveFileUrl() with an optional originalName for Content-Disposition.
+ * Handles token injection for private files automatically.
+ */
+function resolveDownloadUrl(fileRef: string | null | undefined, originalName?: string): string | null {
+  if (!fileRef) return null;
+  if (fileRef.startsWith('http://') || fileRef.startsWith('https://')) return fileRef;
+
+  const folder = fileRef.split('/')[0];
+  const isPublic = PUBLIC_FOLDERS.includes(folder);
+  const prefix = isPublic ? 'storage/download/public' : 'storage/download';
+  const base = `${API_BASE_URL}/${prefix}/${fileRef}`;
+
+  const params = new URLSearchParams();
+  if (originalName) params.set('originalName', originalName);
+  if (!isPublic) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('lms_token') : null;
+    if (token) params.set('token', token);
+  }
+
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
+export { API_BASE_URL, uploadFile, resolveFileUrl, resolveDownloadUrl };
 export default api;

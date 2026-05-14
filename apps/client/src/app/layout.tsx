@@ -34,7 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
         // Build the full download URL for the favicon
         faviconUrl = data.favicon_url.startsWith('http')
           ? data.favicon_url
-          : `${apiUrl}/storage/download/${data.favicon_url}`;
+          : `${apiUrl}/storage/download/public/${data.favicon_url}`;
       }
     }
   } catch {

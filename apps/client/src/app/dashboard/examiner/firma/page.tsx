@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from 'react';
 import { FileSignature, Save, Loader2, Upload, Trash2, Eye, Download, Award } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext';
 import { useAlert } from '@/contexts/AlertContext';
-import api, { API_BASE_URL } from '@/lib/api';
+import { PageLoader } from '@/components/ui/PageLoader';
+import api, { API_BASE_URL , resolveFileUrl } from '@/lib/api';
 
 export default function ExaminerFirmaPage() {
   const { user } = useRole();
@@ -88,11 +89,7 @@ export default function ExaminerFirmaPage() {
   };
 
   if (loading) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageLoader message="Cargando tu firma..." />;
   }
 
   return (
@@ -141,7 +138,7 @@ export default function ExaminerFirmaPage() {
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-background border border-border/50 rounded-xl">
               <div className="h-16 w-32 bg-muted/50 rounded-lg border border-dashed border-border flex items-center justify-center overflow-hidden">
                 <img
-                  src={`${API_BASE_URL}/storage/download/${firmaUrl}`}
+                  src={resolveFileUrl(firmaUrl) || ""}
                   alt="Firma"
                   className="max-h-full max-w-full object-contain"
                   onError={(e) => {
@@ -239,7 +236,7 @@ export default function ExaminerFirmaPage() {
             {firmaUrl && (
               <div className="mb-2 h-12 w-28 flex items-center justify-center">
                 <img
-                  src={`${API_BASE_URL}/storage/download/${firmaUrl}`}
+                  src={resolveFileUrl(firmaUrl) || ""}
                   alt="Firma"
                   className="max-h-full max-w-full object-contain"
                 />

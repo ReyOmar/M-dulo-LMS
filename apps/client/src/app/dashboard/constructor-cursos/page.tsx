@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import api, { API_BASE_URL } from '@/lib/api';
+import api, { API_BASE_URL , resolveFileUrl , resolveDownloadUrl} from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import { sanitizeHTML } from '@/lib/sanitize';
 
@@ -449,7 +449,7 @@ export default function ConstructorCursosRoot() {
         const res = await api.post('/storage/upload?folder=recursos', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        setBloqueBase64(`${API_BASE_URL}/storage/download/${res.data.filename}`);
+        setBloqueBase64(resolveDownloadUrl(res.data.filename) || '');
       } catch (err) {
         console.error('Error uploading image:', err);
       }
@@ -467,7 +467,7 @@ export default function ConstructorCursosRoot() {
         const res = await api.post('/storage/upload?folder=recursos', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        setBloqueBase64(`${API_BASE_URL}/storage/download/${res.data.filename}`);
+        setBloqueBase64(resolveDownloadUrl(res.data.filename) || '');
       } catch (err) {
         console.error('Error uploading dropped image:', err);
       }
@@ -533,7 +533,7 @@ export default function ConstructorCursosRoot() {
       extras.push(
         <a
           key="file"
-          href={`${API_BASE_URL}/storage/download/${recurso.archivo_adjunto}?originalName=${encodeURIComponent(recurso.archivo_adjunto_nombre)}`}
+          href={resolveDownloadUrl(recurso.archivo_adjunto, recurso.archivo_adjunto_nombre) || ''}
           className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-colors cursor-pointer group"
         >
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
@@ -832,12 +832,12 @@ export default function ConstructorCursosRoot() {
                       {activeCourse.imagen_portada ? (
                         <>
                           <img
-                            src={`${API_BASE_URL}/storage/download/${activeCourse.imagen_portada}`}
+                            src={resolveFileUrl(activeCourse.imagen_portada) || ""}
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                             <a
-                              href={`${API_BASE_URL}/storage/download/${activeCourse.imagen_portada}?originalName=portada_${encodeURIComponent(activeCourse.titulo)}.png`}
+                              href={resolveDownloadUrl(activeCourse.imagen_portada, `portada_${activeCourse.titulo}.png`) || ''}
                               download
                               onClick={(e) => e.stopPropagation()}
                               className="p-2 bg-primary hover:bg-primary/90 text-white rounded-lg shadow-md transition-colors"
@@ -1416,7 +1416,7 @@ export default function ConstructorCursosRoot() {
                       {curso.imagen_portada ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={`${API_BASE_URL}/storage/download/${curso.imagen_portada}`}
+                          src={resolveFileUrl(curso.imagen_portada) || ""}
                           alt={curso.titulo}
                           className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
                         />

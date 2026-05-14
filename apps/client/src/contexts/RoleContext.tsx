@@ -10,6 +10,7 @@ export type Role = 'admin' | 'teacher' | 'student';
 interface RoleContextType {
   role: Role;
   user: any;
+  isHydrated: boolean;
   logout: () => void;
   syncSession: (tokenStr: string, userData: any) => void;
 }
@@ -20,6 +21,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<Role>('student');
   const [user, setUser] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const router = useRouter();
 
@@ -67,11 +69,17 @@ export function RoleProvider({ children }: { children: ReactNode }) {
                   window.location.href = isActiveRevocation ? '/login?revoked=true' : '/login?expired=true';
                 }
               }
+            })
+            .finally(() => {
+              setIsHydrated(true);
             });
         });
       } catch (e) {
         logout();
       }
+    } else {
+      // No saved session — mark as hydrated immediately
+      setIsHydrated(true);
     }
     setMounted(true);
   }, []);
@@ -81,6 +89,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('lms_user', JSON.stringify(userData));
     setUser(userData);
     setRoleState(mapDbRole(userData.role));
+    setIsHydrated(true); // Fresh login — session is already verified
   };
 
   const logout = () => {
@@ -115,6 +124,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       value={{
         role,
         user,
+        isHydrated,
         logout,
         syncSession,
       }}

@@ -6,7 +6,7 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/contexts/RoleContext";
 import { useWS } from "@/contexts/WebSocketContext";
-import api, { API_BASE_URL } from "@/lib/api";
+import api, { API_BASE_URL, resolveFileUrl } from "@/lib/api";
 
 export default function StudentCursosActivos() {
   const { user } = useRole();
@@ -89,7 +89,7 @@ export default function StudentCursosActivos() {
                     <div className="h-32 bg-primary/10 relative flex items-center justify-center overflow-hidden">
                         {curso.imagen_portada ? (
                            // eslint-disable-next-line @next/next/no-img-element
-                           <img src={`${API_BASE_URL}/storage/download/${curso.imagen_portada}`} alt={curso.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                           <img src={resolveFileUrl(curso.imagen_portada) || ''} alt={curso.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                         ) : (
                            <BookOpen className="h-12 w-12 text-primary/30 group-hover:scale-110 transition-transform" />
                         )}

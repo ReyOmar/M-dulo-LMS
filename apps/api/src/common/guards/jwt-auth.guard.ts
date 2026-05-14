@@ -110,6 +110,16 @@ export class JwtAuthGuard implements CanActivate, OnModuleDestroy {
 
   private extractTokenFromHeader(request: any): string | undefined {
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
+    if (type === 'Bearer' && token) return token;
+
+    // Fallback: accept token from query parameter for file downloads.
+    // This is the standard pattern for <a href> and <img src> which cannot
+    // send Authorization headers. Only used for /storage/download/ routes.
+    const url: string = request.url || '';
+    if (url.includes('/storage/download/') && request.query?.token) {
+      return request.query.token;
+    }
+
+    return undefined;
   }
 }

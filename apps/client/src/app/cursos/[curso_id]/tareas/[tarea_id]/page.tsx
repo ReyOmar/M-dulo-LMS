@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRole } from '@/contexts/RoleContext';
-import api, { API_BASE_URL } from '@/lib/api';
+import api, { API_BASE_URL , resolveDownloadUrl} from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import { sanitizeHTML } from '@/lib/sanitize';
 
@@ -134,7 +134,7 @@ export default function TareaVisorPage() {
 
   const handleDownload = () => {
     if (!serverFileName) return;
-    const url = `${API_BASE_URL}/storage/download/${encodeURIComponent(serverFileName)}?originalName=${encodeURIComponent(selectedFileName || serverFileName)}`;
+    const url = resolveDownloadUrl(serverFileName, selectedFileName || serverFileName) || '';
     window.open(url, '_blank');
   };
 

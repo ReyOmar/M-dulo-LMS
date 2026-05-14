@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Save, Globe, Phone, Mail, MapPin, Type, FileText, Loader2, CheckCircle } from 'lucide-react';
 import { useConfig } from '@/contexts/ConfigContext';
+import { PageLoader } from '@/components/ui/PageLoader';
 import api from '@/lib/api';
 
 type Tab = 'hero' | 'contacto' | 'legal' | 'footer';
@@ -91,6 +92,8 @@ export default function LandingConfigPage() {
     'w-full bg-muted/50 border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm transition-all';
   const labelClass = 'block text-sm font-bold mb-2 text-foreground';
   const fieldGroup = 'space-y-1.5';
+
+  if (!config) return <PageLoader message="Cargando configuración de landing..." />;
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

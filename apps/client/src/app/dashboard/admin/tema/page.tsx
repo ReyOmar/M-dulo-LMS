@@ -3,6 +3,7 @@
 import { useConfig, GOOGLE_FONTS, resolveFileUrl } from '@/contexts/ConfigContext';
 import { useRole } from '@/contexts/RoleContext';
 import { Palette, Save, Eye, Upload, Type, RectangleHorizontal, Image, Sparkles, GraduationCap } from 'lucide-react';
+import { PageLoader } from '@/components/ui/PageLoader';
 import { useRef, useState } from 'react';
 
 const THEME_PRESETS = [
@@ -20,6 +21,8 @@ export default function TemaPage() {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const loginBgInputRef = useRef<HTMLInputElement>(null);
+
+  if (!config) return <PageLoader message="Cargando tema y apariencia..." />;
 
   if (role !== 'admin') {
     return (

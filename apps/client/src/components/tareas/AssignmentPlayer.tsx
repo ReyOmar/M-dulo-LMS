@@ -14,7 +14,7 @@ import {
   Download,
   Award,
 } from 'lucide-react';
-import api, { API_BASE_URL } from '@/lib/api';
+import api, { API_BASE_URL , resolveDownloadUrl} from '@/lib/api';
 import { useWS } from '@/contexts/WebSocketContext';
 import { sanitizeHTML } from '@/lib/sanitize';
 
@@ -164,7 +164,7 @@ export default function AssignmentPlayer({
 
   const handleDownload = () => {
     if (!entrega?.url_archivo_adjunto) return;
-    const url = `${API_BASE_URL}/storage/download/${encodeURIComponent(entrega.url_archivo_adjunto)}?originalName=${encodeURIComponent(entrega.respuesta_texto || entrega.url_archivo_adjunto)}`;
+    const url = resolveDownloadUrl(entrega.url_archivo_adjunto, entrega.respuesta_texto || entrega.url_archivo_adjunto) || '';
     window.open(url, '_blank');
   };
 
@@ -261,7 +261,7 @@ export default function AssignmentPlayer({
             )}
             {archivo_adjunto && (
               <a
-                href={`${API_BASE_URL}/storage/download/${archivo_adjunto}?originalName=${encodeURIComponent(archivo_adjunto_nombre || 'archivo')}`}
+                href={resolveDownloadUrl(archivo_adjunto, archivo_adjunto_nombre || 'archivo') || ''}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 p-3 bg-background border border-border rounded-xl hover:border-blue-500/50 hover:shadow-md transition-all group"

@@ -21,7 +21,7 @@ import {
   Settings,
   Lock,
 } from 'lucide-react';
-import api, { API_BASE_URL } from '@/lib/api';
+import api, { API_BASE_URL , resolveDownloadUrl} from '@/lib/api';
 import { useAlert } from '@/contexts/AlertContext';
 import { useWS } from '@/contexts/WebSocketContext';
 import { useRole } from '@/contexts/RoleContext';
@@ -433,7 +433,7 @@ export default function EditBlockPage({
                 <div className="flex items-center gap-3 bg-background border border-border rounded-xl px-4 py-3">
                   <Paperclip className="h-5 w-5 text-primary flex-shrink-0" />
                   <a
-                    href={`${API_BASE_URL}/storage/download/${archivoAdjunto}?originalName=${encodeURIComponent(archivoAdjuntoNombre)}`}
+                    href={resolveDownloadUrl(archivoAdjunto, archivoAdjuntoNombre) || ''}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-medium text-sm flex-1 truncate text-primary hover:underline cursor-pointer flex items-center gap-1"

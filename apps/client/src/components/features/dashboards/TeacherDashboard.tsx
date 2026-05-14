@@ -7,7 +7,7 @@ import { useRole } from '@/contexts/RoleContext';
 import { useWS } from '@/contexts/WebSocketContext';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { EmptyState } from '@/components/ui/EmptyState';
-import api, { API_BASE_URL } from '@/lib/api';
+import api, { API_BASE_URL, resolveFileUrl } from '@/lib/api';
 
 export function TeacherDashboard() {
   const { user } = useRole();
@@ -136,7 +136,7 @@ export function TeacherDashboard() {
                     <div className="h-32 bg-gradient-to-br from-primary/10 to-secondary/10 relative flex items-center justify-center overflow-hidden">
                       {curso.imagen_portada ? (
                         <img
-                          src={`${API_BASE_URL}/storage/download/${curso.imagen_portada}`}
+                          src={resolveFileUrl(curso.imagen_portada) || ''}
                           alt={curso.titulo}
                           className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
                         />
