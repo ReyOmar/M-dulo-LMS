@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificadosService } from '../certificados/certificados.service';
 
@@ -88,6 +88,30 @@ export class EstudiantesService {
   }
 
   async marcarRecursoCompletado(usuario_guid: string, recurso_guid: string) {
+    // F4.3: Verify the resource belongs to a course the student is enrolled in
+    const recurso = await this.prisma.lms_recursos.findUnique({
+      where: { guid: recurso_guid },
+      select: {
+        leccion: {
+          select: {
+            modulo: {
+              select: { curso_guid: true },
+            },
+          },
+        },
+      },
+    });
+    if (!recurso?.leccion?.modulo?.curso_guid) {
+      throw new NotFoundException('Recurso no encontrado.');
+    }
+    const curso_guid = recurso.leccion.modulo.curso_guid;
+    const matricula = await this.prisma.lms_matriculas.findUnique({
+      where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
+    });
+    if (!matricula) {
+      throw new ForbiddenException('No estás matriculado en este curso.');
+    }
+
     const result = await this.prisma.lms_progreso_recurso.upsert({
       where: { usuario_guid_recurso_guid: { usuario_guid, recurso_guid } },
       create: { usuario_guid, recurso_guid, completado: true },

@@ -85,6 +85,12 @@ export class StorageController {
     const justFilename = path.basename(sanitizedKey);
     const downloadName = originalName ? path.basename(originalName).replace(/"/g, '') : justFilename;
 
+    // F5.2/F5.3: Determine disposition based on file extension
+    // SVG and executable types MUST be served as attachment to prevent XSS
+    const fileExt = path.extname(justFilename).toLowerCase();
+    const FORCE_DOWNLOAD_EXTS = ['.svg', '.html', '.htm', '.xml'];
+    const disposition = FORCE_DOWNLOAD_EXTS.includes(fileExt) ? 'attachment' : 'inline';
+
     // Strategy 1: R2 with public CDN URL → redirect
     if (this.storageService.hasPublicUrl() && !this.storageService.existsLocally(justFilename)) {
       const publicUrl = this.storageService.getFileUrl(sanitizedKey);
@@ -97,11 +103,12 @@ export class StorageController {
       const r2File = await this.storageService.streamFromR2(sanitizedKey);
       if (r2File) {
         res.header('Content-Type', r2File.contentType);
-        res.header('Content-Disposition', `inline; filename="${downloadName}"`);
-        res.header('Cache-Control', 'public, max-age=86400'); // Cache for 24h
+        res.header('Content-Disposition', `${disposition}; filename="${downloadName}"`);
+        res.header('Cache-Control', 'public, max-age=86400');
+        // F5.3: Prevent MIME sniffing
+        res.header('X-Content-Type-Options', 'nosniff');
         return new StreamableFile(Buffer.from(r2File.buffer));
       }
-      // If R2 stream failed, fall through to local
     }
 
     // Strategy 3: Serve from local filesystem
@@ -111,12 +118,14 @@ export class StorageController {
     const ext = justFilename.split('.').pop()?.toLowerCase();
     let contentType = 'application/octet-stream';
     if (ext === 'pdf') contentType = 'application/pdf';
-    else if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext || ''))
-      contentType = `image/${ext === 'svg' ? 'svg+xml' : ext}`;
+    else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext || ''))
+      contentType = `image/${ext}`;
+    else if (ext === 'svg') contentType = 'image/svg+xml'; // F5.3: SVG gets proper type but forced download
 
     res.header('Content-Type', contentType);
-    res.header('Content-Disposition', `inline; filename="${downloadName}"`);
+    res.header('Content-Disposition', `${disposition}; filename="${downloadName}"`);
     res.header('Cache-Control', 'public, max-age=86400');
+    res.header('X-Content-Type-Options', 'nosniff');
     return new StreamableFile(stream);
   }
 }

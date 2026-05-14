@@ -60,7 +60,11 @@ export class CursosController {
   }
 
   @Get('/:guid')
-  async getCurso(@Param('guid') guid: string) {
+  async getCurso(@Param('guid') guid: string, @CurrentUser() user: JwtPayload) {
+    // F3.4: Verify enrollment/ownership before exposing full course detail
+    if (user.role !== 'ADMINISTRADOR') {
+      await this.cursosService.verificarAccesoCurso(guid, user.sub, user.role);
+    }
     return this.cursosService.getCursoDetalleCompleto(guid);
   }
 

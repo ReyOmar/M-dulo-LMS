@@ -20,6 +20,34 @@ export class CursosService {
     private mailService: MailService,
   ) {}
 
+  /**
+   * F3.4: Verify a user has access to a specific course.
+   * - ESTUDIANTE: must be enrolled (lms_matriculas)
+   * - PROFESOR: must be the course's assigned professor
+   * @throws NotFoundException if access is denied (avoids revealing course existence)
+   */
+  async verificarAccesoCurso(curso_guid: string, usuario_guid: string, role: string): Promise<void> {
+    const curso = await this.prisma.lms_cursos.findUnique({
+      where: { guid: curso_guid },
+      select: { profesor_guid: true },
+    });
+    if (!curso) throw new NotFoundException('Curso no encontrado.');
+
+    if (role === 'PROFESOR') {
+      if (curso.profesor_guid !== usuario_guid) {
+        throw new NotFoundException('Curso no encontrado.');
+      }
+    } else {
+      // ESTUDIANTE — must be enrolled
+      const matricula = await this.prisma.lms_matriculas.findUnique({
+        where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
+      });
+      if (!matricula) {
+        throw new NotFoundException('Curso no encontrado.');
+      }
+    }
+  }
+
   async getCursosActivosParaEstudiante() {
     return this.prisma.lms_cursos.findMany({
       where: { estado: 'PUBLICADO' },
