@@ -1,8 +1,8 @@
 // @ts-check
-const eslint = require('@eslint/js');
-const tseslint = require('typescript-eslint');
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
 
-module.exports = tseslint.config(
+export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -18,8 +18,9 @@ module.exports = tseslint.config(
       'no-console': ['warn', { allow: ['error', 'warn'] }],
       'prefer-const': 'error',
       'no-var': 'error',
-      'eqeqeq': ['error', 'always'],
+      'eqeqeq': ['error', 'always', { null: 'ignore' }],
       'no-duplicate-imports': 'error',
+      'no-empty': ['error', { allowEmptyCatch: true }],
     },
   },
   {
