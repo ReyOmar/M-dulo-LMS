@@ -37,22 +37,19 @@ describe('StorageService', () => {
     it('should reject disallowed file extensions', async () => {
       const buffer = Buffer.from('test');
 
-      await expect(service.uploadFromBuffer(buffer, 'malicious.exe'))
-        .rejects.toThrow('Tipo de archivo no permitido');
+      await expect(service.uploadFromBuffer(buffer, 'malicious.exe')).rejects.toThrow('Tipo de archivo no permitido');
     });
 
     it('should reject .sh files', async () => {
       const buffer = Buffer.from('#!/bin/bash');
 
-      await expect(service.uploadFromBuffer(buffer, 'script.sh'))
-        .rejects.toThrow(BadRequestException);
+      await expect(service.uploadFromBuffer(buffer, 'script.sh')).rejects.toThrow(BadRequestException);
     });
 
     it('should reject files over 50MB', async () => {
       const largeBuffer = Buffer.alloc(51 * 1024 * 1024); // 51MB
 
-      await expect(service.uploadFromBuffer(largeBuffer, 'large.pdf'))
-        .rejects.toThrow('tamaño máximo');
+      await expect(service.uploadFromBuffer(largeBuffer, 'large.pdf')).rejects.toThrow('tamaño máximo');
     });
 
     it('should accept valid PDF with correct magic bytes', async () => {
@@ -72,7 +69,7 @@ describe('StorageService', () => {
       const pngBuffer = Buffer.alloc(1024);
       pngBuffer[0] = 0x89;
       pngBuffer[1] = 0x50;
-      pngBuffer[2] = 0x4E;
+      pngBuffer[2] = 0x4e;
       pngBuffer[3] = 0x47;
 
       const result = await service.uploadFromBuffer(pngBuffer, 'photo.png');
@@ -85,16 +82,14 @@ describe('StorageService', () => {
       const spoofBuffer = Buffer.alloc(1024);
       spoofBuffer.write('%PDF-1.4');
 
-      await expect(service.uploadFromBuffer(spoofBuffer, 'fake.png'))
-        .rejects.toThrow('no coincide con la extensión');
+      await expect(service.uploadFromBuffer(spoofBuffer, 'fake.png')).rejects.toThrow('no coincide con la extensión');
     });
 
     it('should reject JPEG extension with wrong magic bytes', async () => {
       const fakeJpeg = Buffer.alloc(1024);
       fakeJpeg.write('NOTJPEG');
 
-      await expect(service.uploadFromBuffer(fakeJpeg, 'image.jpg'))
-        .rejects.toThrow(BadRequestException);
+      await expect(service.uploadFromBuffer(fakeJpeg, 'image.jpg')).rejects.toThrow(BadRequestException);
     });
 
     it('should allow .txt files (no magic byte check)', async () => {

@@ -1,4 +1,15 @@
-import { Controller, Post, Get, Param, Res, Query, StreamableFile, BadRequestException, Req, ForbiddenException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  Res,
+  Query,
+  StreamableFile,
+  BadRequestException,
+  Req,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { StorageService } from './storage.service';
 import { Roles } from '../common/decorators/roles.decorator';

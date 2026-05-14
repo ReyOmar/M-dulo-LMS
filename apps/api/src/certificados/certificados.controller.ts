@@ -45,11 +45,7 @@ export class CertificadosController {
    * the course professor, or an admin.
    */
   @Get('/:guid/pdf')
-  async downloadPDF(
-    @Param('guid') guid: string,
-    @CurrentUser() user: JwtPayload,
-    @Res() reply: FastifyReply,
-  ) {
+  async downloadPDF(@Param('guid') guid: string, @CurrentUser() user: JwtPayload, @Res() reply: FastifyReply) {
     const cert = await this.certificadosService.getCertificado(guid);
 
     // F3.9: Ownership validation — only owner, course professor, or admin can download

@@ -476,11 +476,7 @@ export function Sidebar() {
                   {userName} {userLastName}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1 truncate">
-                  {role === 'student'
-                    ? 'En Capacitación'
-                    : role === 'teacher'
-                      ? 'Examinador'
-                      : 'Administrador'}
+                  {role === 'student' ? 'En Capacitación' : role === 'teacher' ? 'Examinador' : 'Administrador'}
                 </p>
               </div>
               <ChevronUp

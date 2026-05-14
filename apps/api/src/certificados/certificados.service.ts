@@ -472,7 +472,6 @@ export class CertificadosService {
     throw new ForbiddenException('No tienes permiso para acceder a este certificado.');
   }
 
-
   /**
    * Public certificate verification by unique verification code.
    * Returns limited, non-sensitive data for third-party validation.
