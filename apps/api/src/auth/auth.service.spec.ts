@@ -463,9 +463,7 @@ describe('AuthService', () => {
         activo: false, // INACTIVE
       });
 
-      await expect(service.login('inactive@pesv.com', 'MySecure1')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.login('inactive@pesv.com', 'MySecure1')).rejects.toThrow(UnauthorizedException);
     });
 
     it('should use generic error message for inactive user (no enumeration)', async () => {

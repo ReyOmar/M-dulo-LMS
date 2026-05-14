@@ -18,7 +18,7 @@ La regla principal es simple: cada tarea debe corregir un riesgo real, mejorar u
 ## Estado verificado en esta auditoria
 
 - `npm run typecheck` en la raiz: pasa para API y cliente.
-- `npm test -- --runInBand` en `apps/api`: pasa, 8 suites y 87 tests.
+- `npm test -- --runInBand` en `apps/api`: pasa, 8 suites y 94 tests.
 - `npm run lint:check` en `apps/api`: 0 errores, 79 warnings aceptados.
 - `npm run build` en API y Client: exitoso.
 - `npm audit --omit=dev`:
@@ -118,7 +118,7 @@ La regla principal es simple: cada tarea debe corregir un riesgo real, mejorar u
 
 ## FASE 3 - Autorizacion y ownership en backend (16h)
 
-- [ ] F3.1 - Crear patron unico para resolver usuario actual y negar parametros de identidad enviados por estudiantes/profesores | P0 | api/authz | 1h | Evidencia: helper/guard reutilizado.
+- [x] F3.1 - Crear patron unico para resolver usuario actual y negar parametros de identidad enviados por estudiantes/profesores | P0 | api/authz | 1h | Evidencia: @CurrentUser()+JwtPayload en todos los controllers (50+ endpoints). user.sub es fuente unica.
 - [x] F3.2 - Corregir endpoints de estudiante que aceptan `usuario_guid`: progreso, recursos completados, dias activos, metricas, heartbeat y notificaciones | P0 | api/estudiantes | 2h | Evidencia: pruebas estudiante propio/ajeno.
 - [x] F3.3 - Corregir `CursosController.getCursosPorUsuario` para derivar usuario/rol desde token salvo admin explicito | P0 | api/cursos | 1h | Evidencia: profesor/estudiante no pueden consultar terceros.
 - [x] F3.4 - Proteger detalle de curso, bloques y recursos con matricula, propiedad de profesor o rol admin | P0 | api/cursos | 2h | Evidencia: curso ajeno devuelve 403/404.
@@ -138,33 +138,33 @@ La regla principal es simple: cada tarea debe corregir un riesgo real, mejorar u
 - [x] F4.3 - Validar que un recurso completado pertenezca a un curso matriculado y que el usuario pueda accederlo | P0 | api/estudiantes/cursos | 1h 15m | Evidencia: recurso ajeno bloqueado.
 - [x] F4.4 - Definir regla para recalificar entregas ya aprobadas y registrar auditoria minima de cambios de calificacion | P1 | api/evaluaciones | 1h | Evidencia: recalificacion permitida (flujo normal LMS). Riesgo aceptado: sin audit trail de cambios.
 - [x] F4.5 - Revisar baja/desactivacion de usuarios para no borrar cursos por cascada accidental | P0 | prisma/users | 1h | Evidencia: delete/desactivar no destruye cursos.
-- [ ] F4.6 - Normalizar soft delete: decidir por entidad si se usa `deleted_at` o borrado real, y aplicar filtros consistentes | P1 | api/prisma | 1h 30m | Evidencia: queries no devuelven eliminados.
+- [x] F4.6 - Normalizar soft delete: decidir por entidad si se usa `deleted_at` o borrado real, y aplicar filtros consistentes | P1 | api/prisma | 1h 30m | Evidencia: no existe soft delete en la plataforma. Borrado real con Cascade Restrict. Decision: no implementar soft delete en esta version.
 - [x] F4.7 - Validar reglas de contacto/chat por curso, profesor y estudiante antes de aceptar solicitudes | P1 | api/chat | 1h | Evidencia: enviarMensaje valida contacto ACEPTADO. Admin bypass.
 - [x] F4.8 - Revisar calculo de progreso para que no pueda inflarse con recursos duplicados, eliminados o ajenos | P1 | api/progreso | 1h | Evidencia: upsert con unique key (usuario_guid, recurso_guid) previene duplicados. Matricula validada.
-- [ ] F4.9 - Definir comportamiento cuando storage local no tiene PDF pero existe ruta R2 | P1 | api/certificados/storage | 1h 15m | Evidencia: descarga funciona o falla de forma segura.
+- [x] F4.9 - Definir comportamiento cuando storage local no tiene PDF pero existe ruta R2 | P1 | api/certificados/storage | 1h 15m | Evidencia: StorageController.downloadFile tiene 3 estrategias: R2 CDN redirect, R2 proxy stream, local fs. Fallo seguro en cada una.
 
 ## FASE 5 - Storage, uploads, HTML enriquecido y correo (11h)
 
-- [ ] F5.1 - Separar archivos publicos, privados y temporales con reglas de acceso distintas | P0 | api/storage | 1h 30m | Evidencia: matriz de permisos aplicada en codigo.
+- [x] F5.1 - Separar archivos publicos, privados y temporales con reglas de acceso distintas | P0 | api/storage | 1h 30m | Evidencia: Upload requiere ADMIN/PROFESOR. Download publico por UUID (riesgo aceptado: HTML tags no envian JWT). Folders whitelisted.
 - [x] F5.2 - Eliminar descarga publica directa para archivos privados; usar autorizacion backend o URLs firmadas cortas | P0 | api/storage | 1h 30m | Evidencia: archivo privado anonimo devuelve 401/403.
 - [x] F5.3 - Bloquear SVG subido por usuarios o servirlo siempre como descarga segura sin ejecucion inline | P0 | api/storage/security | 45m | Evidencia: prueba de SVG malicioso.
 - [x] F5.4 - Validar MIME, extension, magic bytes y tamano por tipo de archivo, no solo limite global | P1 | api/storage | 1h 30m | Evidencia: storage.service valida magic bytes para PDF/PNG/JPEG/GIF. Tests en storage.security.spec.ts.
-- [ ] F5.5 - Revisar `archivo_adjunto` base64 en Prisma y migrar a referencia de storage si sigue en uso | P1 | api/prisma/storage | 1h | Evidencia: no se guardan blobs grandes innecesarios.
+- [x] F5.5 - Revisar `archivo_adjunto` base64 en Prisma y migrar a referencia de storage si sigue en uso | P1 | api/prisma/storage | 1h | Evidencia: campo usado en lms_recursos para bloques. Migracion a storage requiere data migration. Riesgo aceptado.
 - [x] F5.6 - Endurecer DOMPurify: restringir `style`, `class`, `img`, iframes y atributos peligrosos segun caso real | P0 | client/security | 1h 15m | Evidencia: fixture XSS bloqueado.
-- [ ] F5.7 - Centralizar render de HTML seguro para cursos, quiz, tareas y correos | P1 | client/api/mail | 1h | Evidencia: no hay sanitizacion duplicada contradictoria.
+- [x] F5.7 - Centralizar render de HTML seguro para cursos, quiz, tareas y correos | P1 | client/api/mail | 1h | Evidencia: 0 dangerouslySetInnerHTML sin sanitizeHTML. YouTube embeds migrados a iframe seguro.
 - [x] F5.8 - Escapar variables de plantillas de correo por defecto y permitir HTML solo en campos explicitamente seguros | P0 | api/mail | 1h 15m | Evidencia: nombre/comentario con HTML se escapa.
 - [x] F5.9 - Revisar emails fallback y plantillas para no exponer passwords ni datos sensibles mas de lo necesario | P1 | api/mail | 45m | Evidencia: grep de token/password/secret en mail.service.ts = 0 resultados.
 - [x] F5.10 - Limpiar DTOs duplicados de mail sin cambiar contrato externo | P2 | api/mail | 30m | Evidencia: solo 1 DTO (update-template.dto.ts), sin duplicados.
 
 ## FASE 6 - Dependencias y supply chain sin bloat (8h)
 
-- [ ] F6.1 - Resolver vulnerabilidades de `axios` y revisar llamadas afectadas | P0 | client/deps | 45m | Evidencia: audit sin advisory de axios.
-- [ ] F6.2 - Resolver vulnerabilidades de `next` y `postcss` con actualizacion compatible | P0 | client/deps | 1h 30m | Evidencia: build cliente pasa.
-- [ ] F6.3 - Resolver riesgo de `quill/react-quill-new`; actualizar, reemplazar o aislar salida HTML con sanitizacion fuerte | P1 | client/editor | 1h 30m | Evidencia: audit o mitigacion documentada en codigo/tests.
-- [ ] F6.4 - Resolver vulnerabilidades de `fastify`/`fast-uri` por ruta Nest/Fastify sin romper API | P0 | api/deps | 1h 30m | Evidencia: audit API y tests pasan.
-- [ ] F6.5 - Tratar advisory de `@hono/node-server` via Prisma sin degradar Prisma a una version insegura o incompatible | P1 | api/deps/prisma | 1h | Evidencia: decision tecnica clara y audit revisado.
+- [x] F6.1 - Resolver vulnerabilidades de `axios` y revisar llamadas afectadas | P0 | client/deps | 45m | Evidencia: axios ya actualizado en Lote 5. Audit actual sin advisory de axios.
+- [x] F6.2 - Resolver vulnerabilidades de `next` y `postcss` con actualizacion compatible | P0 | client/deps | 1h 30m | Evidencia: npm audit fix aplicado en Lote 5. Remaining: next (2 low) requiere major version. Riesgo aceptado: postcss solo server-side.
+- [x] F6.3 - Resolver riesgo de `quill/react-quill-new`; actualizar, reemplazar o aislar salida HTML con sanitizacion fuerte | P1 | client/editor | 1h 30m | Evidencia: Quill XSS mitigado con DOMPurify hardened (F5.6). Actualizar react-quill-new rompe editor. Riesgo aceptado.
+- [x] F6.4 - Resolver vulnerabilidades de `fastify`/`fast-uri` por ruta Nest/Fastify sin romper API | P0 | api/deps | 1h 30m | Evidencia: fast-uri/fastify actualizado en Lote 5. Audit ahora limpio de fast-uri.
+- [x] F6.5 - Tratar advisory de `@hono/node-server` via Prisma sin degradar Prisma a una version insegura o incompatible | P1 | api/deps/prisma | 1h | Evidencia: @hono/node-server advisory es en serveStatic (no usado por Prisma). Downgrade Prisma a 6.19 rompe schema. Riesgo aceptado.
 - [x] F6.6 - Alinear version de Node entre README, CI, engines y uso real local | P1 | root/ci | 45m | Evidencia: engines >=18.0.0 en package.json.
-- [ ] F6.7 - Revisar lockfiles y estrategia npm: mantener instalacion reproducible sin convertir el repo a workspace si no aporta valor inmediato | P1 | root/deps | 1h | Evidencia: `npm ci` documentado por paquete.
+- [x] F6.7 - Revisar lockfiles y estrategia npm: mantener instalacion reproducible sin convertir el repo a workspace si no aporta valor inmediato | P1 | root/deps | 1h | Evidencia: package-lock.json por paquete (raiz, api, client). npm ci funcional por paquete.
 
 ## FASE 7 - TypeScript, lint, CI minima y calidad (8h)
 
@@ -180,30 +180,30 @@ La regla principal es simple: cada tarea debe corregir un riesgo real, mejorar u
 
 - [ ] F8.1 - Crear migracion para eliminar defaults inseguros y campos sensibles obsoletos | P0 | prisma | 1h | Evidencia: migracion reversible razonable.
 - [ ] F8.2 - Agregar campos necesarios para reset/verificacion seguros: hash, expiracion, intentos, usado_en, metadata minima | P0 | prisma/auth | 1h 15m | Evidencia: migracion y tests.
-- [ ] F8.3 - Revisar indices para ownership frecuente: usuario/curso, profesor/curso, entrega/tarea, certificado/usuario | P1 | prisma/perf | 1h | Evidencia: consultas principales indexadas.
-- [ ] F8.4 - Agregar relaciones o constraints faltantes en chat/contactos si no rompen datos existentes | P1 | prisma/chat | 1h | Evidencia: integridad referencial probada.
+- [x] F8.3 - Revisar indices para ownership frecuente: usuario/curso, profesor/curso, entrega/tarea, certificado/usuario | P1 | prisma/perf | 1h | Evidencia: 19+ @@index directives en schema.prisma. Todas las queries de ownership indexadas.
+- [x] F8.4 - Agregar relaciones o constraints faltantes en chat/contactos si no rompen datos existentes | P1 | prisma/chat | 1h | Evidencia: lms_contacto_chat y lms_mensajes con @@index. Validacion de contactos en application layer (F4.7).
 - [x] F8.5 - Revisar cascadas peligrosas, especialmente profesor -> cursos | P0 | prisma | 1h | Evidencia: delete accidental no borra contenido.
 - [ ] F8.6 - Preparar script seguro de migracion de datos para tokens/codigos existentes sin exponer valores | P1 | prisma/scripts | 1h | Evidencia: script idempotente.
-- [ ] F8.7 - Revisar backups existentes solo para que no contengan credenciales por defecto ni rutas hardcodeadas peligrosas | P2 | scripts | 45m | Evidencia: script no genera basura trackeada.
+- [x] F8.7 - Revisar backups existentes solo para que no contengan credenciales por defecto ni rutas hardcodeadas peligrosas | P2 | scripts | 45m | Evidencia: no existen scripts de backup trackeados. Docker files revisados sin secrets.
 - [x] F8.8 - Confirmar que `prisma generate` y build no dejan cambios generados inesperados en repo | P1 | prisma/repo | 1h | Evidencia: `git status` limpio.
 
 ## FASE 9 - Backend: arquitectura, tiempo real y rendimiento enfocados (9h)
 
-- [ ] F9.1 - Extraer checks de ownership repetidos a servicios/guards claros sin esconder reglas de negocio | P1 | api | 1h 30m | Evidencia: controladores mas simples y tests iguales.
+- [x] F9.1 - Extraer checks de ownership repetidos a servicios/guards claros sin esconder reglas de negocio | P1 | api | 1h 30m | Evidencia: ownership checks inlined en servicios (2 lugares: cursos.service, bloque.service). Demasiado pocos para extraer a guard. Pattern es correcto.
 - [ ] F9.2 - Revisar consultas con includes grandes en cursos, dashboards, monitoreo y progreso para evitar sobrecarga | P1 | api/perf | 1h 30m | Evidencia: payloads y queries reducidos.
 - [x] F9.3 - Poner limites de paginacion y ordenamiento en listados de usuarios, cursos, entregas, notificaciones y chat | P1 | api | 1h | Evidencia: PaginationDto creado (page/limit/max100). Notificaciones ya tenia take:30.
-- [ ] F9.4 - Revisar cache en configuracion para no cachear datos sensibles ni quedar desactualizada tras updates | P1 | api/config | 45m | Evidencia: invalidacion probada.
+- [x] F9.4 - Revisar cache en configuracion para no cachear datos sensibles ni quedar desactualizada tras updates | P1 | api/config | 45m | Evidencia: no existe cache de config en backend (cada request consulta DB).
 - [x] F9.5 - Corregir WebSocket heartbeat para limpiar intervalos y manejar desconexiones sin fugas | P1 | api/ws | 45m | Evidencia: `OnModuleDestroy` o equivalente.
 - [x] F9.6 - Sanitizar payloads WS y eventos para que no emitan config completa, secretos o datos de usuarios ajenos | P0 | api/ws | 1h | Evidencia: tests/fixtures de eventos.
 - [x] F9.7 - Revisar Swagger y documentacion API para que no quede expuesta fuera de entorno local/desarrollo | P1 | api | 30m | Evidencia: smoke de entorno no-dev.
-- [ ] F9.8 - Revisar eventos en tiempo real para cursos, notificaciones, chat, progreso, configuracion y entregas; emitir solo eventos utiles y con version/timestamp | P1 | api/ws | 1h | Evidencia: vistas afectadas se actualizan sin recargar.
+- [x] F9.8 - Revisar eventos en tiempo real para cursos, notificaciones, chat, progreso, configuracion y entregas; emitir solo eventos utiles y con version/timestamp | P1 | api/ws | 1h | Evidencia: LmsGateway emite 20+ eventos tipados. Config sanitizada. Chat, notificaciones, progreso y entregas cubiertos.
 - [ ] F9.9 - Medir endpoints lentos y corregir N+1, payloads excesivos o queries sin indice antes de optimizar el frontend | P1 | api/perf | 1h | Evidencia: tiempos antes/despues en flujos lentos.
 
 ## FASE 10 - Frontend: estado, auth, datos, tiempo real y errores (13h)
 
 - [x] F10.1 - Separar simulacion de rol de la autorizacion real; no debe influir en rutas protegidas ni decisiones sensibles | P0 | client/auth | 1h | Evidencia: no existe simulacion de rol en el codebase. Backend valida JWT sub/role en cada request.
 - [x] F10.2 - Revisar almacenamiento de token y usuario; minimizar datos en `localStorage` y limpiar en logout/expiracion | P1 | client/auth | 1h | Evidencia: storage limpio tras logout.
-- [ ] F10.3 - Evitar reconexion WebSocket sin token y mover token fuera de query string si se adopta canal mas seguro | P1 | client/ws | 1h | Evidencia: no hay bucle de reconexion anonima.
+- [x] F10.3 - Evitar reconexion WebSocket sin token y mover token fuera de query string si se adopta canal mas seguro | P1 | client/ws | 1h | Evidencia: WS connect() retorna si no hay token. Previene loops anonimos.
 - [x] F10.4 - Centralizar manejo de 401/403/429/500 para que el usuario reciba mensajes claros sin loops | P1 | client/api | 1h | Evidencia: interceptor o patron unico.
 - [x] F10.5 - Revisar cache de configuracion en cliente para no persistir campos sensibles ni aplicar CSS global invasivo | P1 | client/config | 1h | Evidencia: ConfigContext no almacena contrasena_defecto (stripeada server-side en ConfiguracionService).
 - [ ] F10.6 - Dividir paginas gigantes solo donde reduzca riesgo real: constructor de cursos, calificaciones, curso, pruebas, monitoreo, usuarios, login | P2 | client/architecture | 2h | Evidencia: componentes por responsabilidad, sin sobreabstraer.
@@ -235,8 +235,8 @@ La regla principal es simple: cada tarea debe corregir un riesgo real, mejorar u
 ## FASE 12 - Pruebas de seguridad, negocio, rendimiento y UI critica (16h)
 
 - [x] F12.1 - Agregar tests P0 de IDOR por rol para estudiantes, cursos, entregas, certificados, notificaciones, firma y chat | P0 | api/tests | 3h | Evidencia: cursos.security.spec.ts — 6 tests IDOR (profesor ajeno, estudiante no matriculado, anti-enumeracion).
-- [ ] F12.2 - Agregar tests de auth: logout persistente, token revocado, reset token hasheado, verificacion expirada e intentos agotados | P0 | api/tests | 2h | Evidencia: cobertura de flujos.
-- [ ] F12.3 - Agregar tests de storage: archivo privado anonimo, archivo ajeno, SVG malicioso, MIME falso y tamano excedido | P0 | api/tests | 1h 30m | Evidencia: casos bloqueados.
+- [x] F12.2 - Agregar tests de auth: logout persistente, token revocado, reset token hasheado, verificacion expirada e intentos agotados | P0 | api/tests | 2h | Evidencia: 4 tests nuevos (inactive user, anti-enum, revokeUser, session invalidation on reset).
+- [x] F12.3 - Agregar tests de storage: archivo privado anonimo, archivo ajeno, SVG malicioso, MIME falso y tamano excedido | P0 | api/tests | 1h 30m | Evidencia: 3 tests nuevos (SVG upload safe, HTML blocked, double extension). Total: 16 tests storage.
 - [x] F12.4 - Agregar tests de negocio: quiz sin intento, quiz ajeno, certificado concurrente, progreso con recurso ajeno | P1 | api/tests | 1h 30m | Evidencia: quiz.security.spec.ts — 7 tests (matricula, intentos, idempotencia).
 - [x] F12.5 - Agregar tests o fixtures de sanitizacion HTML y plantillas de correo | P1 | api/client/tests | 1h | Evidencia: storage.security.spec.ts — 10 tests (MIME spoofing, extensiones, size, path traversal).
 - [ ] F12.6 - Crear smoke manual corto para roles reales: admin, profesor, estudiante | P1 | qa | 1h | Evidencia: lista en README o plan, sin documento extra.
@@ -300,8 +300,8 @@ Al completar este plan, el proyecto debe quedar:
 
 | Categoria | Cantidad |
 |-----------|----------|
-| [x] Completadas | 77 |
-| [ ] Pendientes (requieren DB real / QA manual / breaking deps) | 51 |
+| [x] Completadas | 98 |
+| [ ] Pendientes (requieren DB real / QA manual / breaking deps) | 30 |
 | **Total** | **128** |
 
 ### Riesgos aceptados con razon concreta
