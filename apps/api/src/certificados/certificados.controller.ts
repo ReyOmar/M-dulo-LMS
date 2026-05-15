@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Res, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Res } from '@nestjs/common';
 import { CertificadosService } from './certificados.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface';

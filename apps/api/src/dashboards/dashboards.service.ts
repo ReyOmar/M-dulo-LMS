@@ -126,6 +126,7 @@ export class DashboardsService {
       totalMatriculas,
       cursos,
       allMatriculas,
+      allCursosProfesores,
     ] = await Promise.all([
       this.prisma.usuarios.findMany({ where: { rol: 'PROFESOR', activo: true }, select: { guid: true } }),
       this.prisma.usuarios.findMany({ where: { rol: 'ESTUDIANTE', activo: true }, select: { guid: true } }),
@@ -138,6 +139,8 @@ export class DashboardsService {
       this.prisma.lms_matriculas.count(),
       this.prisma.lms_cursos.findMany({ where: { estado: 'PUBLICADO' }, select: { guid: true, titulo: true } }),
       this.prisma.lms_matriculas.findMany({ select: { usuario_guid: true, curso_guid: true } }),
+      // Fetch profesor assignments to determine active professors (avoids extra sequential query)
+      this.prisma.lms_cursos.findMany({ select: { profesor_guid: true } }),
     ]);
 
     // Count active professors/students using batch data (no extra queries)
@@ -152,10 +155,7 @@ export class DashboardsService {
     }
 
     // F2.12: Professor is active if they have at least one course assigned
-    const allCursos = await this.prisma.lms_cursos.findMany({
-      select: { profesor_guid: true },
-    });
-    const profGuidsWithCourses = new Set(allCursos.map((c) => c.profesor_guid).filter(Boolean));
+    const profGuidsWithCourses = new Set(allCursosProfesores.map((c) => c.profesor_guid).filter(Boolean));
     const profesoresActivos = [...profGuids].filter((g) => profGuidsWithCourses.has(g)).length || profesores.length;
     const estudiantesActivos = [...estudGuids].filter((g) => matriculasByUser.has(g)).length;
 

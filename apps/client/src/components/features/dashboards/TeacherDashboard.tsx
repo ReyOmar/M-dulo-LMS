@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BookOpen, Lock, AlertCircle, ArrowRight, Eye, EyeOff, Search, ChevronDown } from 'lucide-react';
+import { BookOpen, Lock, ArrowRight, Eye, EyeOff, Search, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRole } from '@/contexts/RoleContext';
 import { useWS } from '@/contexts/WebSocketContext';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { EmptyState } from '@/components/ui/EmptyState';
-import api, { API_BASE_URL, resolveFileUrl } from '@/lib/api';
+import api, { resolveFileUrl } from '@/lib/api';
 
 export function TeacherDashboard() {
   const { user } = useRole();

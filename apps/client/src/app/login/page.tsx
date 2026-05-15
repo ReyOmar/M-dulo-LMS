@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useRole } from '@/contexts/RoleContext';
 import { useConfig, resolveFileUrl } from '@/contexts/ConfigContext';
 import api from '@/lib/api';
@@ -741,24 +742,24 @@ export default function LoginPage() {
         {/* Footer Toggle */}
         {view === 'LOGIN' && (
           <div className="mt-8 pt-6 border-t border-border flex flex-col items-center gap-3">
-            <a
+            <Link
               href="/recuperar-contrasena"
               className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5"
             >
               <Lock className="h-3.5 w-3.5" /> ¿Olvidaste tu contraseña?
-            </a>
+            </Link>
             <button
               onClick={handleGoToRequest}
               className="text-xs font-bold text-primary hover:underline flex items-center gap-2"
             >
               <User className="h-4 w-4" /> Registrar Petición de Monitoreo
             </button>
-            <a
+            <Link
               href="/"
               className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 mt-1"
             >
               <Home className="h-3.5 w-3.5" /> Volver al Inicio
-            </a>
+            </Link>
           </div>
         )}
       </div>

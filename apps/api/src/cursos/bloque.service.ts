@@ -64,11 +64,32 @@ export class BloqueService {
     });
   }
 
-  async getBloque(guid: string) {
+  async getBloque(guid: string, requestUser?: any) {
+    // SEC: Join to course to validate ownership — prevents IDOR by non-owner professors
     const bloque = await this.prisma.lms_recursos.findUnique({
       where: { guid },
+      include: {
+        leccion: {
+          select: {
+            modulo: {
+              select: {
+                curso: { select: { profesor_guid: true } },
+              },
+            },
+          },
+        },
+      },
     });
     if (!bloque) throw new NotFoundException('Recurso no encontrado');
+
+    // F2.1: Validate professor ownership (admins bypass)
+    if (requestUser?.role === 'PROFESOR') {
+      const cursoProfesorGuid = bloque.leccion?.modulo?.curso?.profesor_guid;
+      if (cursoProfesorGuid !== requestUser.sub) {
+        throw new BadRequestException('No tienes acceso a este recurso. Solo puedes ver bloques de tus propios cursos.');
+      }
+    }
+
     return bloque;
   }
 

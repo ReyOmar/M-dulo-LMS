@@ -132,13 +132,7 @@ export class CertificadosService {
       },
     });
     if (existing) {
-      // Certificate already exists — but submission files may not have been purged
-      // (e.g., if the purge failed before, or was added after the certificate was generated).
-      // Run the purge defensively to ensure files are cleaned up.
-      this.purgeEntregaFiles(usuario_guid, curso_guid).catch((err) =>
-        this.logger.error('Retroactive purge on existing cert failed:', err),
-      );
-      return existing;
+      return existing; // Idempotent — return the existing certificate
     }
 
     // Verify course completion AND grading
@@ -248,17 +242,23 @@ export class CertificadosService {
     const defaultLegalText = `El presente certificado acredita que el participante cumplió satisfactoriamente con la totalidad del programa de capacitación, el cual constó de ${totalModulos} módulo(s) y ${totalRecursos} recurso(s) formativo(s), incluyendo ${totalTareas} evaluación(es) calificada(s) por el examinador asignado.`;
     const textoLegal = config?.cert_texto_legal || defaultLegalText;
 
-    // Determine logo image path
+    // Determine logo image path — use StorageService for validated path resolution
     let logoImagePath: string | null = null;
     if (config?.logo_url) {
-      const fp = path.join(process.cwd(), 'uploads', config.logo_url);
-      if (fs.existsSync(fp)) logoImagePath = fp;
+      try {
+        logoImagePath = this.storageService.getUploadPath(config.logo_url);
+      } catch {
+        // Logo not found locally — skip
+      }
     }
 
     let firmaImagePath: string | null = null;
     if (config?.cert_mostrar_firma && curso.profesor.firma_url) {
-      const fp = path.join(process.cwd(), 'uploads', curso.profesor.firma_url);
-      if (fs.existsSync(fp)) firmaImagePath = fp;
+      try {
+        firmaImagePath = this.storageService.getUploadPath(curso.profesor.firma_url);
+      } catch {
+        // Firma not found locally — skip
+      }
     }
 
     await this.generatePDF(pdfPath, {
@@ -375,13 +375,56 @@ export class CertificadosService {
       }
     })();
 
-    // F7.5.2: Purge submission files to free storage after certificate generation.
-    // Awaited (not fire-and-forget) to ensure files are cleaned up before returning.
+    // ── Post-certification cleanup: unenroll student and wipe course data ──
+    // The certificate is the final product. All working data is now disposable.
     try {
-      this.logger.log(`🧹 Starting submission file purge for user ${usuario_guid} in course ${curso_guid}...`);
+      this.logger.log(`🧹 Post-certification cleanup for user ${usuario_guid} in course ${curso_guid}...`);
+
+      // 1. Purge submission files from R2/local storage
       await this.purgeEntregaFiles(usuario_guid, curso_guid);
+
+      // 2. Collect all task GUIDs in this course
+      const allTaskGuids = curso.modulos.flatMap((m) =>
+        m.lecciones.flatMap((l) => l.recursos.filter((r) => r.tipo === 'TAREA').map((r) => r.guid)),
+      );
+
+      // 3. Delete submission records (DB rows — files already purged above)
+      if (allTaskGuids.length > 0) {
+        const deletedEntregas = await this.prisma.lms_entregas.deleteMany({
+          where: { usuario_guid, tarea_guid: { in: allTaskGuids } },
+        });
+        this.logger.log(`  Deleted ${deletedEntregas.count} submission record(s)`);
+      }
+
+      // 4. Delete progress records
+      const deletedProgreso = await this.prisma.lms_progreso_recurso.deleteMany({
+        where: { usuario_guid, recurso_guid: { in: allResourceGuids } },
+      });
+      this.logger.log(`  Deleted ${deletedProgreso.count} progress record(s)`);
+
+      // 5. Delete session/heartbeat data
+      const deletedSesiones = await this.prisma.lms_sesion_activa.deleteMany({
+        where: { usuario_guid, curso_guid },
+      });
+      this.logger.log(`  Deleted ${deletedSesiones.count} session record(s)`);
+
+      // 6. Un-enroll the student — they completed the course
+      try {
+        await this.prisma.lms_matriculas.delete({
+          where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
+        });
+        this.logger.log(`  Student un-enrolled from course`);
+      } catch {
+        // Already un-enrolled or never enrolled — safe to ignore
+      }
+
+      // 7. Notify frontend about the enrollment change
+      this.lmsGateway.broadcast('enrollment:changed', { action: 'completed', curso_guid, usuario_guid }, [usuario_guid]);
+      this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_completed' });
+
+      this.logger.log(`✅ Post-certification cleanup complete for user ${usuario_guid} in course ${curso_guid}`);
     } catch (err) {
-      this.logger.error('Entrega file purge error:', err);
+      this.logger.error('Post-certification cleanup error (certificate was still generated):', err);
     }
 
     return certificado;
@@ -501,15 +544,20 @@ export class CertificadosService {
 
   /**
    * Get the PDF file path for download.
+   * Uses StorageService for validated path resolution.
    */
   getArchivoPDF(filename: string): string {
-    // Try local cert directory first
-    const fullPath = path.join(CERTS_DIR, filename);
-    if (fs.existsSync(fullPath)) return fullPath;
-    // Try general uploads directory (legacy)
-    const uploadsPath = path.join(process.cwd(), 'uploads', filename);
-    if (fs.existsSync(uploadsPath)) return uploadsPath;
-    throw new NotFoundException('Archivo PDF no encontrado.');
+    // Try via StorageService (validates key and checks organized + legacy paths)
+    try {
+      return this.storageService.getUploadPath(`certificados/${filename}`);
+    } catch {
+      // Fallback: try bare filename via StorageService
+      try {
+        return this.storageService.getUploadPath(filename);
+      } catch {
+        throw new NotFoundException('Archivo PDF no encontrado.');
+      }
+    }
   }
 
   // ─── PDF GENERATION ──────────────────────────────────────

@@ -6,6 +6,7 @@ interface StatCardProps {
   label: string;
   value: number;
   suffix?: string;
+  decimals?: number;
   icon: ReactNode;
   color?: "primary" | "accent" | "success" | "info" | "warning" | "destructive";
   trend?: { value: number; label: string };
@@ -22,7 +23,7 @@ const colorMap: Record<string, { bg: string; text: string; glow: string }> = {
   destructive: { bg: "from-destructive/15 to-destructive/5", text: "text-destructive", glow: "" },
 };
 
-function useCountUp(target: number, duration = 600): number {
+function useCountUp(target: number, duration = 600, decimals = 0): string {
   const [count, setCount] = useState(0);
   const frameRef = useRef<number>(0);
 
@@ -35,19 +36,20 @@ function useCountUp(target: number, duration = 600): number {
       const progress = Math.min(elapsed / duration, 1);
       // Ease-out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(eased * target));
+      setCount(eased * target);
       if (progress < 1) frameRef.current = requestAnimationFrame(step);
+      else setCount(target); // Ensure exact final value
     };
 
     frameRef.current = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frameRef.current);
   }, [target, duration]);
 
-  return count;
+  return decimals > 0 ? count.toFixed(decimals) : Math.floor(count).toString();
 }
 
-export function StatCard({ label, value, suffix, icon, color = "primary", trend, href, className = "" }: StatCardProps) {
-  const animatedValue = useCountUp(value);
+export function StatCard({ label, value, suffix, decimals = 0, icon, color = "primary", trend, href, className = "" }: StatCardProps) {
+  const animatedValue = useCountUp(value, 600, decimals);
   const c = colorMap[color];
 
   const Wrapper = href ? "a" : "div";

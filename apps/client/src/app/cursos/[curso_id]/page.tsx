@@ -56,8 +56,6 @@ export default function CursoVisorPage() {
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [courseCompleted, setCourseCompleted] = useState(false);
   const [viewOnlyMode, setViewOnlyMode] = useState(false);
-  const [showCompletedOverlay, setShowCompletedOverlay] = useState(false);
-  const [certGuid, setCertGuid] = useState<string | null>(null);
   const [isQuizActive, setIsQuizActive] = useState(false);
   const [pendingCelebration, setPendingCelebration] = useState<any>(null);
   const celebrationShownRef = useRef(false);
@@ -126,14 +124,14 @@ export default function CursoVisorPage() {
 
     fetchProgreso();
 
-    const unsub1 = subscribe('submission:graded', fetchProgreso);
-    const unsub2 = subscribe('dashboard:refresh', fetchProgreso);
+    const unsub1 = subscribe('submission:graded', () => { if (!celebrationShownRef.current) fetchProgreso(); });
+    const unsub2 = subscribe('dashboard:refresh', () => { if (!celebrationShownRef.current) fetchProgreso(); });
     const unsub3 = subscribe('certificate:new', (data: any) => {
       if (data?.curso_guid === curso_id && !celebrationShownRef.current) {
         setPendingCelebration(data);
       }
     });
-    const unsub4 = subscribe('submission:new', fetchProgreso);
+    const unsub4 = subscribe('submission:new', () => { if (!celebrationShownRef.current) fetchProgreso(); });
 
     return () => {
       unsub1();
@@ -155,6 +153,8 @@ export default function CursoVisorPage() {
           setCelebrationData({ curso_titulo: pendingCelebration.curso_titulo || curso?.titulo || 'el curso' });
           setShowCelebration(true);
           setShowCelebrationActions(false);
+          setCourseCompleted(true);
+          setViewOnlyMode(true); // Stop heartbeat and other active interactions
         }
         setPendingCelebration(null);
       }, 1000);
@@ -165,7 +165,7 @@ export default function CursoVisorPage() {
   // Delay the certificate action buttons for 2s after the celebration appears
   useEffect(() => {
     if (showCelebration) {
-      const actionsTimer = setTimeout(() => setShowCelebrationActions(true), 2000);
+      const actionsTimer = setTimeout(() => setShowCelebrationActions(true), 4000);
       return () => clearTimeout(actionsTimer);
     } else {
       setShowCelebrationActions(false);
@@ -237,25 +237,6 @@ export default function CursoVisorPage() {
       const allEffective = [...new Set([...realCompleted, ...autoUnlocked])];
       setCompletados(allEffective);
       setTareasPendientes(data.tareas_pendientes_calificacion || []);
-
-      // Check if course has a certificate (already completed)
-      try {
-        const verifRes = await api.get(
-          `/estudiantes/student/certificados/verificar/${curso_id}?usuario_guid=${userGuid}`,
-        );
-        const verifData = verifRes.data;
-        if (verifData.completo && verifData.puede_generar_certificado) {
-          // Check if certificate actually exists
-          const certsRes = await api.get(`/estudiantes/student/certificados?usuario_guid=${userGuid}`);
-          const certs = Array.isArray(certsRes.data) ? certsRes.data : [];
-          const matchCert = certs.find((c: any) => c.curso_guid === curso_id);
-          if (matchCert) {
-            setCourseCompleted(true);
-            setCertGuid(matchCert.guid);
-            setShowCompletedOverlay(true);
-          }
-        }
-      } catch {}
     } catch (err) {
       console.error(err);
     } finally {
@@ -449,81 +430,6 @@ export default function CursoVisorPage() {
     );
   }
 
-  // COURSE COMPLETED OVERLAY — shown when course has a certificate
-  if (showCompletedOverlay && courseCompleted) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 animate-in fade-in duration-500">
-        <div className="max-w-lg w-full bg-card border border-emerald-500/30 rounded-3xl overflow-hidden shadow-xl relative">
-          {/* Close button */}
-          <button
-            onClick={() => {
-              setShowCompletedOverlay(false);
-              setViewOnlyMode(true);
-            }}
-            className="absolute top-4 right-4 z-20 p-2 rounded-xl bg-background/80 hover:bg-muted border border-border/50 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Cerrar"
-          >
-            <X className="h-5 w-5" />
-          </button>
-
-          {/* Gradient header */}
-          <div className="relative bg-gradient-to-br from-emerald-500/15 via-primary/10 to-emerald-500/5 p-10 text-center overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-400 via-primary to-emerald-500" />
-            <div className="absolute -top-12 -right-12 w-36 h-36 bg-emerald-500/5 rounded-full" />
-            <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-primary/5 rounded-full" />
-
-            <div className="relative z-10">
-              <div
-                className="w-24 h-24 bg-gradient-to-br from-emerald-500/20 to-primary/20 rounded-full flex items-center justify-center mx-auto mb-5 ring-4 ring-background shadow-xl"
-                style={{ animation: 'bounce 2s infinite' }}
-              >
-                <Trophy className="h-12 w-12 text-emerald-500" />
-              </div>
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <Sparkles className="h-5 w-5 text-amber-500" />
-                <h1 className="text-2xl font-black text-foreground">¡Curso Finalizado!</h1>
-                <Sparkles className="h-5 w-5 text-amber-500" />
-              </div>
-              <p className="text-muted-foreground text-sm leading-relaxed">Ya completaste exitosamente el curso</p>
-              <p className="text-emerald-600 dark:text-emerald-400 font-bold text-lg mt-1">{curso.titulo}</p>
-            </div>
-          </div>
-
-          <div className="p-8 text-center">
-            <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
-              Tu certificado de finalización ya fue generado. Puedes descargarlo o revisitar el contenido del curso en
-              modo de solo lectura.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <button
-                onClick={() => router.push(`/dashboard/student/certificados${certGuid ? `?open=${certGuid}` : ''}`)}
-                className="w-full sm:flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-2xl transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 text-sm"
-              >
-                <Award className="h-5 w-5" /> Ver Mi Certificado
-              </button>
-              <button
-                onClick={() => {
-                  setShowCompletedOverlay(false);
-                  setViewOnlyMode(true);
-                }}
-                className="w-full sm:flex-1 bg-muted hover:bg-border text-foreground font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm"
-              >
-                <Eye className="h-5 w-5" /> Solo Visualizar
-              </button>
-            </div>
-
-            <Link
-              href="/dashboard/student/cursos"
-              className="inline-flex items-center gap-2 mt-5 text-muted-foreground hover:text-foreground text-sm transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" /> Volver a Mis Cursos
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -985,15 +891,18 @@ export default function CursoVisorPage() {
               }}
             >
               <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
-                Tu certificado de finalización ya ha sido generado y está disponible para descargar en formato PDF.
+                Tu certificado de finalización ya ha sido generado y está disponible para descargar. ¡Gran trabajo!
               </p>
 
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowCelebration(false)}
+                  onClick={() => {
+                    setShowCelebration(false);
+                    router.push('/dashboard/student/cursos');
+                  }}
                   className="flex-1 bg-muted hover:bg-border text-foreground font-bold py-3.5 rounded-xl transition-colors text-sm"
                 >
-                  Seguir en el curso
+                  Volver a Mis Cursos
                 </button>
                 <button
                   onClick={() => {

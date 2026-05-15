@@ -27,11 +27,12 @@ export class EvaluacionesService {
    * @throws BadRequestException if delivery was already approved.
    */
   async submitEntrega(tarea_guid: string, data: { buffer: Buffer; nombre_archivo: string; usuario_guid: string }) {
-    const serverFilename = await this.storageService.uploadFromBuffer(data.buffer, data.nombre_archivo, 'entregas');
-
     let entrega = await this.prisma.lms_entregas.findFirst({
       where: { tarea_guid, usuario_guid: data.usuario_guid },
     });
+
+    // Track previous file for cleanup on resubmission
+    let previousFileKey: string | null = null;
 
     if (entrega) {
       // BUG-02 FIX: Block resubmission if the delivery was already graded with a passing score.
@@ -48,59 +49,97 @@ export class EvaluacionesService {
         }
       }
       if (entrega.estado === 'CALIFICADA' && previousGrade !== null && previousGrade >= notaAprobacion) {
+        // SEC: Reject BEFORE uploading — prevents orphan files
         throw new BadRequestException(
           `Tu entrega ya fue aprobada con ${previousGrade.toFixed(1)}/5.0. No es necesario re-enviar.`,
         );
       }
-      const isResubmission =
-        entrega.estado === 'CALIFICADA' && previousGrade !== null && previousGrade < notaAprobacion;
 
-      entrega = await this.prisma.lms_entregas.update({
-        where: { guid: entrega.guid },
-        data: {
-          url_archivo_adjunto: serverFilename,
-          respuesta_texto: data.nombre_archivo,
-          estado: isResubmission ? 'EN_REVISION' : 'ENTREGADA',
-          fecha_entrega: new Date(),
-        },
-      });
+      // Save previous file key for cleanup after successful update
+      previousFileKey = entrega.url_archivo_adjunto;
+    }
 
-      // If re-submission, notify the examiner
-      if (isResubmission && entrega.tarea_guid) {
-        const recurso = await this.prisma.lms_recursos.findUnique({
-          where: { guid: entrega.tarea_guid },
-          select: {
-            titulo: true,
-            leccion: { select: { modulo: { select: { curso: { select: { titulo: true, profesor_guid: true } } } } } },
+    // Upload file AFTER validation passes — prevents orphan files on rejection
+    const serverFilename = await this.storageService.uploadFromBuffer(data.buffer, data.nombre_archivo, 'entregas');
+
+    try {
+      if (entrega) {
+        const previousGrade = entrega.calificacion != null ? Number(entrega.calificacion) : null;
+        let notaAprobacion = 3.0;
+        if (previousGrade !== null) {
+          const recurso = await this.prisma.lms_recursos.findUnique({
+            where: { guid: tarea_guid },
+            select: { leccion: { select: { modulo: { select: { curso: { select: { nota_aprobacion: true } } } } } } },
+          });
+          if (recurso?.leccion?.modulo?.curso?.nota_aprobacion != null) {
+            notaAprobacion = Number(recurso.leccion.modulo.curso.nota_aprobacion);
+          }
+        }
+        const isResubmission =
+          entrega.estado === 'CALIFICADA' && previousGrade !== null && previousGrade < notaAprobacion;
+
+        entrega = await this.prisma.lms_entregas.update({
+          where: { guid: entrega.guid },
+          data: {
+            url_archivo_adjunto: serverFilename,
+            respuesta_texto: data.nombre_archivo,
+            estado: isResubmission ? 'EN_REVISION' : 'ENTREGADA',
+            fecha_entrega: new Date(),
           },
         });
-        if (recurso) {
-          const estudiante = await this.prisma.usuarios.findUnique({
-            where: { guid: data.usuario_guid },
-            select: { nombre: true, apellido: true },
-          });
-          const nombreEstudiante = estudiante ? `${estudiante.nombre} ${estudiante.apellido}` : 'Estudiante';
-          await this.notificacionesService.crearNotificacion({
-            usuario_guid: recurso.leccion.modulo.curso.profesor_guid,
-            tipo: 'REVISION_ENTREGA',
-            titulo: 'Nueva entrega para revisión',
-            mensaje: `${nombreEstudiante} ha re-entregado "${recurso.titulo}" del curso "${recurso.leccion.modulo.curso.titulo}". La entrega anterior obtuvo ${previousGrade?.toFixed(1)}/5.0.`,
-            ref_tipo: 'entrega',
-            ref_guid: entrega.guid,
+
+        // Clean up the previous file only after successful DB update
+        if (previousFileKey && previousFileKey !== serverFilename) {
+          this.storageService.deleteFile(previousFileKey).catch((err) => {
+            this.logger.warn(`Failed to clean up previous submission file: ${previousFileKey}`, err);
           });
         }
+
+        // If re-submission, notify the examiner
+        if (isResubmission && entrega.tarea_guid) {
+          const recurso = await this.prisma.lms_recursos.findUnique({
+            where: { guid: entrega.tarea_guid },
+            select: {
+              titulo: true,
+              leccion: { select: { modulo: { select: { curso: { select: { titulo: true, profesor_guid: true } } } } } },
+            },
+          });
+          if (recurso) {
+            const estudiante = await this.prisma.usuarios.findUnique({
+              where: { guid: data.usuario_guid },
+              select: { nombre: true, apellido: true },
+            });
+            const nombreEstudiante = estudiante ? `${estudiante.nombre} ${estudiante.apellido}` : 'Estudiante';
+            const prevGrade = entrega.calificacion != null ? Number(entrega.calificacion) : null;
+            await this.notificacionesService.crearNotificacion({
+              usuario_guid: recurso.leccion.modulo.curso.profesor_guid,
+              tipo: 'REVISION_ENTREGA',
+              titulo: 'Nueva entrega para revisión',
+              mensaje: `${nombreEstudiante} ha re-entregado "${recurso.titulo}" del curso "${recurso.leccion.modulo.curso.titulo}". La entrega anterior obtuvo ${prevGrade?.toFixed(1)}/5.0.`,
+              ref_tipo: 'entrega',
+              ref_guid: entrega.guid,
+            });
+          }
+        }
+      } else {
+        entrega = await this.prisma.lms_entregas.create({
+          data: {
+            tarea_guid,
+            usuario_guid: data.usuario_guid,
+            url_archivo_adjunto: serverFilename,
+            respuesta_texto: data.nombre_archivo,
+            estado: 'ENTREGADA',
+            fecha_entrega: new Date(),
+          },
+        });
       }
-    } else {
-      entrega = await this.prisma.lms_entregas.create({
-        data: {
-          tarea_guid,
-          usuario_guid: data.usuario_guid,
-          url_archivo_adjunto: serverFilename,
-          respuesta_texto: data.nombre_archivo,
-          estado: 'ENTREGADA',
-          fecha_entrega: new Date(),
-        },
+    } catch (err) {
+      // SEC: Compensate — delete the uploaded file if the DB operation failed
+      this.logger.error('Submission DB operation failed, cleaning up uploaded file', err);
+      this.storageService.deleteFile(serverFilename).catch((delErr) => {
+        this.logger.warn(`Failed to compensate orphan file: ${serverFilename}`, delErr);
       });
+      throw err;
     }
 
     // Notify teachers/admins about the new submission (not students)

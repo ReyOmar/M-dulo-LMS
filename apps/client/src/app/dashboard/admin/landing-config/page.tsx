@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Save, Globe, Phone, Mail, MapPin, Type, FileText, Loader2, CheckCircle } from 'lucide-react';
 import { useConfig } from '@/contexts/ConfigContext';
 import { PageLoader } from '@/components/ui/PageLoader';
@@ -93,7 +93,17 @@ export default function LandingConfigPage() {
   const labelClass = 'block text-sm font-bold mb-2 text-foreground';
   const fieldGroup = 'space-y-1.5';
 
-  if (!config) return <PageLoader message="Cargando configuración de landing..." />;
+  const loadedRef = useRef(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (config && !loadedRef.current) {
+      loadedRef.current = true;
+      setLoading(false);
+    }
+  }, [config]);
+
+  if (loading) return <PageLoader message="Cargando configuración de landing..." />;
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

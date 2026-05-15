@@ -67,7 +67,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const debounceTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const isRevokedRef = useRef(false);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) return;
 
     // Use validated environment variable for API URL
@@ -77,7 +77,38 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     // F10.3: Don't connect without a valid token — prevents anonymous reconnection loops
     if (!token) return;
 
-    const wsUrl = apiBaseUrl.replace(/^http/, 'ws').replace('/api', '') + '/ws?token=' + token;
+    // SEC: Request a short-lived ephemeral token for WS connection
+    // This avoids sending the full JWT in the URL query string (which leaks into logs)
+    let wsToken: string | null = null;
+    try {
+      const res = await fetch(`${apiBaseUrl}/auth/ws-token`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.token) {
+          wsToken = data.token;
+        }
+      }
+    } catch {
+      // API unavailable — will retry on next reconnect cycle
+    }
+
+    // SEC: Do NOT connect with the full JWT — only ephemeral tokens are accepted
+    if (!wsToken) {
+      if (process.env.NODE_ENV === 'development') console.debug('WS: ephemeral token unavailable, skipping connection');
+      // Schedule retry after a short delay
+      const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000);
+      retryCountRef.current += 1;
+      reconnectTimeoutRef.current = setTimeout(connect, delay);
+      return;
+    }
+
+    const wsUrl = apiBaseUrl.replace(/^http/, 'ws').replace('/api', '') + '/ws?token=' + wsToken;
 
     const ws = new WebSocket(wsUrl);
 
@@ -156,24 +187,35 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           });
         }
 
-        // Notify all registered listeners for this event (debounced to prevent API bursts)
+        // Notify all registered listeners for this event
+        // Critical events fire immediately; bulk/refresh events are debounced to prevent API bursts
+        const DEBOUNCED_EVENTS: Set<string> = new Set([
+          'dashboard:refresh',
+          'presence:update',
+          'presence:sync',
+        ]);
+
         const notifyListeners = (targetEvent: WebSocketEvent, eventData: any) => {
           const listeners = listenersRef.current.get(targetEvent);
           if (!listeners || listeners.size === 0) return;
 
-          // Clear any existing debounce timer for this event
-          const existingTimer = debounceTimersRef.current.get(targetEvent);
-          if (existingTimer) clearTimeout(existingTimer);
+          if (DEBOUNCED_EVENTS.has(targetEvent)) {
+            // Debounce: coalesce rapid bulk events (300ms)
+            const existingTimer = debounceTimersRef.current.get(targetEvent);
+            if (existingTimer) clearTimeout(existingTimer);
 
-          // Debounce: wait 300ms before firing to coalesce rapid events
-          const timer = setTimeout(() => {
-            debounceTimersRef.current.delete(targetEvent);
-            const currentListeners = listenersRef.current.get(targetEvent);
-            if (currentListeners) {
-              currentListeners.forEach((cb) => cb(eventData));
-            }
-          }, 300);
-          debounceTimersRef.current.set(targetEvent, timer);
+            const timer = setTimeout(() => {
+              debounceTimersRef.current.delete(targetEvent);
+              const currentListeners = listenersRef.current.get(targetEvent);
+              if (currentListeners) {
+                currentListeners.forEach((cb) => cb(eventData));
+              }
+            }, 300);
+            debounceTimersRef.current.set(targetEvent, timer);
+          } else {
+            // Immediate: critical events fire without delay
+            listeners.forEach((cb) => cb(eventData));
+          }
         };
 
         notifyListeners(event, data);

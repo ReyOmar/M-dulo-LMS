@@ -4,8 +4,10 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenBlacklistService } from '../auth/token-blacklist.service';
+import { WsTokenService } from './ws-token.service';
 import { IncomingMessage } from 'http';
 import * as WebSocket from 'ws';
+import * as crypto from 'crypto';
 
 interface CourseEditor {
   guid: string;
@@ -13,18 +15,27 @@ interface CourseEditor {
   nombre: string;
 }
 
+/** Extended WebSocket with heartbeat tracking */
+interface HeartbeatSocket extends WebSocket {
+  isAlive?: boolean;
+}
+
 interface ConnectedClient {
-  socket: WebSocket;
+  socket: HeartbeatSocket;
   guid: string;
   role: string;
-  token: string;
+  /** Short hash of the session token — used to detect new login vs reconnect. Never stores the full token. */
+  sessionHash: string;
 }
 
 /**
  * Central WebSocket gateway for real-time LMS communication.
  *
- * Authenticates connections via JWT token in query string.
- * Provides methods for broadcasting events to all or specific users.
+ * Authentication flow (SEC):
+ * 1. Client calls POST /api/auth/ws-token to get a 30-second single-use ephemeral token
+ * 2. Client connects to ws://.../ws?token=<ephemeral_token>
+ * 3. Gateway consumes the ephemeral token via WsTokenService
+ * 4. JWT tokens in query string are rejected (no fallback)
  *
  * Events emitted:
  * - session:revoked — Force logout (user deleted/deactivated)
@@ -56,16 +67,17 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
     private configService: ConfigService,
     private prisma: PrismaService,
     private tokenBlacklistService: TokenBlacklistService,
+    private wsTokenService: WsTokenService,
   ) {}
 
   onModuleInit() {
     // F9.5: Check for ghost connections every 15 seconds
     this.heartbeatInterval = setInterval(() => {
       this.clients.forEach((c) => {
-        if ((c.socket as any).isAlive === false) {
+        if (c.socket.isAlive === false) {
           return c.socket.terminate();
         }
-        (c.socket as any).isAlive = false;
+        c.socket.isAlive = false;
         c.socket.ping();
       });
     }, 15000);
@@ -79,62 +91,71 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
     }
   }
 
+  /**
+   * Authenticate and register a new WebSocket connection.
+   * Only accepts ephemeral tokens issued by POST /api/auth/ws-token.
+   * JWT tokens in query string are rejected to prevent token leakage.
+   */
   async handleConnection(client: WebSocket, req: IncomingMessage): Promise<void> {
     try {
       // Setup heartbeat for this connection
-      (client as any).isAlive = true;
+      (client as HeartbeatSocket).isAlive = true;
       client.on('pong', () => {
-        (client as any).isAlive = true;
+        (client as HeartbeatSocket).isAlive = true;
       });
       const url = new URL(req.url || '', 'http://localhost');
-      const token = url.searchParams.get('token');
+      const rawToken = url.searchParams.get('token');
 
-      let payload: any = null;
-      if (token) {
-        payload = await this.jwtService.verifyAsync(token, {
-          secret: this.configService.get<string>('JWT_SECRET'),
-        });
-
-        if (!payload?.sub) {
-          client.close(4002, 'Token inválido');
-          return;
-        }
-
-        // F2.2: Check if token has been revoked (post-logout/password-change)
-        if (payload.iat && this.tokenBlacklistService.isRevoked(payload.sub, payload.iat)) {
-          client.close(4004, 'Sesión revocada');
-          return;
-        }
-
-        // Verify user still exists and is active
-        const dbUser = await this.prisma.usuarios.findUnique({
-          where: { guid: payload.sub },
-          select: { activo: true },
-        });
-        if (!dbUser || !dbUser.activo) {
-          client.close(4003, 'Usuario inactivo o eliminado');
-          return;
-        }
-      } else {
+      if (!rawToken) {
         client.close(4001, 'Autenticación requerida');
+        return;
+      }
+
+      let userGuid: string;
+      let userRole: string;
+      let sessionHash: string;
+
+      // Strategy 1: Consume ephemeral WS token (single-use, 30s TTL)
+      const ephemeral = this.wsTokenService.consumeToken(rawToken);
+
+      if (ephemeral) {
+        userGuid = ephemeral.userGuid;
+        userRole = ephemeral.userRole;
+        // SEC: Hash the raw token for session comparison — never store the raw value
+        sessionHash = crypto.createHash('sha256').update(rawToken).digest('hex').slice(0, 16);
+      } else {
+        // SEC: JWT tokens in query string are no longer accepted.
+        // Clients must use POST /api/auth/ws-token to get an ephemeral token first.
+        this.logger.warn('WS connection rejected: invalid or expired ephemeral token');
+        client.close(4002, 'Token inválido o expirado. Solicita un nuevo token efímero.');
+        return;
+      }
+
+      // Verify user still exists and is active
+      const dbUser = await this.prisma.usuarios.findUnique({
+        where: { guid: userGuid },
+        select: { activo: true },
+      });
+      if (!dbUser || !dbUser.activo) {
+        client.close(4003, 'Usuario inactivo o eliminado');
         return;
       }
 
       const connectedClient: ConnectedClient = {
         socket: client,
-        guid: payload.sub,
-        role: payload.role || 'ESTUDIANTE',
-        token,
+        guid: userGuid,
+        role: userRole,
+        sessionHash,
       };
 
       // ── Enforce single session: revoke previous connections only on REAL new logins ──
-      const existingConnections = this.clients.filter((c) => c.guid === payload.sub);
-      // Check if this is a page refresh (same token) or a genuine new login (different token)
-      const isNewLogin = existingConnections.length > 0 && existingConnections.some((c) => c.token !== token);
+      const existingConnections = this.clients.filter((c) => c.guid === userGuid);
+      // Check if this is a page refresh (same session hash) or a genuine new login (different hash)
+      const isNewLogin = existingConnections.length > 0 && existingConnections.some((c) => c.sessionHash !== sessionHash);
 
       for (const existing of existingConnections) {
-        if (isNewLogin && existing.token !== token) {
-          // Different token = real new login → revoke old session
+        if (isNewLogin && existing.sessionHash !== sessionHash) {
+          // Different session = real new login → revoke old session
           const revokeMsg = JSON.stringify({
             event: 'session:revoked',
             data: { reason: 'new_session' },
@@ -147,18 +168,18 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
             existing.socket.close(4004, 'Nueva sesión iniciada');
           } catch {}
         } else {
-          // Same token = page refresh / reconnect → close silently without revocation
+          // Same session = page refresh / reconnect → close silently without revocation
           try {
             existing.socket.close(1000, 'Reconnecting');
           } catch {}
         }
       }
-      this.clients = this.clients.filter((c) => c.guid !== payload.sub);
+      this.clients = this.clients.filter((c) => c.guid !== userGuid);
 
       this.clients.push(connectedClient);
       // F3.8: Only send affected user status in broadcast (not full online list)
       this.broadcast('presence:update', {
-        guid: payload.sub,
+        guid: userGuid,
         status: 'online',
       });
 
@@ -296,12 +317,19 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
   }
 
   /**
+   * Check if a specific user is currently connected via WebSocket.
+   */
+  isUserOnline(guid: string): boolean {
+    return this.clients.some((c) => c.guid === guid && c.socket.readyState === WebSocket.OPEN);
+  }
+
+  /**
    * Broadcast an event to all connected clients, or to specific users.
    * @param event - Event name
    * @param data - Event payload
    * @param targetGuids - If provided, only send to these users
    */
-  broadcast(event: string, data: any, targetGuids?: string[]): void {
+  broadcast(event: string, data: Record<string, unknown>, targetGuids?: string[]): void {
     const message = JSON.stringify({ event, data, timestamp: Date.now() });
 
     for (const client of this.clients) {
@@ -318,7 +346,7 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
   /**
    * Broadcast to all clients with a specific role.
    */
-  broadcastToRole(event: string, data: any, role: string): void {
+  broadcastToRole(event: string, data: Record<string, unknown>, role: string): void {
     const message = JSON.stringify({ event, data, timestamp: Date.now() });
 
     for (const client of this.clients) {

@@ -3,6 +3,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { lms_tipo_matricula } from '@prisma/client';
 import { LmsGateway } from '../ws/lms.gateway';
 import { MailService } from '../mail/mail.service';
+import { StorageService } from '../storage/storage.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class MatriculasService {
@@ -11,6 +14,7 @@ export class MatriculasService {
     private prisma: PrismaService,
     private lmsGateway: LmsGateway,
     private mailService: MailService,
+    private storageService: StorageService,
   ) {}
 
   async matricularEstudiante(curso_guid: string, usuario_guid: string) {
@@ -18,6 +22,11 @@ export class MatriculasService {
       where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
     });
     if (existing) return existing;
+
+    // ── Clean slate: wipe any previous course data if the student is being re-enrolled ──
+    // This handles the re-certification scenario where a student completed the course,
+    // was un-enrolled, and is now being enrolled again to redo it from scratch.
+    await this.wipePreviousCourseData(usuario_guid, curso_guid);
 
     const result = await this.prisma.lms_matriculas.create({
       data: { usuario_guid, curso_guid, tipo: 'MANUAL' as lms_tipo_matricula },
@@ -45,6 +54,125 @@ export class MatriculasService {
     })();
 
     return result;
+  }
+
+  /**
+   * Wipe all previous course data for a student being re-enrolled.
+   * Deletes: old certificate + PDF, progress, submissions + files, session data.
+   * This ensures a completely fresh start for re-certification.
+   */
+  private async wipePreviousCourseData(usuario_guid: string, curso_guid: string): Promise<void> {
+    // Check if there's an old certificate to delete
+    const oldCert = await this.prisma.lms_certificados.findUnique({
+      where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
+    });
+
+    if (!oldCert) {
+      // No previous data likely exists — check and clean up residuals anyway
+      const hasProgress = await this.prisma.lms_progreso_recurso.count({
+        where: { usuario_guid, recurso: { leccion: { modulo: { curso_guid } } } },
+      });
+      if (hasProgress === 0) return; // Truly fresh — nothing to wipe
+    }
+
+    this.logger.log(`🔄 Re-enrollment detected: wiping previous data for user ${usuario_guid} in course ${curso_guid}`);
+
+    // 1. Delete old certificate + its PDF file
+    if (oldCert) {
+      // Delete PDF from local storage
+      try {
+        const pdfPath = path.join(process.cwd(), 'uploads', 'certificados', oldCert.archivo_pdf);
+        if (fs.existsSync(pdfPath)) {
+          fs.unlinkSync(pdfPath);
+          this.logger.log(`  Deleted local PDF: ${oldCert.archivo_pdf}`);
+        }
+      } catch (err) {
+        this.logger.warn(`  Failed to delete local PDF:`, err);
+      }
+
+      // Delete PDF from R2
+      try {
+        await this.storageService.deleteFile(`certificados/${oldCert.archivo_pdf}`);
+        this.logger.log(`  Deleted R2 PDF: certificados/${oldCert.archivo_pdf}`);
+      } catch {
+        // R2 not configured or file doesn't exist — safe to ignore
+      }
+
+      // Delete certificate DB record
+      await this.prisma.lms_certificados.delete({
+        where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
+      });
+      this.logger.log(`  Deleted old certificate record`);
+    }
+
+    // 2. Get all resource GUIDs in the course for targeted cleanup
+    const curso = await this.prisma.lms_cursos.findUnique({
+      where: { guid: curso_guid },
+      select: {
+        modulos: {
+          select: {
+            lecciones: {
+              select: {
+                recursos: { select: { guid: true, tipo: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (curso) {
+      const allResources = curso.modulos.flatMap((m) => m.lecciones.flatMap((l) => l.recursos));
+      const allResourceGuids = allResources.map((r) => r.guid);
+      const taskGuids = allResources.filter((r) => r.tipo === 'TAREA').map((r) => r.guid);
+
+      // 3. Delete submission files from storage + DB records
+      if (taskGuids.length > 0) {
+        const entregas = await this.prisma.lms_entregas.findMany({
+          where: { usuario_guid, tarea_guid: { in: taskGuids }, url_archivo_adjunto: { not: null } },
+          select: { url_archivo_adjunto: true },
+        });
+
+        for (const e of entregas) {
+          if (e.url_archivo_adjunto) {
+            try {
+              await this.storageService.deleteFile(e.url_archivo_adjunto);
+            } catch {
+              // File might already be purged
+            }
+          }
+        }
+
+        const deletedEntregas = await this.prisma.lms_entregas.deleteMany({
+          where: { usuario_guid, tarea_guid: { in: taskGuids } },
+        });
+        this.logger.log(`  Deleted ${deletedEntregas.count} old submission(s)`);
+      }
+
+      // 4. Delete progress records
+      if (allResourceGuids.length > 0) {
+        const deletedProgress = await this.prisma.lms_progreso_recurso.deleteMany({
+          where: { usuario_guid, recurso_guid: { in: allResourceGuids } },
+        });
+        this.logger.log(`  Deleted ${deletedProgress.count} progress record(s)`);
+      }
+    }
+
+    // 5. Delete session/heartbeat data
+    const deletedSessions = await this.prisma.lms_sesion_activa.deleteMany({
+      where: { usuario_guid, curso_guid },
+    });
+    this.logger.log(`  Deleted ${deletedSessions.count} session record(s)`);
+
+    // 6. Delete old notifications related to this course
+    const deletedNotifs = await this.prisma.lms_notificaciones.deleteMany({
+      where: { usuario_guid, ref_tipo: 'certificado' },
+    });
+    if (deletedNotifs.count > 0) {
+      this.logger.log(`  Deleted ${deletedNotifs.count} old certificate notification(s)`);
+    }
+
+    this.logger.log(`✅ Previous course data wiped — student will start fresh`);
   }
 
   async desmatricularEstudiante(curso_guid: string, usuario_guid: string) {

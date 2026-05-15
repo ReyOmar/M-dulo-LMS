@@ -201,6 +201,31 @@ const VARIABLE_META: Record<string, { label: string; sample: string; color: stri
     sample: '2.5',
     color: 'bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/30',
   },
+  remitente: {
+    label: 'Remitente',
+    sample: 'María López',
+    color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30',
+  },
+  mensaje_preview: {
+    label: 'Mensaje',
+    sample: 'Hola, ¿cómo va tu progreso?',
+    color: 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-500/30',
+  },
+  origen: {
+    label: 'Asunto/Origen',
+    sample: 'Mensaje directo',
+    color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30',
+  },
+  url_mensajes: {
+    label: 'URL Mensajes',
+    sample: 'https://plataforma.com/mensajes',
+    color: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30',
+  },
+  progreso_cursos: {
+    label: 'Tabla Progreso',
+    sample: '(tabla con cursos y porcentajes)',
+    color: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30',
+  },
 };
 
 const DEFAULT_COLOR = 'bg-slate-500/15 text-foreground border-slate-300 dark:border-slate-500/30';
@@ -230,6 +255,14 @@ function VariablePill({ variable, size = 'sm' }: { variable: string; size?: 'sm'
  */
 function renderPreviewHtml(html: string, variables: string[]): string {
   let result = html;
+
+  // 1st pass: Fix URL variables inside href attributes — replace with "#" so the
+  //    button/link renders properly with its inline styles (white text on colored bg)
+  for (const v of variables) {
+    result = result.replace(new RegExp(`href=["']\\{\\{${v}\\}\\}["']`, 'g'), 'href="#"');
+  }
+
+  // 2nd pass: Replace remaining {{variables}} in visible text with styled pill badges
   for (const v of variables) {
     const meta = getVariableMeta(v);
     const badge = `<span style="display:inline-flex;align-items:center;gap:2px;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:700;background:hsl(var(--primary) / 0.12);color:hsl(var(--primary));border:1px solid hsl(var(--primary) / 0.2)">${meta.sample}</span>`;
@@ -383,7 +416,34 @@ export default function MailTemplateEditor({ evento, plantilla, onSave, onCancel
                 <div className="bg-primary p-4 text-white font-bold text-sm">
                   Asunto: {previewAsunto || 'Sin Asunto'}
                 </div>
-                <div className="p-4 prose prose-sm max-w-none" dangerouslySetInnerHTML={sanitizeHTML(previewHtml)} />
+                <div
+                  className="p-4 text-sm leading-relaxed email-preview-body"
+                  onClick={(e) => {
+                    // Prevent template variable links from navigating
+                    const target = e.target as HTMLElement;
+                    if (target.tagName === 'A' || target.closest('a')) {
+                      e.preventDefault();
+                    }
+                  }}
+                  dangerouslySetInnerHTML={sanitizeHTML(previewHtml)}
+                />
+                <style>{`
+                  .email-preview-body a {
+                    display: inline-block;
+                    background: #4f46e5;
+                    color: #fff !important;
+                    font-weight: 700;
+                    padding: 10px 24px;
+                    border-radius: 8px;
+                    text-decoration: none;
+                    font-size: 13px;
+                    cursor: default;
+                    margin: 4px 0;
+                  }
+                  .email-preview-body a:hover {
+                    opacity: 0.9;
+                  }
+                `}</style>
               </div>
             </div>
           ) : (

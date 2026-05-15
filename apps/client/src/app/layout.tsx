@@ -58,9 +58,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" suppressHydrationWarning className={inter.variable}>
       <head>
-        {/* Preconnect to Google Fonts for dynamic theme font loading (ConfigContext) */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Blocking script to apply cached theme BEFORE any CSS/React renders — eliminates color flash */}
         <Script src="/theme-preload.js" strategy="beforeInteractive" />
       </head>

@@ -92,7 +92,6 @@ export default function StudentCursosActivos() {
                 )}
                 <div className="h-32 bg-primary/10 relative flex items-center justify-center overflow-hidden">
                   {curso.imagen_portada ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={resolveFileUrl(curso.imagen_portada) || ''}
                       alt={curso.titulo}

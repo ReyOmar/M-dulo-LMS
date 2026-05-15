@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LmsGateway } from '../ws/lms.gateway';
 import { NotificacionesService } from './notificaciones.service';
+import { MailService } from '../mail/mail.service';
 
 /**
  * ChatService — Manages direct messaging between users and contact approval.
@@ -13,6 +14,7 @@ export class ChatService {
     private prisma: PrismaService,
     private lmsGateway: LmsGateway,
     private notificacionesService: NotificacionesService,
+    private mailService: MailService,
   ) {}
 
   /**
@@ -82,6 +84,25 @@ export class ChatService {
       },
       [data.destinatario_guid],
     );
+
+    // If recipient is offline, send email notification
+    if (!this.lmsGateway.isUserOnline(data.destinatario_guid)) {
+      const destinatario = await this.prisma.usuarios.findUnique({
+        where: { guid: data.destinatario_guid },
+        select: { email: true, nombre: true },
+      });
+      if (destinatario) {
+        this.mailService
+          .sendChatNotification(
+            destinatario.email,
+            destinatario.nombre,
+            nombreRemitente,
+            data.contenido,
+            data.asunto || 'Mensaje directo',
+          )
+          .catch(() => {}); // Fire-and-forget, don't block the response
+      }
+    }
 
     return mensaje;
   }

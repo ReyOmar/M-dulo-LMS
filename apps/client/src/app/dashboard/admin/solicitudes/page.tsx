@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Check, X, ShieldAlert, Clock, Loader2 } from 'lucide-react';
+import { Check, X, ShieldAlert, Clock } from 'lucide-react';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { useRole } from '@/contexts/RoleContext';
 import Link from 'next/link';

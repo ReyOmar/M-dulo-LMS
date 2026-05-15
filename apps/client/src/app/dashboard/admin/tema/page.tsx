@@ -2,9 +2,9 @@
 
 import { useConfig, GOOGLE_FONTS, resolveFileUrl } from '@/contexts/ConfigContext';
 import { useRole } from '@/contexts/RoleContext';
-import { Palette, Save, Eye, Upload, Type, RectangleHorizontal, Image, Sparkles, GraduationCap } from 'lucide-react';
+import { Palette, Save, Eye, Upload, Type, RectangleHorizontal, Image as ImageIcon, Sparkles, GraduationCap } from 'lucide-react';
 import { PageLoader } from '@/components/ui/PageLoader';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 const THEME_PRESETS = [
   { name: 'Corporativo', primary: '#1e3a8a', secondary: '#ea580c', desc: 'Azul serio y naranja vibrante' },
@@ -22,7 +22,13 @@ export default function TemaPage() {
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const loginBgInputRef = useRef<HTMLInputElement>(null);
 
-  if (!config) return <PageLoader message="Cargando tema y apariencia..." />;
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (config) setLoading(false);
+  }, [config]);
+
+  if (loading) return <PageLoader message="Cargando tema y apariencia..." />;
 
   if (role !== 'admin') {
     return (
@@ -401,7 +407,7 @@ export default function TemaPage() {
       {/* ======= LOGIN CUSTOMIZATION ======= */}
       <section className="bg-card/70 backdrop-blur-md border border-border/50 rounded-2xl p-4 sm:p-8 shadow-sm mb-8 animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-          <Image className="h-5 w-5 text-primary" /> Pantalla de Inicio de Sesión
+          <ImageIcon className="h-5 w-5 text-primary" /> Pantalla de Inicio de Sesión
         </h2>
 
         <div className="space-y-6">

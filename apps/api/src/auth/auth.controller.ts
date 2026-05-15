@@ -15,6 +15,7 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { UserService } from './user.service';
 import { TokenBlacklistService } from './token-blacklist.service';
+import { WsTokenService } from '../ws/ws-token.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -31,6 +32,7 @@ export class AuthController {
     private authService: AuthService,
     private userService: UserService,
     private tokenBlacklistService: TokenBlacklistService,
+    private wsTokenService: WsTokenService,
   ) {}
 
   // ── Public auth endpoints ──
@@ -76,6 +78,20 @@ export class AuthController {
   async logout(@CurrentUser() user: JwtPayload) {
     await this.tokenBlacklistService.revokeUser(user.sub);
     return { message: 'Sesión cerrada correctamente.' };
+  }
+
+  // ── WebSocket ephemeral token ──
+
+  /**
+   * SEC: Issue a short-lived, single-use token for WebSocket connections.
+   * Replaces sending the full JWT in the WS URL query string.
+   * Token expires in 30 seconds and can only be used once.
+   */
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  @Post('ws-token')
+  async getWsToken(@CurrentUser() user: JwtPayload) {
+    const token = this.wsTokenService.issueToken(user.sub, user.role);
+    return { token };
   }
 
   // ── User profile (delegated to UserService) ──

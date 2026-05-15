@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { sanitizeUrlForLogs } from '../utils/sanitize-url.util';
 
 /**
  * Global exception filter that catches ALL unhandled exceptions and returns
@@ -33,6 +34,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let message = 'Ha ocurrido un error interno. Inténtalo de nuevo más tarde.';
     let error = 'Internal Server Error';
 
+    // SEC: Sanitize URL before any logging to prevent token leakage
+    const safeUrl = sanitizeUrlForLogs(request?.url || '');
+
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
@@ -52,11 +56,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else if (exception instanceof Error) {
       // Unexpected errors — log full stack but don't expose to client
       this.logger.error(
-        `Unhandled exception on ${request.method} ${request.url}: ${exception.message}`,
+        `Unhandled exception on ${request.method} ${safeUrl}: ${exception.message}`,
         exception.stack,
       );
     } else {
-      this.logger.error(`Unknown exception type on ${request.method} ${request.url}:`, exception);
+      this.logger.error(`Unknown exception type on ${request.method} ${safeUrl}:`, exception);
     }
 
     // Extract correlation ID from request if available
@@ -72,7 +76,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     // Only log non-4xx errors as errors (4xx are client errors, expected)
     if (status >= 500) {
-      this.logger.error(`[${status}] ${request.method} ${request.url} — ${message}${requestId ? ` [${requestId}]` : ''}`);
+      this.logger.error(`[${status}] ${request.method} ${safeUrl} — ${message}${requestId ? ` [${requestId}]` : ''}`);
     }
 
     response.status(status).send(responseBody);

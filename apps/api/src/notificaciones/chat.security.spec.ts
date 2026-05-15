@@ -6,13 +6,18 @@ import { ChatService } from './chat.service';
  * - F2.9: Contact request requires both users in the course
  * - F2.10: Conversation deletion is unilateral (own messages only)
  * - F4.7: Messaging requires approved contact relationship
+ * - Offline recipient email notification
  */
 describe('ChatService — Security', () => {
   let service: ChatService;
   let mockPrisma: any;
 
-  const mockGateway: any = { broadcast: jest.fn() };
+  const mockGateway: any = {
+    broadcast: jest.fn(),
+    isUserOnline: jest.fn().mockReturnValue(true), // Default: user is online (no email sent)
+  };
   const mockNotificaciones: any = { crearNotificacion: jest.fn().mockResolvedValue({}) };
+  const mockMailService: any = { sendChatNotification: jest.fn().mockResolvedValue(true) };
 
   beforeEach(() => {
     mockPrisma = {
@@ -30,7 +35,11 @@ describe('ChatService — Security', () => {
       },
       usuarios: { findUnique: jest.fn(), findMany: jest.fn() },
     };
-    service = new ChatService(mockPrisma, mockGateway, mockNotificaciones);
+    service = new ChatService(mockPrisma, mockGateway, mockNotificaciones, mockMailService);
+    // Reset mocks between tests
+    jest.clearAllMocks();
+    // Default: user is online
+    mockGateway.isUserOnline.mockReturnValue(true);
   });
 
   // ── F2.9: Contact request — both users must be in the course ──
@@ -117,8 +126,9 @@ describe('ChatService — Security', () => {
 
   describe('enviarMensaje — F4.7', () => {
     it('should DENY messaging without approved contact', async () => {
-      // No contact found
+      // No contact found — and sender is not admin
       mockPrisma.lms_contacto_chat.findFirst.mockResolvedValue(null);
+      mockPrisma.usuarios.findUnique.mockResolvedValue({ rol: 'ESTUDIANTE' });
 
       await expect(
         service.enviarMensaje({
@@ -130,15 +140,17 @@ describe('ChatService — Security', () => {
       ).rejects.toThrow();
     });
 
-    it('should ALLOW messaging with approved contact', async () => {
+    it('should ALLOW messaging with accepted contact', async () => {
+      // SEC: The actual domain state uses 'ACEPTADO' not 'APROBADO'
       mockPrisma.lms_contacto_chat.findFirst.mockResolvedValue({
         id: 1,
-        estado: 'APROBADO',
+        estado: 'ACEPTADO',
       });
       mockPrisma.lms_mensajes.create.mockResolvedValue({
         id: 1,
         remitente_guid: 'user-A',
         destinatario_guid: 'user-B',
+        created_at: new Date(),
       });
       mockPrisma.usuarios.findUnique.mockResolvedValue({ nombre: 'Test', apellido: 'User' });
 
@@ -149,6 +161,63 @@ describe('ChatService — Security', () => {
         contenido: 'Hello',
       });
       expect(result).toBeDefined();
+    });
+
+    it('should send email when recipient is offline', async () => {
+      mockPrisma.lms_contacto_chat.findFirst.mockResolvedValue({
+        id: 1,
+        estado: 'ACEPTADO',
+      });
+      mockPrisma.lms_mensajes.create.mockResolvedValue({
+        id: 1,
+        remitente_guid: 'user-A',
+        destinatario_guid: 'user-B',
+        created_at: new Date(),
+      });
+      // Sender lookup for notification
+      mockPrisma.usuarios.findUnique
+        .mockResolvedValueOnce({ nombre: 'Sender', apellido: 'User' }) // remitente lookup
+        .mockResolvedValueOnce({ email: 'dest@example.com', nombre: 'Dest' }); // destinatario lookup
+
+      // Recipient is OFFLINE
+      mockGateway.isUserOnline.mockReturnValue(false);
+
+      await service.enviarMensaje({
+        remitente_guid: 'user-A',
+        destinatario_guid: 'user-B',
+        asunto: 'Hi',
+        contenido: 'Hello',
+      });
+
+      // Verify email was triggered for offline user
+      expect(mockMailService.sendChatNotification).toHaveBeenCalled();
+    });
+
+    it('should NOT send email when recipient is online', async () => {
+      mockPrisma.lms_contacto_chat.findFirst.mockResolvedValue({
+        id: 1,
+        estado: 'ACEPTADO',
+      });
+      mockPrisma.lms_mensajes.create.mockResolvedValue({
+        id: 1,
+        remitente_guid: 'user-A',
+        destinatario_guid: 'user-B',
+        created_at: new Date(),
+      });
+      mockPrisma.usuarios.findUnique.mockResolvedValue({ nombre: 'Test', apellido: 'User' });
+
+      // Recipient is ONLINE
+      mockGateway.isUserOnline.mockReturnValue(true);
+
+      await service.enviarMensaje({
+        remitente_guid: 'user-A',
+        destinatario_guid: 'user-B',
+        asunto: 'Hi',
+        contenido: 'Hello',
+      });
+
+      // Email should NOT be sent to online users
+      expect(mockMailService.sendChatNotification).not.toHaveBeenCalled();
     });
   });
 });

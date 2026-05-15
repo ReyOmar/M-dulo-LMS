@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, NotFoundException } from '@nestjs/common';
 import { MatriculasService } from './matriculas.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { MatricularEstudianteDto } from './dto/matricular.dto';
@@ -10,8 +10,10 @@ export class MatriculasController {
   @Roles('ADMINISTRADOR')
   @Post('/seed-matriculas')
   async seedMatriculas() {
-    if (process.env.NODE_ENV === 'production') {
-      return { error: 'Este endpoint no está disponible en producción.' };
+    // SEC: In production, this endpoint should not exist at all.
+    // Return 404 to avoid revealing internal tooling endpoints.
+    if (process.env.NODE_ENV === 'production' || process.env.DISABLE_SEEDS === 'true') {
+      throw new NotFoundException();
     }
     return this.matriculasService.seedMatriculas();
   }

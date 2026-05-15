@@ -72,20 +72,24 @@ const hexToHsl = (hex: string): string => {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 };
 
-const GOOGLE_FONTS = ['Inter', 'Roboto', 'Montserrat', 'Poppins', 'Outfit', 'Open Sans', 'Lato'];
+/**
+ * Available fonts for the theme selector.
+ * SEC: Uses system/bundled fonts only — eliminates runtime requests to external
+ * font CDNs (fonts.googleapis.com) which leak user IPs and create a SPOF.
+ * Inter is bundled via Next.js (next/font/google) at build time.
+ */
+const GOOGLE_FONTS = ['Inter', 'system-ui', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial'];
 
 // Re-export resolveFileUrl for backwards compatibility
 // (canonical definition is in lib/api.ts)
 export { resolveFileUrl };
 
-function loadGoogleFont(fontName: string) {
-  const id = `gfont-${fontName.replace(/\s/g, '-')}`;
-  if (document.getElementById(id)) return;
-  const link = document.createElement('link');
-  link.id = id;
-  link.rel = 'stylesheet';
-  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName)}:wght@300;400;500;600;700;800;900&display=swap`;
-  document.head.appendChild(link);
+/**
+ * Build a CSS font-family stack for a given font name.
+ * No external font loading — uses what's available on the user's OS.
+ */
+function getFontFamily(fontName: string): string {
+  return `"${fontName}", ui-sans-serif, system-ui, -apple-system, sans-serif`;
 }
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
@@ -145,10 +149,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       document.documentElement.style.setProperty('--secondary', secHsl);
     }
 
-    // ── Font — load Google Font and inject a global style tag so ALL elements pick it up ──
+    // ── Font — use system font stack (no external CDN requests) ──
     if (cfg.fuente) {
-      loadGoogleFont(cfg.fuente);
-      const fontFamily = `"${cfg.fuente}", ui-sans-serif, system-ui, sans-serif`;
+      const fontFamily = getFontFamily(cfg.fuente);
       document.documentElement.style.setProperty('--font-sans', fontFamily);
       document.body.style.fontFamily = fontFamily;
     }
@@ -157,7 +160,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     // Tailwind v4 compiles --radius at build time, so runtime setProperty alone isn't enough.
     // We inject a global override style tag that wins via specificity.
     const radiusPx = cfg.border_radius ?? 12;
-    const fontFamily2 = cfg.fuente ? `"${cfg.fuente}", ui-sans-serif, system-ui, sans-serif` : null;
+    const fontFamily2 = cfg.fuente ? getFontFamily(cfg.fuente) : null;
 
     let styleTag = document.getElementById('lms-theme-override') as HTMLStyleElement | null;
     if (!styleTag) {

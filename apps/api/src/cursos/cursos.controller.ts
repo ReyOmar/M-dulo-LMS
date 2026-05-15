@@ -144,8 +144,8 @@ export class CursosController {
 
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Get('/bloques/:bloque_guid')
-  async getBloque(@Param('bloque_guid') bloque_guid: string) {
-    return this.bloqueService.getBloque(bloque_guid);
+  async getBloque(@Param('bloque_guid') bloque_guid: string, @CurrentUser() user: JwtPayload) {
+    return this.bloqueService.getBloque(bloque_guid, user);
   }
 
   @Roles('ADMINISTRADOR', 'PROFESOR')

@@ -3,7 +3,7 @@ import { NotificacionesService } from './notificaciones.service';
 import { ChatService } from './chat.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
-import { Roles } from '../common/decorators/roles.decorator';
+
 import { EnviarMensajeDto, SolicitarContactoDto, ResponderContactoDto } from './dto/mensajes.dto';
 
 @Controller('notificaciones')

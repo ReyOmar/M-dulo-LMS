@@ -269,9 +269,10 @@ export class AuthService {
    * Notify via WebSocket after approve/reject outside the transaction.
    */
   notifyRequestResolved(action: 'approved' | 'rejected', requestData?: Record<string, unknown>): void {
-    this.lmsGateway.broadcast('request:resolved', { action, ...requestData });
+    const data = requestData ?? {};
+    this.lmsGateway.broadcast('request:resolved', { action, ...data });
     if (action === 'approved') {
-      this.lmsGateway.broadcast('user:created', requestData);
+      this.lmsGateway.broadcast('user:created', data);
     }
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'request_resolved' });
   }
@@ -368,10 +369,13 @@ export class AuthService {
       throw new BadRequestException('Correo electrónico inválido.');
     }
 
-    // Check if email is already in the system
+    // SEC: Check if email is already in the system — but DON'T reveal this to the caller
+    // to prevent user enumeration attacks. Return the same success message either way.
     const existingUser = await this.prisma.usuarios.findUnique({ where: { email } });
     if (existingUser) {
-      throw new BadRequestException('Este correo ya está registrado en el sistema. Inicia sesión directamente.');
+      // Silently pretend we sent a code — prevents enumeration
+      this.logger.debug(`Email verification skipped for existing user: ${email}`);
+      return { message: 'Si el correo es válido, recibirás un código de verificación.' };
     }
 
     // Rate limit: max 1 code per minute per email

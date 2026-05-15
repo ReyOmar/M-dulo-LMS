@@ -76,7 +76,7 @@ const DOMPURIFY_CONFIG = {
 
 // F5.6: CSS properties that are safe for rich text styling
 const SAFE_CSS_PROPS =
-  /^(color|background-color|font-size|font-weight|font-style|text-align|text-decoration|margin|padding|border|line-height|display|width|height|max-width|min-height)$/i;
+  /^(color|background|background-color|font-size|font-weight|font-style|font-family|text-align|text-decoration|text-transform|margin|margin-top|margin-bottom|margin-left|margin-right|padding|padding-top|padding-bottom|padding-left|padding-right|border|border-top|border-bottom|border-left|border-right|border-radius|border-color|border-width|border-style|line-height|display|width|height|max-width|max-height|min-width|min-height|vertical-align|letter-spacing|box-shadow|overflow|opacity)$/i;
 const DANGEROUS_CSS_VALUES = /expression|url\s*\(|javascript:|behavior|moz-binding|-o-link/i;
 
 /**

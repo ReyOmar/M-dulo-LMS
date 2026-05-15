@@ -1,6 +1,5 @@
 import { StorageController } from './storage.controller';
-import { StorageService } from './storage.service';
-import { ForbiddenException, BadRequestException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 
 /**
  * F5.1: Security tests for storage download ownership validation.
@@ -37,8 +36,8 @@ describe('StorageController — F1.1/F1.2 Ownership Validation', () => {
 
   // Helper to call private method via the download endpoint
   async function callDownloadFile(user: any, rawKey: string) {
-    const req = { params: { '*': rawKey } };
-    const res = {
+    const _req = { params: { '*': rawKey } };
+    const _res = {
       header: jest.fn(),
       redirect: jest.fn(),
     };

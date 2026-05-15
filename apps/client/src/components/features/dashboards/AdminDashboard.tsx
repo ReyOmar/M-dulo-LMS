@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BookOpen, Users, Award, GraduationCap, AlertCircle, TrendingUp } from 'lucide-react';
+import { BookOpen, Users, GraduationCap, AlertCircle, } from 'lucide-react';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { StatCard } from '@/components/ui/StatCard';
 import Link from 'next/link';

@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Get,
-  Param,
   Res,
   Query,
   StreamableFile,
@@ -113,7 +112,7 @@ export class StorageController {
       throw new ForbiddenException('Acceso denegado a esta ruta de archivo.');
     }
 
-    return this.serveFile(sanitizedKey, originalName, res);
+    return this.serveFile(sanitizedKey, originalName, res, false);
   }
 
   /**
@@ -158,11 +157,12 @@ export class StorageController {
 
     // F1.1/F1.2: Ownership validation for private folders
     const folder = segments.length === 2 ? segments[0] : null;
-    if (folder && PRIVATE_FOLDERS.includes(folder)) {
-      await this.assertPrivateFileAccess(user, sanitizedKey, folder);
+    const isPrivate = !!(folder && PRIVATE_FOLDERS.includes(folder));
+    if (isPrivate) {
+      await this.assertPrivateFileAccess(user, sanitizedKey, folder!);
     }
 
-    return this.serveFile(sanitizedKey, originalName, res);
+    return this.serveFile(sanitizedKey, originalName, res, isPrivate);
   }
 
   /**
@@ -273,8 +273,9 @@ export class StorageController {
 
   /**
    * Internal: serve a file using the 3-strategy approach.
+   * @param isPrivate - If true, applies restrictive cache headers and blocks CDN redirect
    */
-  private async serveFile(sanitizedKey: string, originalName: string | undefined, res: any) {
+  private async serveFile(sanitizedKey: string, originalName: string | undefined, res: any, isPrivate: boolean) {
     const justFilename = path.basename(sanitizedKey);
     const downloadName = originalName ? path.basename(originalName).replace(/"/g, '') : justFilename;
 
@@ -284,21 +285,26 @@ export class StorageController {
     const FORCE_DOWNLOAD_EXTS = ['.svg', '.html', '.htm', '.xml'];
     const disposition = FORCE_DOWNLOAD_EXTS.includes(fileExt) ? 'attachment' : 'inline';
 
-    // Strategy 1: R2 with public CDN URL → redirect
-    if (this.storageService.hasPublicUrl() && !this.storageService.existsLocally(sanitizedKey)) {
+    // SEC: Cache headers — private files must never be cached publicly
+    const cacheControl = isPrivate
+      ? 'private, no-store, must-revalidate'
+      : 'public, max-age=86400';
+
+    // Strategy 1: R2 with public CDN URL → redirect (PUBLIC files ONLY)
+    // SEC: Private files must NEVER redirect to unauthenticated CDN URL
+    if (!isPrivate && this.storageService.hasPublicUrl() && !this.storageService.existsLocally(sanitizedKey)) {
       const publicUrl = this.storageService.getFileUrl(sanitizedKey);
       res.redirect(302, publicUrl);
       return;
     }
 
-    // Strategy 2: R2 without public URL → proxy stream from R2
+    // Strategy 2: R2 without public URL (or private file) → proxy stream from R2
     if (this.storageService.isCloudStorageActive() && !this.storageService.existsLocally(sanitizedKey)) {
       const r2File = await this.storageService.streamFromR2(sanitizedKey);
       if (r2File) {
         res.header('Content-Type', r2File.contentType);
         res.header('Content-Disposition', `${disposition}; filename="${downloadName}"`);
-        res.header('Cache-Control', 'public, max-age=86400');
-        // F5.3: Prevent MIME sniffing
+        res.header('Cache-Control', cacheControl);
         res.header('X-Content-Type-Options', 'nosniff');
         return new StreamableFile(Buffer.from(r2File.buffer));
       }
@@ -312,11 +318,11 @@ export class StorageController {
     let contentType = 'application/octet-stream';
     if (ext === 'pdf') contentType = 'application/pdf';
     else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext || '')) contentType = `image/${ext}`;
-    else if (ext === 'svg') contentType = 'image/svg+xml'; // F5.3: SVG gets proper type but forced download
+    else if (ext === 'svg') contentType = 'image/svg+xml';
 
     res.header('Content-Type', contentType);
     res.header('Content-Disposition', `${disposition}; filename="${downloadName}"`);
-    res.header('Cache-Control', 'public, max-age=86400');
+    res.header('Cache-Control', cacheControl);
     res.header('X-Content-Type-Options', 'nosniff');
     return new StreamableFile(stream);
   }

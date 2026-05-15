@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Play,
   BookOpen,
@@ -9,14 +9,13 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
-  TrendingUp,
+  Award,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRole } from '@/contexts/RoleContext';
 import { useWS } from '@/contexts/WebSocketContext';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { StatCard } from '@/components/ui/StatCard';
-import { ProgressBar } from '@/components/ui/ProgressBar';
 import api from '@/lib/api';
 
 export function StudentDashboard() {
@@ -34,33 +33,8 @@ export function StudentDashboard() {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [activeDays, setActiveDays] = useState<number[]>([]);
 
-  useEffect(() => {
-    if (user?.guid) {
-      fetchData();
-    }
-  }, [user?.guid]);
-
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (!user?.guid) return;
-
-    // Subscribe to events that should refresh the student dashboard
-    const unsub1 = subscribe('course:updated', fetchData);
-    const unsub2 = subscribe('submission:graded', fetchData);
-    const unsub3 = subscribe('enrollment:changed', fetchData);
-    const unsub4 = subscribe('dashboard:refresh', fetchData);
-    // Re-fetch when a course enters maintenance so the widget updates immediately
-    const unsub5 = subscribe('course:maintenance', fetchData);
-
-    return () => {
-      unsub1();
-      unsub2();
-      unsub3();
-      unsub4();
-      unsub5();
-    };
-  }, [user?.guid, subscribe]);
-
-  const fetchData = async () => {
     try {
       const [cursosRes, metricasRes] = await Promise.all([
         api.get('/cursos'),
@@ -101,7 +75,44 @@ export function StudentDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.guid]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    if (!user?.guid) return;
+
+    const unsub1 = subscribe('course:updated', fetchData);
+    const unsub2 = subscribe('submission:graded', fetchData);
+    const unsub3 = subscribe('enrollment:changed', fetchData);
+    const unsub4 = subscribe('dashboard:refresh', fetchData);
+    const unsub5 = subscribe('course:maintenance', fetchData);
+
+    return () => {
+      unsub1();
+      unsub2();
+      unsub3();
+      unsub4();
+      unsub5();
+    };
+  }, [user?.guid, subscribe, fetchData]);
+
+  // Fetch active days when calendar month changes
+  const calYear = calendarDate.getFullYear();
+  const calMonth = calendarDate.getMonth();
+
+  useEffect(() => {
+    if (user?.guid) {
+      setActiveDays([]);
+      api
+        .get(`/estudiantes/student/dias-activos?usuario_guid=${user.guid}&year=${calYear}&month=${calMonth}`)
+        .then((r) => r.data)
+        .then((data) => setActiveDays(Array.isArray(data.dias) ? data.dias : []))
+        .catch(() => setActiveDays([]));
+    }
+  }, [user?.guid, calYear, calMonth]);
 
   // Pick next active (non-completed, non-maintenance) course
   const activeCursos = cursos.filter(
@@ -120,42 +131,17 @@ export function StudentDashboard() {
   const hayMantenimiento = cursosEnMantenimiento.length > 0;
   const allCoursesCompleted = cursos.length > 0 && cursosNoCompletados.length === 0;
 
-  // --- Calendar helpers ---
-  const calYear = calendarDate.getFullYear();
-  const calMonth = calendarDate.getMonth();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-  const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+  const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay();
   const today = new Date();
   const monthNames = [
-    'Enero',
-    'Febrero',
-    'Marzo',
-    'Abril',
-    'Mayo',
-    'Junio',
-    'Julio',
-    'Agosto',
-    'Septiembre',
-    'Octubre',
-    'Noviembre',
-    'Diciembre',
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
   ];
   const dayNames = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
 
   const prevMonth = () => setCalendarDate(new Date(calYear, calMonth - 1, 1));
   const nextMonth = () => setCalendarDate(new Date(calYear, calMonth + 1, 1));
-
-  // Fetch active days when calendar month changes
-  useEffect(() => {
-    if (user?.guid) {
-      setActiveDays([]); // Clear immediately to prevent stale data flash
-      api
-        .get(`/estudiantes/student/dias-activos?usuario_guid=${user.guid}&year=${calYear}&month=${calMonth}`)
-        .then((r) => r.data)
-        .then((data) => setActiveDays(Array.isArray(data.dias) ? data.dias : []))
-        .catch(() => setActiveDays([]));
-    }
-  }, [user?.guid, calYear, calMonth]);
 
   if (loading) {
     return (
@@ -347,24 +333,23 @@ export function StudentDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           label="Horas en Capacitación"
-          value={Math.round(Number(metricas?.total_horas_invertidas || 0) * 10) / 10}
+          value={Number(metricas?.total_horas_invertidas || 0)}
+          decimals={2}
           suffix="h"
           icon={<Clock className="h-5 w-5" />}
           color="info"
           className="stagger-5 animate-fade-slide-in"
         />
         <StatCard
-          label="Cursos Completados"
-          value={metricas?.cursos_completados || 0}
-          suffix={`/${metricas?.total_cursos || cursos.length}`}
-          icon={<GraduationCap className="h-5 w-5" />}
+          label="Certificados Obtenidos"
+          value={completedCourseGuids.size}
+          icon={<Award className="h-5 w-5" />}
           color="success"
           className="stagger-6 animate-fade-slide-in"
         />
         <StatCard
-          label="Cursos Activos"
+          label="Cursos en Progreso"
           value={activeCursos.length}
-          suffix={`/${cursos.length}`}
           icon={<BookOpen className="h-5 w-5" />}
           color="primary"
           className="stagger-7 animate-fade-slide-in"

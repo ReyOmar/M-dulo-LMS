@@ -50,6 +50,9 @@ model usuarios {
 
   // Foto de perfil del usuario
   foto_url          String?
+
+  // Soft-delete: when set, user is logically deleted but data is preserved
+  deleted_at        DateTime?
 }
 
 // ── VERIFICACIÓN DE EMAIL (para solicitudes de acceso) ──

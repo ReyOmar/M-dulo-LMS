@@ -6,6 +6,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { sanitizeUrlForLogs } from './common/utils/sanitize-url.util';
 import compress from '@fastify/compress';
 import multipart from '@fastify/multipart';
 import helmet from '@fastify/helmet';
@@ -62,24 +63,8 @@ async function bootstrap() {
       const ms = reply.elapsedTime?.toFixed(0) || '?';
       const status = reply.statusCode;
 
-      // F3.3: Sanitize sensitive params from logged URL
-      let sanitizedUrl = request.url;
-      try {
-        const urlObj = new URL(request.url, 'http://localhost');
-        const sensitiveParams = ['token', 'authorization', 'access_token'];
-        let hadSensitive = false;
-        for (const param of sensitiveParams) {
-          if (urlObj.searchParams.has(param)) {
-            urlObj.searchParams.set(param, '[REDACTED]');
-            hadSensitive = true;
-          }
-        }
-        if (hadSensitive) {
-          sanitizedUrl = urlObj.pathname + urlObj.search;
-        }
-      } catch {
-        // If URL parsing fails, use the original — safe fallback
-      }
+      // F3.3: Sanitize sensitive params from logged URL (centralized helper)
+      const sanitizedUrl = sanitizeUrlForLogs(request.url);
 
       const logLine = `${request.method} ${sanitizedUrl} ${status} ${ms}ms [${request.id}]`;
 
@@ -99,12 +84,17 @@ async function bootstrap() {
   // ── Security: Validate JWT_SECRET at startup ──
   const jwtSecret = configService.get<string>('JWT_SECRET') || '';
   const INSECURE_DEFAULTS = ['change_this_in_production', 'lms-super-secret-key-2026', 'secret', 'jwt_secret'];
-  if (!jwtSecret || jwtSecret.length < 16 || INSECURE_DEFAULTS.includes(jwtSecret)) {
-    console.error('\n❌ FATAL: JWT_SECRET is missing, too short (<16 chars), or using an insecure default.');
-    console.error(
-      "   Generate a secure one with: node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\"",
+  // SEC: Reject known placeholder patterns (case-insensitive)
+  const INSECURE_PATTERNS = [/^change.?me/i, /^generate/i, /^example/i, /^secret$/i, /^placeholder/i, /^default/i, /^test/i];
+  const isInsecurePattern = INSECURE_PATTERNS.some((p) => p.test(jwtSecret));
+  const isInsecureDefault = INSECURE_DEFAULTS.includes(jwtSecret.toLowerCase());
+  if (!jwtSecret || jwtSecret.length < 32 || isInsecureDefault || isInsecurePattern) {
+    const startupLogger = new Logger('Bootstrap');
+    startupLogger.error('FATAL: JWT_SECRET is missing, too short (<32 chars), or matches an insecure placeholder pattern.');
+    startupLogger.error(
+      "Generate a secure one with: node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\"",
     );
-    console.error('   Then set it in your .env file.\n');
+    startupLogger.error('Then set it in your .env file.');
     process.exit(1);
   }
 
@@ -145,7 +135,8 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   const port = process.env.APP_PORT || 3200;
+  const startupLogger = new Logger('Bootstrap');
   await app.listen(port, '0.0.0.0');
-  console.log(`LMS API running on http://localhost:${port}/api`);
+  startupLogger.log(`LMS API running on http://localhost:${port}/api`);
 }
 bootstrap();

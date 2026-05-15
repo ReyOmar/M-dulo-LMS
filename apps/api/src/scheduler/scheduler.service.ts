@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { MailService } from '../mail/mail.service';
@@ -59,6 +59,7 @@ export class SchedulerService implements OnModuleInit {
    */
   @Cron('0 8 * * *') // Every day at 8:00 AM
   async checkInactiveStudents() {
+    return this.withJobLock('checkInactiveStudents', async () => {
     this.logger.log('Running inactivity check...');
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
 
@@ -89,6 +90,62 @@ export class SchedulerService implements OnModuleInit {
       });
 
       if (!recentReminder) {
+        // Fetch student's course progress for the email
+        const matriculas = await this.prisma.lms_matriculas.findMany({
+          where: { usuario_guid: student.guid },
+          select: {
+            curso: {
+              select: {
+                guid: true,
+                titulo: true,
+                modulos: {
+                  select: {
+                    lecciones: {
+                      select: {
+                        recursos: { select: { guid: true } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        let progreso: { curso: string; porcentaje: number }[] = [];
+        if (matriculas.length > 0) {
+          const allResourceGuids = matriculas.flatMap((m) =>
+            m.curso.modulos.flatMap((mod) =>
+              mod.lecciones.flatMap((l) => l.recursos.map((r) => r.guid)),
+            ),
+          );
+          const completedResources = await this.prisma.lms_progreso_recurso.findMany({
+            where: { usuario_guid: student.guid, recurso_guid: { in: allResourceGuids } },
+            select: { recurso_guid: true },
+          });
+          const completedSet = new Set(completedResources.map((r) => r.recurso_guid));
+
+          progreso = matriculas.map((m) => {
+            const totalRecursos = m.curso.modulos.reduce(
+              (sum, mod) => sum + mod.lecciones.reduce((s, l) => s + l.recursos.length, 0),
+              0,
+            );
+            const completados = m.curso.modulos.reduce(
+              (sum, mod) =>
+                sum +
+                mod.lecciones.reduce(
+                  (s, l) => s + l.recursos.filter((r) => completedSet.has(r.guid)).length,
+                  0,
+                ),
+              0,
+            );
+            return {
+              curso: m.curso.titulo,
+              porcentaje: totalRecursos > 0 ? Math.round((completados / totalRecursos) * 100) : 0,
+            };
+          });
+        }
+
         // Create in-app notification
         await this.notificacionesService.crearNotificacion({
           usuario_guid: student.guid,
@@ -98,16 +155,18 @@ export class SchedulerService implements OnModuleInit {
           url_accion: '/dashboard',
         });
 
-        // Send email
+        // Send email with progress
         await this.mailService.sendInactivityReminder(
           student.email,
           student.nombre,
           diasInactivo,
+          progreso,
         );
 
         this.logger.log(`Inactivity reminder sent to ${student.email} (${diasInactivo} days)`);
       }
     }
+    }); // end withJobLock
   }
 
   /**
@@ -116,6 +175,7 @@ export class SchedulerService implements OnModuleInit {
    */
   @Cron('*/5 * * * *') // Every 5 minutes
   async checkCourseReactivation() {
+    return this.withJobLock('checkCourseReactivation', async () => {
     const currentDrafts = await this.prisma.lms_cursos.findMany({
       where: { estado: 'BORRADOR' },
       select: { guid: true },
@@ -171,8 +231,8 @@ export class SchedulerService implements OnModuleInit {
       }
     }
 
-    // Update snapshot
     this.previousDraftCourses = currentDraftSet;
+    }); // end withJobLock
   }
 
   /**
@@ -181,6 +241,7 @@ export class SchedulerService implements OnModuleInit {
    */
   @Cron('0 * * * *') // Every hour at minute 0
   async autoUnlockPendingSubmissions() {
+    return this.withJobLock('autoUnlockPendingSubmissions', async () => {
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
     // Find all submissions that are ENTREGADA or EN_REVISION and older than 48 hours
@@ -277,6 +338,7 @@ export class SchedulerService implements OnModuleInit {
       this.logger.log(`Auto-unlocked ${unlocked} resources for pending submissions >48h`);
       this.lmsGateway.broadcast('dashboard:refresh', { reason: 'auto_unlock' });
     }
+    }); // end withJobLock
   }
 
   /**
@@ -286,6 +348,7 @@ export class SchedulerService implements OnModuleInit {
    */
   @Cron('0 3 * * *') // Daily at 3:00 AM
   async cleanupOrphanFiles() {
+    return this.withJobLock('cleanupOrphanFiles', async () => {
     const uploadsDir = path.join(process.cwd(), 'uploads');
     if (!fs.existsSync(uploadsDir)) return;
 
@@ -294,8 +357,8 @@ export class SchedulerService implements OnModuleInit {
     // Get all filenames referenced in DB
     const [recursos, entregas, certificados, usuarios, configuracion, cursos] = await Promise.all([
       this.prisma.lms_recursos.findMany({
-        where: { archivo_adjunto: { not: null } },
-        select: { archivo_adjunto: true },
+        where: { OR: [{ archivo_adjunto: { not: null } }, { url_archivo: { not: null } }] },
+        select: { archivo_adjunto: true, url_archivo: true },
       }),
       this.prisma.lms_entregas.findMany({
         where: { url_archivo_adjunto: { not: null } },
@@ -305,11 +368,11 @@ export class SchedulerService implements OnModuleInit {
         select: { archivo_pdf: true },
       }),
       this.prisma.usuarios.findMany({
-        where: { firma_url: { not: null } },
-        select: { firma_url: true },
+        where: { OR: [{ firma_url: { not: null } }, { foto_url: { not: null } }] },
+        select: { firma_url: true, foto_url: true },
       }),
       this.prisma.lms_configuracion.findFirst({
-        select: { logo_url: true },
+        select: { logo_url: true, favicon_url: true, login_fondo_url: true },
       }),
       this.prisma.lms_cursos.findMany({
         where: { imagen_portada: { not: null } },
@@ -318,41 +381,62 @@ export class SchedulerService implements OnModuleInit {
     ]);
 
     const referencedFiles = new Set<string>();
-    recursos.forEach(r => r.archivo_adjunto && referencedFiles.add(r.archivo_adjunto));
+    recursos.forEach(r => {
+      if (r.archivo_adjunto) referencedFiles.add(r.archivo_adjunto);
+      if ((r as any).url_archivo) referencedFiles.add((r as any).url_archivo);
+    });
     entregas.forEach(e => e.url_archivo_adjunto && referencedFiles.add(e.url_archivo_adjunto));
     certificados.forEach(c => c.archivo_pdf && referencedFiles.add(c.archivo_pdf));
-    usuarios.forEach(u => u.firma_url && referencedFiles.add(u.firma_url));
+    usuarios.forEach(u => {
+      if (u.firma_url) referencedFiles.add(u.firma_url);
+      if ((u as any).foto_url) referencedFiles.add((u as any).foto_url);
+    });
     cursos.forEach(c => c.imagen_portada && referencedFiles.add(c.imagen_portada));
     if (configuracion?.logo_url) referencedFiles.add(configuracion.logo_url);
+    if ((configuracion as any)?.favicon_url) referencedFiles.add((configuracion as any).favicon_url);
+    if ((configuracion as any)?.login_fondo_url) referencedFiles.add((configuracion as any).login_fondo_url);
 
-    // Scan local files
-    const localFiles = fs.readdirSync(uploadsDir).filter(f => {
-      const fullPath = path.join(uploadsDir, f);
-      return fs.statSync(fullPath).isFile();
-    });
+    // SEC: Scan local files recursively (including subdirectories)
+    const getAllFiles = (dir: string, prefix = ''): { relativePath: string; fullPath: string }[] => {
+      const results: { relativePath: string; fullPath: string }[] = [];
+      if (!fs.existsSync(dir)) return results;
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name);
+        const relPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) {
+          results.push(...getAllFiles(fullPath, relPath));
+        } else if (entry.isFile()) {
+          results.push({ relativePath: relPath, fullPath });
+        }
+      }
+      return results;
+    };
+
+    const localFiles = getAllFiles(uploadsDir);
 
     let deleted = 0;
     for (const file of localFiles) {
-      if (referencedFiles.has(file)) continue; // Referenced in DB
+      // Check both the relative path and just the filename for referenced files
+      if (referencedFiles.has(file.relativePath) || referencedFiles.has(path.basename(file.relativePath))) continue;
 
-      const fullPath = path.join(uploadsDir, file);
-      const stat = fs.statSync(fullPath);
+      const stat = fs.statSync(file.fullPath);
 
       // Only delete files older than 24h (safety buffer)
       if (stat.mtimeMs > oneDayAgo) continue;
 
       try {
-        fs.unlinkSync(fullPath);
+        fs.unlinkSync(file.fullPath);
         deleted++;
-        this.logger.log(`Deleted orphan file: ${file}`);
+        this.logger.log(`Deleted orphan file: ${file.relativePath}`);
       } catch (err) {
-        this.logger.warn(`Failed to delete orphan file: ${file}`, err);
+        this.logger.warn(`Failed to delete orphan file: ${file.relativePath}`, err);
       }
     }
 
     if (deleted > 0) {
       this.logger.log(`Orphan cleanup: deleted ${deleted} unreferenced files`);
     }
+    }); // end withJobLock
   }
 
   /**
@@ -363,6 +447,7 @@ export class SchedulerService implements OnModuleInit {
    */
   @Cron('0 4 * * 0')
   async purgeRetroactiveEntregaFiles() {
+    return this.withJobLock('purgeRetroactiveEntregaFiles', async () => {
     this.logger.log('⏰ Running weekly retrospective entrega file purge...');
 
     try {
@@ -405,5 +490,6 @@ export class SchedulerService implements OnModuleInit {
     } catch (err) {
       this.logger.error('Retrospective purge failed:', err);
     }
+    }); // end withJobLock
   }
 }

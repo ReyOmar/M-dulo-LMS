@@ -833,6 +833,7 @@ export default function ConstructorCursosRoot() {
                         <>
                           <img
                             src={resolveFileUrl(activeCourse.imagen_portada) || ''}
+                            alt="Portada del curso"
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -1415,7 +1416,6 @@ export default function ConstructorCursosRoot() {
 
                     <div className="h-32 bg-primary/10 relative flex items-center justify-center overflow-hidden">
                       {curso.imagen_portada ? (
-                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={resolveFileUrl(curso.imagen_portada) || ''}
                           alt={curso.titulo}

@@ -23,6 +23,7 @@ export class UserService {
 
   async getAllUsers() {
     const users = await this.prisma.usuarios.findMany({
+      where: { deleted_at: null },
       orderBy: { created_at: 'desc' },
       select: {
         guid: true,
@@ -73,14 +74,15 @@ export class UserService {
 
     const user = await this.prisma.usuarios.findUnique({ where: { guid } });
     if (!user) throw new NotFoundException('Usuario no encontrado.');
+    if (user.deleted_at) throw new BadRequestException('Este usuario ya fue eliminado.');
 
-    // REVOKE all active JWT tokens for this user BEFORE deleting from DB
+    // REVOKE all active JWT tokens for this user BEFORE soft-deleting
     await this.tokenBlacklistService.revokeUser(guid);
 
-    // Reasignar cursos si es PROFESOR o ADMIN para no borrarlos
+    // Reasignar cursos si es PROFESOR o ADMIN para mantener integridad
     if (user.rol === 'PROFESOR' || user.rol === 'ADMINISTRADOR') {
       const fallbackAdmin = await this.prisma.usuarios.findFirst({
-        where: { rol: 'ADMINISTRADOR', activo: true, guid: { not: guid } },
+        where: { rol: 'ADMINISTRADOR', activo: true, guid: { not: guid }, deleted_at: null },
       });
 
       if (fallbackAdmin) {
@@ -91,30 +93,48 @@ export class UserService {
       }
     }
 
-    // BUG-04 FIX: Complete cascade delete — clean up ALL user-owned data before removing the account.
-    await this.prisma.$transaction([
-      this.prisma.lms_entregas.deleteMany({ where: { usuario_guid: guid } }),
-      this.prisma.lms_progreso_recurso.deleteMany({ where: { usuario_guid: guid } }),
-      this.prisma.lms_notificaciones.deleteMany({ where: { usuario_guid: guid } }),
-      this.prisma.lms_mensajes.deleteMany({ where: { OR: [{ remitente_guid: guid }, { destinatario_guid: guid }] } }),
-      this.prisma.lms_contacto_chat.deleteMany({
-        where: { OR: [{ solicitante_guid: guid }, { receptor_guid: guid }] },
-      }),
-      this.prisma.lms_certificados.deleteMany({ where: { usuario_guid: guid } }),
-      this.prisma.lms_sesion_activa.deleteMany({ where: { usuario_guid: guid } }),
-      this.prisma.lms_metricas_capacitacion.deleteMany({ where: { usuario_guid: guid } }),
-      this.prisma.lms_matriculas.deleteMany({ where: { usuario_guid: guid } }),
-    ]);
+    // SEC: Soft-delete — anonymize PII but preserve data for audit and integrity.
+    // Related data (messages, submissions, grades, certificates) stays intact
+    // so the other party doesn't lose their records.
+    const anonymizedEmail = `deleted-${guid.slice(0, 8)}@removed.local`;
+    await this.prisma.usuarios.update({
+      where: { guid },
+      data: {
+        activo: false,
+        deleted_at: new Date(),
+        // Anonymize PII
+        email: anonymizedEmail,
+        nombre: 'Usuario',
+        apellido: 'Eliminado',
+        contrasena: null,
+        foto_url: null,
+        firma_url: null,
+        firma_nombre: null,
+        firma_cargo: null,
+        invitacion_token_hash: null,
+      },
+    });
 
-    await this.prisma.usuarios.delete({ where: { guid } });
+    // Clean up profile photo from storage
+    if (user.foto_url) {
+      try { await this.storageService.deleteFile(user.foto_url); } catch {}
+    }
+    if (user.firma_url) {
+      try { await this.storageService.deleteFile(user.firma_url); } catch {}
+    }
+
+    // Clean up active sessions
+    await this.prisma.lms_sesion_activa.deleteMany({ where: { usuario_guid: guid } });
 
     // Force disconnect the user via WebSocket and notify all clients
     this.lmsGateway.forceDisconnect(guid, 'account_deleted');
     this.lmsGateway.broadcast('user:deleted', { guid, rol: user.rol });
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_deleted' });
 
+    this.logger.log(`User soft-deleted: ${user.email} (${user.rol}) → ${anonymizedEmail}`);
+
     return {
-      message: 'Cuenta eliminada exitosamente. Sus cursos han sido reasignados a otro administrador si los hubiera.',
+      message: 'Cuenta eliminada exitosamente. Los datos históricos se conservan para auditoría.',
       deletedGuid: guid,
     };
   }

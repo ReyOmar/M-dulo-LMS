@@ -83,7 +83,7 @@ export class ConfiguracionService implements OnModuleInit {
     });
     if (config) {
       // Strip sensitive fields from public response
-      const { contrasena_defecto, ...safeConfig } = config as any;
+      const { contrasena_defecto: _pwd, ...safeConfig } = config as any;
       this.configCache = safeConfig;
       this.configCacheExpiry = now + ConfiguracionService.CACHE_TTL_MS;
       return safeConfig;

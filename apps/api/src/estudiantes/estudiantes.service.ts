@@ -178,73 +178,31 @@ export class EstudiantesService {
   }
 
   async getMetricasEstudiante(usuario_guid: string) {
-    const [metricas, matriculas] = await Promise.all([
+    // All 3 queries are independent — run in parallel for minimum latency
+    const [metricas, sessionAggregate, certAggregate] = await Promise.all([
       this.prisma.lms_metricas_capacitacion.upsert({
         where: { usuario_guid },
         create: { usuario_guid },
         update: {},
       }),
-      this.prisma.lms_matriculas.findMany({
+      // Active session time (in-progress courses)
+      this.prisma.lms_sesion_activa.aggregate({
         where: { usuario_guid },
-        include: {
-          curso: {
-            include: {
-              modulos: {
-                include: {
-                  lecciones: {
-                    include: {
-                      recursos: { select: { guid: true } },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
+        _sum: { duracion_seg: true },
+      }),
+      // Completed course time (preserved in certificates after session purge)
+      this.prisma.lms_certificados.aggregate({
+        where: { usuario_guid },
+        _sum: { tiempo_total_horas: true },
       }),
     ]);
 
-    const allResourceGuids: string[] = [];
-    const courseTotals: { courseIndex: number; guids: string[] }[] = [];
-
-    for (let i = 0; i < matriculas.length; i++) {
-      const recursoGuids = matriculas[i].curso.modulos.flatMap((m: any) =>
-        m.lecciones.flatMap((l: any) => l.recursos.map((r: any) => r.guid)),
-      );
-      allResourceGuids.push(...recursoGuids);
-      courseTotals.push({ courseIndex: i, guids: recursoGuids });
-    }
-
-    const completedSet = new Set<string>();
-    if (allResourceGuids.length > 0) {
-      const completed = await this.prisma.lms_progreso_recurso.findMany({
-        where: { usuario_guid, recurso_guid: { in: allResourceGuids } },
-        select: { recurso_guid: true },
-      });
-      for (const c of completed) completedSet.add(c.recurso_guid);
-    }
-
-    let cursos_completados = 0;
-    const total_recursos_completados = completedSet.size;
-
-    for (const ct of courseTotals) {
-      if (ct.guids.length === 0) continue;
-      const courseCompleted = ct.guids.filter((g) => completedSet.has(g)).length;
-      if (courseCompleted === ct.guids.length) cursos_completados++;
-    }
-
-    // Use real session time from lms_sesion_activa
-    const sessionAggregate = await this.prisma.lms_sesion_activa.aggregate({
-      where: { usuario_guid },
-      _sum: { duracion_seg: true },
-    });
-    const horasReales = (sessionAggregate._sum.duracion_seg || 0) / 3600;
+    const horasActivas = (sessionAggregate._sum.duracion_seg || 0) / 3600;
+    const horasCertificadas = Number(certAggregate._sum.tiempo_total_horas || 0);
 
     return {
       ...metricas,
-      cursos_completados,
-      total_cursos: matriculas.length,
-      total_horas_invertidas: Math.round(horasReales * 10) / 10,
+      total_horas_invertidas: Math.round((horasActivas + horasCertificadas) * 100) / 100,
     };
   }
 

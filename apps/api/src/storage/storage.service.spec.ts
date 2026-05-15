@@ -1,5 +1,5 @@
 import { StorageService } from './storage.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 

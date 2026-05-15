@@ -1,6 +1,7 @@
 /**
  * F12.5: Sanitization & Security Headers Tests
- * Tests the storage controller's Content-Disposition logic.
+ * Tests the storage service's path traversal prevention, key validation,
+ * MIME spoofing detection, size limits, and SVG handling.
  */
 import { StorageService } from './storage.service';
 import * as fs from 'fs';
@@ -115,6 +116,103 @@ describe('StorageService — Sanitization (F12.5)', () => {
     it('should block double extensions like .pdf.exe', async () => {
       const buffer = Buffer.from('MZ');
       await expect(service.uploadFromBuffer(buffer, 'report.pdf.exe')).rejects.toThrow();
+    });
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // SEC: Path traversal and key validation attack surface tests
+  // ════════════════════════════════════════════════════════════
+
+  describe('validateStorageKey — traversal attacks', () => {
+    it('should reject ../../package.json', () => {
+      expect(() => service.validateStorageKey('../../package.json')).toThrow('traversal');
+    });
+
+    it('should reject firmas/../../../x', () => {
+      expect(() => service.validateStorageKey('firmas/../../../x')).toThrow('traversal');
+    });
+
+    it('should reject ..\\..\\package.json (backslash traversal)', () => {
+      expect(() => service.validateStorageKey('..\\..\\package.json')).toThrow('traversal');
+    });
+
+    it('should reject /etc/passwd (absolute Unix path)', () => {
+      expect(() => service.validateStorageKey('/etc/passwd')).toThrow('absolutas');
+    });
+
+    it('should reject C:\\Windows\\System32\\config (absolute Windows path)', () => {
+      expect(() => service.validateStorageKey('C:\\Windows\\System32\\config')).toThrow('absolutas');
+    });
+
+    it('should reject null bytes in key', () => {
+      expect(() => service.validateStorageKey('file\0.pdf')).toThrow('no permitidos');
+    });
+
+    it('should reject empty key', () => {
+      expect(() => service.validateStorageKey('')).toThrow('inválida');
+    });
+
+    it('should reject unknown folder prefix', () => {
+      expect(() => service.validateStorageKey('secretfolder/file.pdf')).toThrow('no permitida');
+    });
+
+    it('should reject deeply nested paths', () => {
+      expect(() => service.validateStorageKey('a/b/c/file.pdf')).toThrow('inválido');
+    });
+
+    it('should accept valid bare filename', () => {
+      expect(service.validateStorageKey('1234-abcd.pdf')).toBe('1234-abcd.pdf');
+    });
+
+    it('should accept valid folder/filename', () => {
+      expect(service.validateStorageKey('entregas/1234-abcd.pdf')).toBe('entregas/1234-abcd.pdf');
+    });
+
+    it('should accept all allowed folders', () => {
+      for (const folder of ['portadas', 'logos', 'avatars', 'entregas', 'firmas', 'certificados', 'recursos']) {
+        expect(service.validateStorageKey(`${folder}/test-file.pdf`)).toBe(`${folder}/test-file.pdf`);
+      }
+    });
+
+    it('should normalize backslashes in valid paths', () => {
+      expect(service.validateStorageKey('entregas\\test.pdf')).toBe('entregas/test.pdf');
+    });
+  });
+
+  describe('deleteFile — security', () => {
+    it('should reject ../../package.json', async () => {
+      await expect(service.deleteFile('../../package.json')).rejects.toThrow('traversal');
+    });
+
+    it('should reject absolute paths', async () => {
+      await expect(service.deleteFile('/etc/passwd')).rejects.toThrow('absolutas');
+    });
+
+    it('should reject firmas/../x traversal', async () => {
+      await expect(service.deleteFile('firmas/../x')).rejects.toThrow('traversal');
+    });
+
+    it('should reject null byte injection', async () => {
+      await expect(service.deleteFile('file\0.pdf')).rejects.toThrow('no permitidos');
+    });
+
+    it('should silently handle empty filename', async () => {
+      // Empty filename should return without error (no-op)
+      await expect(service.deleteFile('')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('getUploadPath — security', () => {
+    it('should reject traversal in path lookup', () => {
+      expect(() => service.getUploadPath('../../.env')).toThrow('traversal');
+    });
+
+    it('should reject absolute path lookup', () => {
+      expect(() => service.getUploadPath('/etc/shadow')).toThrow('absolutas');
+    });
+
+    it('should reject unknown folder', () => {
+      expect(() => service.getUploadPath('privatefolder/secret.txt')).toThrow('no permitida');
     });
   });
 });
