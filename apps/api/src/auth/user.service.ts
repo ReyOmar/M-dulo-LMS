@@ -117,10 +117,14 @@ export class UserService {
 
     // Clean up profile photo from storage
     if (user.foto_url) {
-      try { await this.storageService.deleteFile(user.foto_url); } catch {}
+      try {
+        await this.storageService.deleteFile(user.foto_url);
+      } catch {}
     }
     if (user.firma_url) {
-      try { await this.storageService.deleteFile(user.firma_url); } catch {}
+      try {
+        await this.storageService.deleteFile(user.firma_url);
+      } catch {}
     }
 
     // Clean up active sessions

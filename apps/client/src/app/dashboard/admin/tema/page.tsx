@@ -2,7 +2,17 @@
 
 import { useConfig, GOOGLE_FONTS, resolveFileUrl } from '@/contexts/ConfigContext';
 import { useRole } from '@/contexts/RoleContext';
-import { Palette, Save, Eye, Upload, Type, RectangleHorizontal, Image as ImageIcon, Sparkles, GraduationCap } from 'lucide-react';
+import {
+  Palette,
+  Save,
+  Eye,
+  Upload,
+  Type,
+  RectangleHorizontal,
+  Image as ImageIcon,
+  Sparkles,
+  GraduationCap,
+} from 'lucide-react';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { useRef, useState, useEffect } from 'react';
 

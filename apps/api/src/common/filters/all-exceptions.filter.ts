@@ -1,11 +1,4 @@
-import {
-  ExceptionFilter,
-  Catch,
-  ArgumentsHost,
-  HttpException,
-  HttpStatus,
-  Logger,
-} from '@nestjs/common';
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { sanitizeUrlForLogs } from '../utils/sanitize-url.util';
 
 /**
@@ -55,10 +48,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     } else if (exception instanceof Error) {
       // Unexpected errors — log full stack but don't expose to client
-      this.logger.error(
-        `Unhandled exception on ${request.method} ${safeUrl}: ${exception.message}`,
-        exception.stack,
-      );
+      this.logger.error(`Unhandled exception on ${request.method} ${safeUrl}: ${exception.message}`, exception.stack);
     } else {
       this.logger.error(`Unknown exception type on ${request.method} ${safeUrl}:`, exception);
     }

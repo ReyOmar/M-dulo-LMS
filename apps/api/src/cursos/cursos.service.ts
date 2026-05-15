@@ -4,6 +4,7 @@ import { lms_estado_curso } from '@prisma/client';
 import { LmsGateway } from '../ws/lms.gateway';
 import { StorageService } from '../storage/storage.service';
 import { MailService } from '../mail/mail.service';
+import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 
 /**
  * CursosService — Core course management (CRUD, assignment, listing).
@@ -178,7 +179,7 @@ export class CursosService {
   async updateCurso(
     curso_guid: string,
     data: { titulo?: string; estado?: string; imagen_portada?: string },
-    requestUser?: any,
+    requestUser?: JwtPayload,
   ) {
     // GUARD: Professors can only edit their own assigned courses
     if (requestUser?.role === 'PROFESOR') {
@@ -290,7 +291,7 @@ export class CursosService {
           await this.storageService.deleteFile(cert.archivo_pdf);
           this.logger.log(`Deleted certificate file: ${cert.archivo_pdf}`);
         } catch (err) {
-          this.logger.warn(`Failed to delete certificate file ${cert.archivo_pdf}: ${err.message}`);
+          this.logger.warn(`Failed to delete certificate file ${cert.archivo_pdf}: ${(err as Error)?.message || err}`);
         }
       }
     }

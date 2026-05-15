@@ -151,7 +151,8 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
       // ── Enforce single session: revoke previous connections only on REAL new logins ──
       const existingConnections = this.clients.filter((c) => c.guid === userGuid);
       // Check if this is a page refresh (same session hash) or a genuine new login (different hash)
-      const isNewLogin = existingConnections.length > 0 && existingConnections.some((c) => c.sessionHash !== sessionHash);
+      const isNewLogin =
+        existingConnections.length > 0 && existingConnections.some((c) => c.sessionHash !== sessionHash);
 
       for (const existing of existingConnections) {
         if (isNewLogin && existing.sessionHash !== sessionHash) {

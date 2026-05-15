@@ -84,7 +84,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       const res = await fetch(`${apiBaseUrl}/auth/ws-token`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -189,11 +189,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
         // Notify all registered listeners for this event
         // Critical events fire immediately; bulk/refresh events are debounced to prevent API bursts
-        const DEBOUNCED_EVENTS: Set<string> = new Set([
-          'dashboard:refresh',
-          'presence:update',
-          'presence:sync',
-        ]);
+        const DEBOUNCED_EVENTS: Set<string> = new Set(['dashboard:refresh', 'presence:update', 'presence:sync']);
 
         const notifyListeners = (targetEvent: WebSocketEvent, eventData: any) => {
           const listeners = listenersRef.current.get(targetEvent);

@@ -92,7 +92,7 @@ export class StorageService {
       if (this.publicUrl) {
         this.logger.warn(
           '⚠️  R2_PUBLIC_URL is set — this will expose private files publicly! ' +
-          'Remove R2_PUBLIC_URL to use API-proxied downloads with JWT validation (recommended).',
+            'Remove R2_PUBLIC_URL to use API-proxied downloads with JWT validation (recommended).',
         );
       }
     } else {

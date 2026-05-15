@@ -419,7 +419,9 @@ export class CertificadosService {
       }
 
       // 7. Notify frontend about the enrollment change
-      this.lmsGateway.broadcast('enrollment:changed', { action: 'completed', curso_guid, usuario_guid }, [usuario_guid]);
+      this.lmsGateway.broadcast('enrollment:changed', { action: 'completed', curso_guid, usuario_guid }, [
+        usuario_guid,
+      ]);
       this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_completed' });
 
       this.logger.log(`✅ Post-certification cleanup complete for user ${usuario_guid} in course ${curso_guid}`);

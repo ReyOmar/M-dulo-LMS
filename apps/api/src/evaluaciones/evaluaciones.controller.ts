@@ -28,7 +28,11 @@ export class EvaluacionesController {
    * Expects a 'file' field with the uploaded file.
    */
   @Post('/tareas/:tarea_guid/entregas')
-  async submitEntrega(@CurrentUser() user: JwtPayload, @Param('tarea_guid') tarea_guid: string, @Req() req: any) {
+  async submitEntrega(
+    @CurrentUser() user: JwtPayload,
+    @Param('tarea_guid') tarea_guid: string,
+    @Req() req: { file: () => Promise<{ file: AsyncIterable<Buffer>; filename?: string } | null> },
+  ) {
     const userGuid = user.sub;
     if (!userGuid) throw new UnauthorizedException('Debes iniciar sesión para subir tu tarea.');
 

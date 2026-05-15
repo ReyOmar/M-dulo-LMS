@@ -85,12 +85,22 @@ async function bootstrap() {
   const jwtSecret = configService.get<string>('JWT_SECRET') || '';
   const INSECURE_DEFAULTS = ['change_this_in_production', 'lms-super-secret-key-2026', 'secret', 'jwt_secret'];
   // SEC: Reject known placeholder patterns (case-insensitive)
-  const INSECURE_PATTERNS = [/^change.?me/i, /^generate/i, /^example/i, /^secret$/i, /^placeholder/i, /^default/i, /^test/i];
+  const INSECURE_PATTERNS = [
+    /^change.?me/i,
+    /^generate/i,
+    /^example/i,
+    /^secret$/i,
+    /^placeholder/i,
+    /^default/i,
+    /^test/i,
+  ];
   const isInsecurePattern = INSECURE_PATTERNS.some((p) => p.test(jwtSecret));
   const isInsecureDefault = INSECURE_DEFAULTS.includes(jwtSecret.toLowerCase());
   if (!jwtSecret || jwtSecret.length < 32 || isInsecureDefault || isInsecurePattern) {
     const startupLogger = new Logger('Bootstrap');
-    startupLogger.error('FATAL: JWT_SECRET is missing, too short (<32 chars), or matches an insecure placeholder pattern.');
+    startupLogger.error(
+      'FATAL: JWT_SECRET is missing, too short (<32 chars), or matches an insecure placeholder pattern.',
+    );
     startupLogger.error(
       "Generate a secure one with: node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\"",
     );

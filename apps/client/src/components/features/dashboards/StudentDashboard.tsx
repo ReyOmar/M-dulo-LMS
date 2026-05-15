@@ -1,16 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import {
-  Play,
-  BookOpen,
-  Clock,
-  GraduationCap,
-  ChevronLeft,
-  ChevronRight,
-  AlertTriangle,
-  Award,
-} from 'lucide-react';
+import { Play, BookOpen, Clock, GraduationCap, ChevronLeft, ChevronRight, AlertTriangle, Award } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRole } from '@/contexts/RoleContext';
 import { useWS } from '@/contexts/WebSocketContext';
@@ -135,8 +126,18 @@ export function StudentDashboard() {
   const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay();
   const today = new Date();
   const monthNames = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
   ];
   const dayNames = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
 

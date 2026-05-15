@@ -124,14 +124,20 @@ export default function CursoVisorPage() {
 
     fetchProgreso();
 
-    const unsub1 = subscribe('submission:graded', () => { if (!celebrationShownRef.current) fetchProgreso(); });
-    const unsub2 = subscribe('dashboard:refresh', () => { if (!celebrationShownRef.current) fetchProgreso(); });
+    const unsub1 = subscribe('submission:graded', () => {
+      if (!celebrationShownRef.current) fetchProgreso();
+    });
+    const unsub2 = subscribe('dashboard:refresh', () => {
+      if (!celebrationShownRef.current) fetchProgreso();
+    });
     const unsub3 = subscribe('certificate:new', (data: any) => {
       if (data?.curso_guid === curso_id && !celebrationShownRef.current) {
         setPendingCelebration(data);
       }
     });
-    const unsub4 = subscribe('submission:new', () => { if (!celebrationShownRef.current) fetchProgreso(); });
+    const unsub4 = subscribe('submission:new', () => {
+      if (!celebrationShownRef.current) fetchProgreso();
+    });
 
     return () => {
       unsub1();
@@ -429,7 +435,6 @@ export default function CursoVisorPage() {
       </div>
     );
   }
-
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

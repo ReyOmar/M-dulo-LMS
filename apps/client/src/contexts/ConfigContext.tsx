@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import api, { resolveFileUrl } from "@/lib/api";
-import { useWS } from "./WebSocketContext";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import api, { resolveFileUrl } from '@/lib/api';
+import { useWS } from './WebSocketContext';
 
 export interface LMSConfig {
   id: number;
@@ -46,9 +46,12 @@ interface ConfigContextType {
 const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 
 const hexToHsl = (hex: string): string => {
-  hex = hex.replace(/^#/, "");
+  hex = hex.replace(/^#/, '');
   if (hex.length === 3) {
-    hex = hex.split("").map((x) => x + x).join("");
+    hex = hex
+      .split('')
+      .map((x) => x + x)
+      .join('');
   }
   const r = parseInt(hex.substring(0, 2), 16) / 255;
   const g = parseInt(hex.substring(2, 4), 16) / 255;
@@ -56,15 +59,23 @@ const hexToHsl = (hex: string): string => {
 
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  let h = 0, s = 0, l = (max + min) / 2;
+  let h = 0,
+    s = 0,
+    l = (max + min) / 2;
 
   if (max !== min) {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
     switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
     }
     h /= 6;
   }
@@ -94,7 +105,7 @@ function getFontFamily(fontName: string): string {
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
   const { subscribe } = useWS();
-  
+
   const [config, setConfig] = useState<LMSConfig | null>(() => {
     // Instantly restore cached config to prevent flash of default theme
     if (typeof window !== 'undefined') {
@@ -106,23 +117,28 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           queueMicrotask(() => applyAllToDOM(parsed));
           return parsed;
         }
-      } catch { /* ignore corrupt cache */ }
+      } catch {
+        /* ignore corrupt cache */
+      }
     }
     return null;
   });
 
   useEffect(() => {
-    api.get("/configuracion")
+    api
+      .get('/configuracion')
       .then(({ data }) => {
         if (data) {
           setConfig(data);
           applyAllToDOM(data);
           if (data.nombre_plataforma) document.title = data.nombre_plataforma;
           // Cache for instant restore on next page load
-          try { localStorage.setItem('lms_config_cache', JSON.stringify(data)); } catch {}
+          try {
+            localStorage.setItem('lms_config_cache', JSON.stringify(data));
+          } catch {}
         }
       })
-      .catch((err) => console.error("Could not load config", err));
+      .catch((err) => console.error('Could not load config', err));
   }, []);
 
   useEffect(() => {
@@ -131,7 +147,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         setConfig(newConfig);
         applyAllToDOM(newConfig);
         if (newConfig.nombre_plataforma) document.title = newConfig.nombre_plataforma;
-        try { localStorage.setItem('lms_config_cache', JSON.stringify(newConfig)); } catch {}
+        try {
+          localStorage.setItem('lms_config_cache', JSON.stringify(newConfig));
+        } catch {}
       }
     });
     return () => unsub();
@@ -169,9 +187,11 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       document.head.appendChild(styleTag);
     }
 
-    const fontRule = fontFamily2 ? `
+    const fontRule = fontFamily2
+      ? `
       *, *::before, *::after { font-family: ${fontFamily2} !important; }
-    ` : '';
+    `
+      : '';
 
     styleTag.textContent = `
       :root {
@@ -195,7 +215,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     // Remove ALL existing favicon links (including Next.js SSR-generated ones)
     // so the browser picks up only our dynamically-set one.
     if (targetFavicon) {
-      document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]').forEach(el => {
+      document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]').forEach((el) => {
         if (el.id !== 'lms-favicon') el.remove();
       });
     }
@@ -274,7 +294,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const saveConfigToServer = async () => {
     if (!config) return;
     try {
-      await api.post("/configuracion", {
+      await api.post('/configuracion', {
         nombre_plataforma: config.nombre_plataforma,
         color_primario: config.color_primario,
         color_secundario: config.color_secundario,
@@ -287,7 +307,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       });
       showToast('✓ Configuración guardada permanentemente', 'success');
       // Update cache so next reload uses the saved theme instantly
-      try { localStorage.setItem('lms_config_cache', JSON.stringify(config)); } catch {}
+      try {
+        localStorage.setItem('lms_config_cache', JSON.stringify(config));
+      } catch {}
     } catch (e) {
       console.error(e);
       showToast('✕ Error guardando configuraciones', 'error');
@@ -295,7 +317,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ConfigContext.Provider value={{ config, updateLocalTheme, updateConfig, saveConfigToServer, saveThemeToServer: saveConfigToServer }}>
+    <ConfigContext.Provider
+      value={{ config, updateLocalTheme, updateConfig, saveConfigToServer, saveThemeToServer: saveConfigToServer }}
+    >
       {children}
     </ConfigContext.Provider>
   );
@@ -304,7 +328,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 export function useConfig() {
   const context = useContext(ConfigContext);
   if (context === undefined) {
-    throw new Error("useConfig must be used within a ConfigProvider");
+    throw new Error('useConfig must be used within a ConfigProvider');
   }
   return context;
 }

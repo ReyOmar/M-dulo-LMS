@@ -286,9 +286,7 @@ export class StorageController {
     const disposition = FORCE_DOWNLOAD_EXTS.includes(fileExt) ? 'attachment' : 'inline';
 
     // SEC: Cache headers — private files must never be cached publicly
-    const cacheControl = isPrivate
-      ? 'private, no-store, must-revalidate'
-      : 'public, max-age=86400';
+    const cacheControl = isPrivate ? 'private, no-store, must-revalidate' : 'public, max-age=86400';
 
     // Strategy 1: R2 with public CDN URL → redirect (PUBLIC files ONLY)
     // SEC: Private files must NEVER redirect to unauthenticated CDN URL

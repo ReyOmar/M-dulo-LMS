@@ -86,7 +86,9 @@ export class BloqueService {
     if (requestUser?.role === 'PROFESOR') {
       const cursoProfesorGuid = bloque.leccion?.modulo?.curso?.profesor_guid;
       if (cursoProfesorGuid !== requestUser.sub) {
-        throw new BadRequestException('No tienes acceso a este recurso. Solo puedes ver bloques de tus propios cursos.');
+        throw new BadRequestException(
+          'No tienes acceso a este recurso. Solo puedes ver bloques de tus propios cursos.',
+        );
       }
     }
 
