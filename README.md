@@ -100,43 +100,72 @@ npm run dev
 
 ## Seguridad
 
-- **JWT** con secreto minimo de 16 caracteres, validado al arranque
-- **Guards globales**: `JwtAuthGuard` -> `RolesGuard` -> `ThrottlerGuard`
+- **JWT** con secreto mínimo de 16 caracteres, validado al arranque
+- **Guards globales**: `JwtAuthGuard` → `RolesGuard` → `ThrottlerGuard`
 - **Helmet** para headers de seguridad (X-Frame-Options, HSTS, etc.)
 - **Rate Limiting** global con `@nestjs/throttler`
-- **Validacion de DTOs** con `class-validator` + `whitelist: true`
-- **Token Revocation** en logout y eliminacion de usuarios
-- **bcrypt** para hashing de contrasenas (salt rounds: 10)
+- **Validación de DTOs** con `class-validator` + `whitelist: true`
+- **Token Revocation** en logout y eliminación de usuarios
+- **bcrypt** para hashing de contraseñas (salt rounds: 10)
 - **CORS** configurable por entorno
-- **Storage separado**: archivos publicos y privados con reglas de acceso distintas
-- **Tokens de invitacion** para setup de primera contrasena (previene account takeover)
-- **WebSocket authorization**: mensajes entrantes validados por rol y ownership
+- **Storage Zero Trust**: archivos privados con `Cache-Control: private, no-store` y sin redirección a CDN
+- **Validación de rutas de archivo** en DTOs con `@IsSafeStorageKey()` — previene path traversal
+- **Tokens de invitación** para setup de primera contraseña (previene account takeover)
+- **WebSocket authorization**: tokens efímeros de uso único (no JWT en query string)
+- **Exception filter global**: errores consistentes en JSON, sin stack traces, URLs sanitizadas
 
 ---
 
-## Escala de Calificacion
+## Escala de Calificación
 
 El sistema usa escala **0.0 a 5.0** por defecto:
-- **Nota minima de aprobacion**: 3.0 (configurable por curso)
+- **Nota mínima de aprobación**: 3.0 (configurable por curso)
 - Los quizzes se auto-califican
 - Las tareas se califican manualmente por el supervisor
 
 ---
 
-## Comunicacion en Tiempo Real
+## Comunicación en Tiempo Real
 
-WebSocket events principales:
+WebSocket events principales (segmentados por rol/usuario):
 
-| Evento | Descripcion |
-|--------|------------|
-| `dashboard:refresh` | Refrescar datos de dashboard |
-| `submission:graded` | Entrega calificada |
-| `notification:new` | Nueva notificacion |
-| `course:lock` / `course:unlock` | Bloqueo de edicion de curso (solo admin/profesor propietario) |
-| `config:updated` | Configuracion de plataforma actualizada |
+| Evento | Destinatario | Descripción |
+|--------|-------------|-------------|
+| `dashboard:refresh` | Segmentado | Refrescar datos (por usuario afectado o por rol) |
+| `submission:graded` | Estudiante | Entrega calificada |
+| `submission:new` | Profesor + Admin | Nueva entrega recibida |
+| `notification:new` | Usuario | Nueva notificación |
+| `course:lock` / `course:unlock` | Admin/Profesor | Bloqueo de edición de curso |
+| `config:updated` | Todos | Configuración de plataforma actualizada |
+| `certificate:generated` | Estudiante | Certificado generado |
+
+---
+
+## Estructura de Carpetas
+
+```
+apps/api/src/
+├── auth/            # Autenticación, usuarios, tokens
+├── certificados/    # Generación y gestión de certificados PDF
+├── common/          # Filters, guards, decorators, validators, utils
+├── configuracion/   # Configuración de plataforma
+├── cursos/          # CRUD de cursos, módulos, bloques, quizzes
+├── dashboards/      # Estadísticas y monitoreo
+├── estudiantes/     # Progreso, métricas, heartbeats
+├── evaluaciones/    # Entregas y calificaciones
+├── health/          # Health check endpoint
+├── mail/            # Plantillas y envío de correo
+├── matriculas/      # Inscripciones
+├── notificaciones/  # Chat y notificaciones push
+├── prisma/          # Servicio Prisma (DB)
+├── scheduler/       # Tareas programadas
+├── storage/         # Almacenamiento R2/local con validación
+└── ws/              # WebSocket gateway y tokens efímeros
+```
 
 ---
 
 ## Licencia
 
 Proyecto privado — Todos los derechos reservados.
+

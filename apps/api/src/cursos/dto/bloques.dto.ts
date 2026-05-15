@@ -1,5 +1,6 @@
 import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, MaxLength } from 'class-validator';
 import { lms_tipo_recurso } from '@prisma/client';
+import { IsSafeStorageKey } from '../../common/validators/safe-storage-key.validator';
 
 export class CreateBloqueDto {
   @IsEnum(lms_tipo_recurso)
@@ -30,6 +31,7 @@ export class UpdateBloqueDto {
 
   @IsOptional()
   @IsString()
+  @IsSafeStorageKey()
   url_archivo?: string;
 
   @IsOptional()
@@ -38,6 +40,7 @@ export class UpdateBloqueDto {
 
   @IsOptional()
   @IsString()
+  @IsSafeStorageKey()
   archivo_adjunto?: string;
 
   @IsOptional()

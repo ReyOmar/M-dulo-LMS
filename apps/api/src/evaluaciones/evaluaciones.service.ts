@@ -379,7 +379,7 @@ export class EvaluacionesService {
       },
       [entrega.usuario_guid],
     );
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'submission_graded' });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'submission_graded' }, [entrega.usuario_guid]);
 
     // Fire-and-forget: notifications + email (don't block the response)
     (async () => {

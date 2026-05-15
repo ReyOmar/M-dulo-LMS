@@ -133,7 +133,7 @@ export class UserService {
     // Force disconnect the user via WebSocket and notify all clients
     this.lmsGateway.forceDisconnect(guid, 'account_deleted');
     this.lmsGateway.broadcast('user:deleted', { guid, rol: user.rol });
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_deleted' });
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'user_deleted' }, 'ADMINISTRADOR');
 
     this.logger.log(`User soft-deleted: ${user.email} (${user.rol}) → ${anonymizedEmail}`);
 
@@ -150,7 +150,7 @@ export class UserService {
     const user = await this.prisma.usuarios.findUnique({ where: { guid } });
     if (!user) throw new NotFoundException('Usuario no encontrado.');
 
-    const updateData: any = {};
+    const updateData: Record<string, string | boolean> = {};
     if (data.nombre) updateData.nombre = data.nombre;
     if (data.apellido) updateData.apellido = data.apellido;
     // Email is immutable — cannot be changed after account creation
@@ -176,7 +176,7 @@ export class UserService {
     });
 
     this.lmsGateway.broadcast('user:updated', { guid: updated.guid });
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_updated' });
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'user_updated' }, 'ADMINISTRADOR');
 
     // If password changed: revoke old tokens, issue a fresh one for the current session
     if (passwordChanged) {
@@ -314,7 +314,7 @@ export class UserService {
     });
 
     this.lmsGateway.broadcast('user:created', { guid: user.guid });
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_created' });
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'user_created' }, 'ADMINISTRADOR');
 
     this.logger.log(`Admin created user: ${data.email} (${data.rol})`);
 

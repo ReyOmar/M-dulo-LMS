@@ -1,4 +1,5 @@
 import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
+import { IsSafeStorageKey } from '../../common/validators/safe-storage-key.validator';
 
 export class CreateCursoDto {
   @IsString()
@@ -28,6 +29,7 @@ export class UpdateCursoDto {
 
   @IsOptional()
   @IsString()
+  @IsSafeStorageKey()
   imagen_portada?: string;
 
   @IsOptional()

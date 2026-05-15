@@ -1,4 +1,5 @@
 import { IsOptional, IsString, IsNumber, Matches, Max, Min } from 'class-validator';
+import { IsSafeStorageKey } from '../../common/validators/safe-storage-key.validator';
 
 export class UpdateConfiguracionDto {
   @IsOptional()
@@ -11,6 +12,7 @@ export class UpdateConfiguracionDto {
 
   @IsOptional()
   @IsString()
+  @IsSafeStorageKey()
   login_fondo_url?: string | null;
 
   // F1.6: Validate hex color format to prevent XSS via style injection
@@ -28,10 +30,12 @@ export class UpdateConfiguracionDto {
 
   @IsOptional()
   @IsString()
+  @IsSafeStorageKey()
   logo_url?: string | null;
 
   @IsOptional()
   @IsString()
+  @IsSafeStorageKey()
   favicon_url?: string | null;
 
   @IsOptional()

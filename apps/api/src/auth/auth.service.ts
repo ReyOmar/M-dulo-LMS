@@ -203,7 +203,7 @@ export class AuthService {
       },
     });
 
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'user_password_setup' });
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'user_password_setup' }, 'ADMINISTRADOR');
 
     const payload = { sub: updatedUser.guid, role: updatedUser.rol, email: updatedUser.email };
     const token = await this.jwtService.signAsync(payload);
@@ -274,7 +274,7 @@ export class AuthService {
     if (action === 'approved') {
       this.lmsGateway.broadcast('user:created', data);
     }
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'request_resolved' });
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'request_resolved' }, 'ADMINISTRADOR');
   }
 
   async rejectRequest(id: number) {

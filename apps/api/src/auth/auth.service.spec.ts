@@ -423,16 +423,17 @@ describe('AuthService', () => {
   // ── NOTIFY REQUEST RESOLVED ────────────────────────────
 
   describe('notifyRequestResolved', () => {
-    it('should broadcast request:resolved and dashboard:refresh', () => {
+    it('should broadcast request:resolved and dashboard:refresh to admins', () => {
       service.notifyRequestResolved('rejected');
 
       expect(mockLmsGateway.broadcast).toHaveBeenCalledWith(
         'request:resolved',
         expect.objectContaining({ action: 'rejected' }),
       );
-      expect(mockLmsGateway.broadcast).toHaveBeenCalledWith(
+      expect(mockLmsGateway.broadcastToRole).toHaveBeenCalledWith(
         'dashboard:refresh',
         expect.objectContaining({ reason: 'request_resolved' }),
+        'ADMINISTRADOR',
       );
     });
 

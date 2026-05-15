@@ -330,7 +330,7 @@ export class CertificadosService {
       },
       [usuario_guid],
     );
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'certificate_generated' });
+    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'certificate_generated' }, [usuario_guid]);
 
     // Create notification (fire-and-forget)
     this.notificacionesService
@@ -422,7 +422,7 @@ export class CertificadosService {
       this.lmsGateway.broadcast('enrollment:changed', { action: 'completed', curso_guid, usuario_guid }, [
         usuario_guid,
       ]);
-      this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_completed' });
+      this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_completed' }, [usuario_guid]);
 
       this.logger.log(`✅ Post-certification cleanup complete for user ${usuario_guid} in course ${curso_guid}`);
     } catch (err) {

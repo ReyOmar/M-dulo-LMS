@@ -82,7 +82,7 @@ export class CursosService {
       where: { guid: curso_guid },
       data: { profesor_guid },
     });
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_assigned' });
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'course_assigned' }, 'ADMINISTRADOR');
     return updated;
   }
 
@@ -91,7 +91,7 @@ export class CursosService {
       where: { guid: curso_guid },
       data: { profesor_guid: admin_guid },
     });
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_unassigned' });
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'course_unassigned' }, 'ADMINISTRADOR');
     return updated;
   }
 
@@ -172,7 +172,7 @@ export class CursosService {
     });
 
     this.lmsGateway.broadcast('course:created', { guid: curso.guid, titulo: curso.titulo });
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_created' });
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'course_created' }, 'ADMINISTRADOR');
     return curso;
   }
 
@@ -268,7 +268,7 @@ export class CursosService {
     });
 
     this.lmsGateway.broadcast('course:updated', { guid: curso_guid, ...data });
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_updated' });
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'course_updated' }, 'ADMINISTRADOR');
     return updated;
   }
 
@@ -298,7 +298,7 @@ export class CursosService {
 
     const result = await this.prisma.lms_cursos.delete({ where: { guid } });
     this.lmsGateway.broadcast('course:deleted', { guid });
-    this.lmsGateway.broadcast('dashboard:refresh', { reason: 'course_deleted' });
+    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'course_deleted' }, 'ADMINISTRADOR');
     if (certs.length > 0) {
       this.logger.log(`Cleaned up ${certs.length} certificate(s) from R2 for course ${guid}`);
     }

@@ -1,7 +1,8 @@
 import { IsOptional, IsString } from 'class-validator';
+import { IsSafeStorageKey } from '../../common/validators/safe-storage-key.validator';
 
 export class UpdateFirmaDto {
-  @IsOptional() @IsString()
+  @IsOptional() @IsString() @IsSafeStorageKey()
   firma_url?: string;
 
   @IsOptional() @IsString()
