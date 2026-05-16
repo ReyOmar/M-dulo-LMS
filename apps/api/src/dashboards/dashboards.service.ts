@@ -170,13 +170,15 @@ export class DashboardsService {
     }
     const promedioGlobal = countNotas > 0 ? Math.round((sumaNotas / countNotas) * 10) / 10 : 0;
 
-    // Weekly activity — batch queries for the 7-day range instead of 7 individual queries
+    // Weekly activity — combine two sources for accurate connection tracking:
+    // 1. lms_sesion_activa: course heartbeat sessions (reliable historical data)
+    // 2. usuarios.ultimo_acceso: last API activity per user (captures logins without course sessions)
     const now = new Date();
     const weekStart = new Date(now);
     weekStart.setDate(weekStart.getDate() - 6);
     weekStart.setHours(0, 0, 0, 0);
 
-    const [weekEntregas, weekSesiones] = await Promise.all([
+    const [weekEntregas, weekSesiones, activeUsers] = await Promise.all([
       this.prisma.lms_entregas.findMany({
         where: { fecha_entrega: { gte: weekStart } },
         select: { fecha_entrega: true },
@@ -184,6 +186,10 @@ export class DashboardsService {
       this.prisma.lms_sesion_activa.findMany({
         where: { inicio_sesion: { gte: weekStart } },
         select: { usuario_guid: true, inicio_sesion: true },
+      }),
+      this.prisma.usuarios.findMany({
+        where: { ultimo_acceso: { gte: weekStart }, activo: true },
+        select: { guid: true, ultimo_acceso: true },
       }),
     ]);
 
@@ -195,12 +201,18 @@ export class DashboardsService {
       const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
       const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
 
-      // Count unique users who had a session that day
-      const uniqueUsers = new Set(
-        weekSesiones
-          .filter((s) => s.inicio_sesion >= dayStart && s.inicio_sesion < dayEnd)
-          .map((s) => s.usuario_guid),
-      );
+      // Merge unique users from both sources for this day
+      const uniqueUsers = new Set<string>();
+      for (const s of weekSesiones) {
+        if (s.inicio_sesion >= dayStart && s.inicio_sesion < dayEnd) {
+          uniqueUsers.add(s.usuario_guid);
+        }
+      }
+      for (const u of activeUsers) {
+        if (u.ultimo_acceso && u.ultimo_acceso >= dayStart && u.ultimo_acceso < dayEnd) {
+          uniqueUsers.add(u.guid);
+        }
+      }
 
       weeklyActivity.push({
         day: dayNames[dayStart.getDay()],

@@ -38,6 +38,8 @@ interface Usuario {
   created_at: string;
   ultimo_acceso?: string | null;
   foto_url?: string | null;
+  tiene_cursos?: number;
+  tiene_matriculas?: number;
 }
 
 interface CursoAsignado {
@@ -396,13 +398,24 @@ export default function BaseUsuarios() {
                                 year: 'numeric',
                               })}
                             </span>
-                          ) : user.activo ? (
-                            <span className="flex items-center gap-1 text-emerald-500 text-xs font-bold">
-                              <UserCheck className="h-3 w-3" /> Activo
-                            </span>
-                          ) : (
+                          ) : !user.activo ? (
                             <span className="flex items-center gap-1 text-red-500 text-xs font-bold">
                               <UserX className="h-3 w-3" /> Inactivo
+                            </span>
+                          ) : user.rol === 'PROFESOR' && (user.tiene_cursos ?? 0) === 0 ? (
+                            <span className="flex items-center gap-1 text-amber-500 text-xs font-bold">
+                              <AlertTriangle className="h-3 w-3" /> Sin Asignar
+                            </span>
+                          ) : user.rol === 'ESTUDIANTE' && (user.tiene_matriculas ?? 0) === 0 ? (
+                            <span className="flex items-center gap-1 text-amber-500 text-xs font-bold">
+                              <AlertTriangle className="h-3 w-3" /> Sin Matricular
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-emerald-500 text-xs font-bold">
+                              <UserCheck className="h-3 w-3" />
+                              {user.rol === 'PROFESOR'
+                                ? `${user.tiene_cursos} curso${(user.tiene_cursos ?? 0) !== 1 ? 's' : ''}`
+                                : `${user.tiene_matriculas} curso${(user.tiene_matriculas ?? 0) !== 1 ? 's' : ''}`}
                             </span>
                           )}
                           {user.usa_clave_defecto && (
@@ -458,13 +471,24 @@ export default function BaseUsuarios() {
                         </span>
                       )}
                       {activeTab !== 'ADMINISTRADOR' &&
-                        (user.activo ? (
-                          <span className="flex items-center gap-1 text-emerald-500 text-[10px] font-bold">
-                            <UserCheck className="h-2.5 w-2.5" /> Activo
-                          </span>
-                        ) : (
+                        (!user.activo ? (
                           <span className="flex items-center gap-1 text-red-500 text-[10px] font-bold">
                             <UserX className="h-2.5 w-2.5" /> Inactivo
+                          </span>
+                        ) : user.rol === 'PROFESOR' && (user.tiene_cursos ?? 0) === 0 ? (
+                          <span className="flex items-center gap-1 text-amber-500 text-[10px] font-bold">
+                            <AlertTriangle className="h-2.5 w-2.5" /> Sin Asignar
+                          </span>
+                        ) : user.rol === 'ESTUDIANTE' && (user.tiene_matriculas ?? 0) === 0 ? (
+                          <span className="flex items-center gap-1 text-amber-500 text-[10px] font-bold">
+                            <AlertTriangle className="h-2.5 w-2.5" /> Sin Matricular
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-emerald-500 text-[10px] font-bold">
+                            <UserCheck className="h-2.5 w-2.5" />
+                            {user.rol === 'PROFESOR'
+                              ? `${user.tiene_cursos} curso${(user.tiene_cursos ?? 0) !== 1 ? 's' : ''}`
+                              : `${user.tiene_matriculas} curso${(user.tiene_matriculas ?? 0) !== 1 ? 's' : ''}`}
                           </span>
                         ))}
                     </div>

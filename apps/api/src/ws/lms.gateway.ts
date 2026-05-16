@@ -206,6 +206,9 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
         client.send(presenceSync);
       } catch {}
 
+      // Notify admin dashboards so charts refresh when users connect
+      this.broadcastToRole('dashboard:refresh', { reason: 'user_connected' }, 'ADMINISTRADOR');
+
       // Listen for incoming messages from this client (course:lock / course:unlock)
       client.on('message', async (raw: WebSocket.Data) => {
         try {
@@ -291,6 +294,9 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
             guid: disconnectedGuid,
             status: 'offline',
           });
+
+          // Notify admin dashboards so charts stay in sync
+          this.broadcastToRole('dashboard:refresh', { reason: 'user_disconnected' }, 'ADMINISTRADOR');
 
           // Release any courses this user was editing
           const toRelease: string[] = [];

@@ -146,8 +146,13 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         }
 
         if (event === 'presence:update') {
-          if (data?.onlineUsers) {
-            setOnlineUsers(data.onlineUsers);
+          if (data?.guid && data?.status) {
+            setOnlineUsers((prev) => {
+              if (data.status === 'online') {
+                return prev.includes(data.guid) ? prev : [...prev, data.guid];
+              }
+              return prev.filter((g: string) => g !== data.guid);
+            });
           }
         }
 
