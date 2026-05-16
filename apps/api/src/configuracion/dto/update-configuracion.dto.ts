@@ -18,12 +18,16 @@ export class UpdateConfiguracionDto {
   // F1.6: Validate hex color format to prevent XSS via style injection
   @IsOptional()
   @IsString()
-  @Matches(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, { message: 'color_primario debe ser un color hexadecimal válido (ej: #4f46e5)' })
+  @Matches(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, {
+    message: 'color_primario debe ser un color hexadecimal válido (ej: #4f46e5)',
+  })
   color_primario?: string;
 
   @IsOptional()
   @IsString()
-  @Matches(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, { message: 'color_secundario debe ser un color hexadecimal válido (ej: #10b981)' })
+  @Matches(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, {
+    message: 'color_secundario debe ser un color hexadecimal válido (ej: #10b981)',
+  })
   color_secundario?: string;
 
   // F1.2: contrasena_defecto removed — field is deprecated (passwordless onboarding)

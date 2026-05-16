@@ -119,8 +119,9 @@ async function bootstrap() {
     }),
   );
 
+  const corsOrigin = (configService.get('CORS_ORIGIN') || 'http://localhost:3100').replace(/\/+$/, '');
   app.enableCors({
-    origin: configService.get('CORS_ORIGIN') || 'http://localhost:3100',
+    origin: corsOrigin,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
