@@ -226,11 +226,11 @@ export function AdminDashboard() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-lg font-bold">Actividad Semanal</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Recursos completados y entregas (últimos 7 días)</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Conexiones únicas y entregas (últimos 7 días)</p>
               </div>
               <div className="flex gap-4 text-xs font-medium">
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: CHART_COLORS.primary }} /> Recursos
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: CHART_COLORS.primary }} /> Conexiones
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ background: CHART_COLORS.success }} /> Entregas
@@ -241,7 +241,7 @@ export function AdminDashboard() {
               <ResponsiveContainer width="100%" height="100%" minHeight={250}>
                 <AreaChart data={weeklyActivity} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="gradSesiones" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="gradConexiones" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={CHART_COLORS.primary} stopOpacity={0.3} />
                       <stop offset="100%" stopColor={CHART_COLORS.primary} stopOpacity={0} />
                     </linearGradient>
@@ -272,14 +272,16 @@ export function AdminDashboard() {
                   />
                   <Area
                     type="monotone"
-                    dataKey="sesiones"
+                    dataKey="conexiones"
+                    name="Conexiones"
                     stroke={CHART_COLORS.primary}
                     strokeWidth={2.5}
-                    fill="url(#gradSesiones)"
+                    fill="url(#gradConexiones)"
                   />
                   <Area
                     type="monotone"
                     dataKey="entregas"
+                    name="Entregas"
                     stroke={CHART_COLORS.success}
                     strokeWidth={2}
                     fill="url(#gradEntregas)"

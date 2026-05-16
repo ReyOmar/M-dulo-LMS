@@ -176,28 +176,35 @@ export class DashboardsService {
     weekStart.setDate(weekStart.getDate() - 6);
     weekStart.setHours(0, 0, 0, 0);
 
-    const [weekEntregas, weekProgresos] = await Promise.all([
+    const [weekEntregas, weekSesiones] = await Promise.all([
       this.prisma.lms_entregas.findMany({
         where: { fecha_entrega: { gte: weekStart } },
         select: { fecha_entrega: true },
       }),
-      this.prisma.lms_progreso_recurso.findMany({
-        where: { fecha_completado: { gte: weekStart } },
-        select: { fecha_completado: true },
+      this.prisma.lms_sesion_activa.findMany({
+        where: { inicio_sesion: { gte: weekStart } },
+        select: { usuario_guid: true, inicio_sesion: true },
       }),
     ]);
 
     const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-    const weeklyActivity: { day: string; sesiones: number; entregas: number }[] = [];
+    const weeklyActivity: { day: string; conexiones: number; entregas: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
       const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
       const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
 
+      // Count unique users who had a session that day
+      const uniqueUsers = new Set(
+        weekSesiones
+          .filter((s) => s.inicio_sesion >= dayStart && s.inicio_sesion < dayEnd)
+          .map((s) => s.usuario_guid),
+      );
+
       weeklyActivity.push({
         day: dayNames[dayStart.getDay()],
-        sesiones: weekProgresos.filter((p) => p.fecha_completado >= dayStart && p.fecha_completado < dayEnd).length,
+        conexiones: uniqueUsers.size,
         entregas: weekEntregas.filter((e) => e.fecha_entrega && e.fecha_entrega >= dayStart && e.fecha_entrega < dayEnd)
           .length,
       });
