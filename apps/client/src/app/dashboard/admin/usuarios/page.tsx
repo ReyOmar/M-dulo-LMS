@@ -40,6 +40,7 @@ interface Usuario {
   foto_url?: string | null;
   tiene_cursos?: number;
   tiene_matriculas?: number;
+  isOnline?: boolean;
 }
 
 interface CursoAsignado {
@@ -158,8 +159,9 @@ export default function BaseUsuarios() {
     }
   };
 
-  const renderUltimoAcceso = (guid: string, d: string | null | undefined) => {
-    const isOnline = onlineUsers.includes(guid);
+  const renderUltimoAcceso = (u: Usuario) => {
+    // Primary: server-side isOnline from API; fallback: client WS presence
+    const isOnline = u.isOnline || onlineUsers.includes(u.guid);
 
     if (isOnline) {
       return (
@@ -173,13 +175,13 @@ export default function BaseUsuarios() {
       );
     }
 
-    if (!d)
+    if (!u.ultimo_acceso)
       return (
         <span className="text-muted-foreground flex items-center gap-1">
           <Clock className="h-3 w-3" /> Sin acceso
         </span>
       );
-    const lastAccess = new Date(d);
+    const lastAccess = new Date(u.ultimo_acceso);
     const diffMs = Date.now() - lastAccess.getTime();
     const diffMin = Math.floor(diffMs / 60000);
     const diffHrs = Math.floor(diffMin / 60);
@@ -428,7 +430,7 @@ export default function BaseUsuarios() {
                           )}
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-sm">{renderUltimoAcceso(user.guid, user.ultimo_acceso)}</td>
+                      <td className="px-5 py-3.5 text-sm">{renderUltimoAcceso(user)}</td>
                     </tr>
                   );
                 })
@@ -493,7 +495,7 @@ export default function BaseUsuarios() {
                         ))}
                     </div>
                   </div>
-                  <div className="shrink-0 text-right">{renderUltimoAcceso(user.guid, user.ultimo_acceso)}</div>
+                  <div className="shrink-0 text-right">{renderUltimoAcceso(user)}</div>
                 </div>
               ))
             )}
@@ -592,7 +594,7 @@ export default function BaseUsuarios() {
               </div>
               <div className="bg-muted/20 rounded-xl p-4">
                 <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Último Acceso</p>
-                <div className="mt-1">{renderUltimoAcceso(selectedUser.guid, selectedUser.ultimo_acceso)}</div>
+                <div className="mt-1">{renderUltimoAcceso(selectedUser)}</div>
               </div>
               <div className="bg-muted/20 rounded-xl p-4">
                 <p className="text-xs text-muted-foreground font-bold uppercase mb-1">

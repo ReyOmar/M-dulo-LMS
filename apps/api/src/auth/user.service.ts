@@ -46,12 +46,16 @@ export class UserService {
       },
     });
 
+    // Include real-time online status from the WS gateway (server-side source of truth)
+    const onlineGuids = new Set(this.lmsGateway.getOnlineUserGuids());
+
     return users.map((user) => {
       const { _count, ...rest } = user;
       return {
         ...rest,
         tiene_cursos: _count.cursos_impartidos,
         tiene_matriculas: _count.matriculas,
+        isOnline: onlineGuids.has(user.guid),
       };
     });
   }
