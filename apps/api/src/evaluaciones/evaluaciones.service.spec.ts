@@ -80,6 +80,11 @@ describe('EvaluacionesService', () => {
         estado: 'ENTREGADA',
       });
 
+      // Mock the recurso lookup that identifies the course professor
+      mockPrisma.lms_recursos.findUnique.mockResolvedValue({
+        leccion: { modulo: { curso: { profesor_guid: 'prof-1' } } },
+      });
+
       const result = await service.submitEntrega('tarea-1', submitData);
 
       expect(result.estado).toBe('ENTREGADA');
@@ -88,7 +93,10 @@ describe('EvaluacionesService', () => {
         submitData.nombre_archivo,
         'entregas',
       );
-      expect(mockGateway.broadcastToRole).toHaveBeenCalledWith('submission:new', expect.any(Object), 'PROFESOR');
+      // submission:new goes to the specific course professor, not all professors
+      expect(mockGateway.broadcast).toHaveBeenCalledWith('submission:new', expect.any(Object), ['prof-1']);
+      // admins still get broadcastToRole
+      expect(mockGateway.broadcastToRole).toHaveBeenCalledWith('submission:new', expect.any(Object), 'ADMINISTRADOR');
     });
 
     it('should update existing entrega on resubmission', async () => {

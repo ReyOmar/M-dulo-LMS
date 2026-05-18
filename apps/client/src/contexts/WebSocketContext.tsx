@@ -74,7 +74,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     const apiBaseUrl = getEnv().apiUrl;
     const token = localStorage.getItem('lms_token');
 
-    // F10.3: Don't connect without a valid token — prevents anonymous reconnection loops
+    // Don't connect without a valid token — prevents anonymous reconnection loops
     if (!token) return;
 
     // SEC: Request a short-lived ephemeral token for WS connection
@@ -87,6 +87,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        body: '{}',
       });
       if (res.ok) {
         const data = await res.json();

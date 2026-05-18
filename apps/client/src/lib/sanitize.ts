@@ -63,18 +63,18 @@ const DOMPURIFY_CONFIG = {
     'width',
     'height',
     'class',
-    // F5.6: 'style' handled via hook sanitization below
+    // 'style' handled via hook sanitization below
     'colspan',
     'rowspan',
     'scope',
   ],
   ALLOW_DATA_ATTR: false,
   ADD_ATTR: ['target'],
-  // F5.6: Block protocols that could be abused
+  // Block protocols that could be abused
   ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
 };
 
-// F5.6: CSS properties that are safe for rich text styling
+// CSS properties that are safe for rich text styling
 const SAFE_CSS_PROPS =
   /^(color|background|background-color|font-size|font-weight|font-style|font-family|text-align|text-decoration|text-transform|margin|margin-top|margin-bottom|margin-left|margin-right|padding|padding-top|padding-bottom|padding-left|padding-right|border|border-top|border-bottom|border-left|border-right|border-radius|border-color|border-width|border-style|line-height|display|width|height|max-width|max-height|min-width|min-height|vertical-align|letter-spacing|box-shadow|overflow|opacity)$/i;
 const DANGEROUS_CSS_VALUES = /expression|url\s*\(|javascript:|behavior|moz-binding|-o-link/i;
@@ -104,7 +104,7 @@ export function sanitizeHTML(dirty: string): { __html: string } {
       node.setAttribute('target', '_blank');
       node.setAttribute('rel', 'noopener noreferrer');
     }
-    // F5.6: Sanitize inline styles — only allow safe CSS properties
+    // Sanitize inline styles — only allow safe CSS properties
     if (node.hasAttribute && node.hasAttribute('style')) {
       const style = node.getAttribute('style') || '';
       if (DANGEROUS_CSS_VALUES.test(style)) {

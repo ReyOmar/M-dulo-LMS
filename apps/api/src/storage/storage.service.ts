@@ -45,7 +45,7 @@ const MIME_MAP: Record<string, string> = {
   '.webp': 'image/webp',
   '.mp4': 'video/mp4',
   '.mp3': 'audio/mpeg',
-  // F5.2: SVG served as attachment to prevent inline script execution
+  // SVG served as attachment to prevent inline script execution
   '.svg': 'image/svg+xml',
 };
 
@@ -193,7 +193,7 @@ export class StorageService {
       throw new BadRequestException(`El archivo excede el tamaño máximo permitido (50MB).`);
     }
 
-    // F7.5: Validate MIME magic bytes to prevent extension spoofing
+    // Validate MIME magic bytes to prevent extension spoofing
     this.validateMagicBytes(buffer, ext);
 
     const uniqueName = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`;

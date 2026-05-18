@@ -13,11 +13,8 @@ services:
     stdin_open: true
     volumes:
       - ..:/workspace:cached
-      - api_node_modules:/workspace/apps/api/node_modules
-      - api_prisma:/workspace/apps/api/generated
-      - client_node_modules:/workspace/apps/client/node_modules
+      - node_modules:/workspace/node_modules
       - be_files:/app/uploads:Z
-      - ./templates:/app/templates:ro,Z
     ports:
       - "3100:3100"   # API
       - "3000:3000"   # Frontend
@@ -27,8 +24,6 @@ services:
       NODE_ENV: "development"
       WATCHPACK_POLLING: "true"
       PESV_UPLOADS_DIR: "/app/uploads"
-      PESV_TEMPLATES_DIR: "/app/templates"
-      # DATABASE_URL: "mysql://${MYSQL_USER:-devuser}:${MYSQL_PASSWORD:-devsecret}@database:3306/${MYSQL_DATABASE:-pesv_dev_db}"
     env_file:
       - ../.env
     networks:
@@ -58,9 +53,7 @@ services:
 
 volumes:
   db_data_dev:
-  api_node_modules:
-  api_prisma:
-  client_node_modules:
+  node_modules:
   be_files:
 
 networks:

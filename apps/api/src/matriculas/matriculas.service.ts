@@ -5,7 +5,6 @@ import { LmsGateway } from '../ws/lms.gateway';
 import { MailService } from '../mail/mail.service';
 import { StorageService } from '../storage/storage.service';
 import * as fs from 'fs';
-import * as path from 'path';
 
 @Injectable()
 export class MatriculasService {
@@ -77,35 +76,14 @@ export class MatriculasService {
 
     this.logger.log(`🔄 Re-enrollment detected: wiping previous data for user ${usuario_guid} in course ${curso_guid}`);
 
-    // 1. Delete old certificate + its PDF file
+    // ── Collect file keys BEFORE transaction (reads only) ──
+    const filesToDelete: string[] = [];
+
     if (oldCert) {
-      // Delete PDF from local storage
-      try {
-        const pdfPath = path.join(process.cwd(), 'uploads', 'certificados', oldCert.archivo_pdf);
-        if (fs.existsSync(pdfPath)) {
-          fs.unlinkSync(pdfPath);
-          this.logger.log(`  Deleted local PDF: ${oldCert.archivo_pdf}`);
-        }
-      } catch (err) {
-        this.logger.warn(`  Failed to delete local PDF:`, err);
-      }
-
-      // Delete PDF from R2
-      try {
-        await this.storageService.deleteFile(`certificados/${oldCert.archivo_pdf}`);
-        this.logger.log(`  Deleted R2 PDF: certificados/${oldCert.archivo_pdf}`);
-      } catch {
-        // R2 not configured or file doesn't exist — safe to ignore
-      }
-
-      // Delete certificate DB record
-      await this.prisma.lms_certificados.delete({
-        where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
-      });
-      this.logger.log(`  Deleted old certificate record`);
+      filesToDelete.push(`certificados/${oldCert.archivo_pdf}`);
     }
 
-    // 2. Get all resource GUIDs in the course for targeted cleanup
+    // Get all resource GUIDs in the course for targeted cleanup
     const curso = await this.prisma.lms_cursos.findUnique({
       where: { guid: curso_guid },
       select: {
@@ -121,55 +99,79 @@ export class MatriculasService {
       },
     });
 
-    if (curso) {
-      const allResources = curso.modulos.flatMap((m) => m.lecciones.flatMap((l) => l.recursos));
-      const allResourceGuids = allResources.map((r) => r.guid);
-      const taskGuids = allResources.filter((r) => r.tipo === 'TAREA').map((r) => r.guid);
+    const allResources = curso?.modulos.flatMap((m) => m.lecciones.flatMap((l) => l.recursos)) || [];
+    const allResourceGuids = allResources.map((r) => r.guid);
+    const taskGuids = allResources.filter((r) => r.tipo === 'TAREA').map((r) => r.guid);
 
-      // 3. Delete submission files from storage + DB records
-      if (taskGuids.length > 0) {
-        const entregas = await this.prisma.lms_entregas.findMany({
-          where: { usuario_guid, tarea_guid: { in: taskGuids }, url_archivo_adjunto: { not: null } },
-          select: { url_archivo_adjunto: true },
+    // Collect submission file keys before deleting records
+    if (taskGuids.length > 0) {
+      const entregas = await this.prisma.lms_entregas.findMany({
+        where: { usuario_guid, tarea_guid: { in: taskGuids }, url_archivo_adjunto: { not: null } },
+        select: { url_archivo_adjunto: true },
+      });
+      for (const e of entregas) {
+        if (e.url_archivo_adjunto) filesToDelete.push(e.url_archivo_adjunto);
+      }
+    }
+
+    // ── Atomic DB cleanup via $transaction ──
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Delete certificate record
+      if (oldCert) {
+        await tx.lms_certificados.delete({
+          where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
         });
+        this.logger.log(`  Deleted old certificate record`);
+      }
 
-        for (const e of entregas) {
-          if (e.url_archivo_adjunto) {
-            try {
-              await this.storageService.deleteFile(e.url_archivo_adjunto);
-            } catch {
-              // File might already be purged
-            }
-          }
-        }
-
-        const deletedEntregas = await this.prisma.lms_entregas.deleteMany({
+      // 2. Delete submission records
+      if (taskGuids.length > 0) {
+        const deletedEntregas = await tx.lms_entregas.deleteMany({
           where: { usuario_guid, tarea_guid: { in: taskGuids } },
         });
         this.logger.log(`  Deleted ${deletedEntregas.count} old submission(s)`);
       }
 
-      // 4. Delete progress records
+      // 3. Delete progress records
       if (allResourceGuids.length > 0) {
-        const deletedProgress = await this.prisma.lms_progreso_recurso.deleteMany({
+        const deletedProgress = await tx.lms_progreso_recurso.deleteMany({
           where: { usuario_guid, recurso_guid: { in: allResourceGuids } },
         });
         this.logger.log(`  Deleted ${deletedProgress.count} progress record(s)`);
       }
-    }
 
-    // 5. Delete session/heartbeat data
-    const deletedSessions = await this.prisma.lms_sesion_activa.deleteMany({
-      where: { usuario_guid, curso_guid },
-    });
-    this.logger.log(`  Deleted ${deletedSessions.count} session record(s)`);
+      // 4. Delete session/heartbeat data
+      const deletedSessions = await tx.lms_sesion_activa.deleteMany({
+        where: { usuario_guid, curso_guid },
+      });
+      this.logger.log(`  Deleted ${deletedSessions.count} session record(s)`);
 
-    // 6. Delete old notifications related to this course
-    const deletedNotifs = await this.prisma.lms_notificaciones.deleteMany({
-      where: { usuario_guid, ref_tipo: 'certificado' },
+      // 5. Delete old notifications related to this course
+      const deletedNotifs = await tx.lms_notificaciones.deleteMany({
+        where: { usuario_guid, ref_tipo: 'certificado' },
+      });
+      if (deletedNotifs.count > 0) {
+        this.logger.log(`  Deleted ${deletedNotifs.count} old certificate notification(s)`);
+      }
     });
-    if (deletedNotifs.count > 0) {
-      this.logger.log(`  Deleted ${deletedNotifs.count} old certificate notification(s)`);
+
+    // ── File cleanup AFTER successful transaction (best-effort) ──
+    for (const key of filesToDelete) {
+      try {
+        // Try local filesystem
+        const localPath = this.storageService.getUploadPath(key);
+        if (fs.existsSync(localPath)) {
+          fs.unlinkSync(localPath);
+          this.logger.log(`  Deleted local file: ${key}`);
+        }
+      } catch {
+        // Local file might not exist
+      }
+      try {
+        await this.storageService.deleteFile(key);
+      } catch {
+        // R2 not configured or file doesn't exist — scheduler cleanup will handle orphans
+      }
     }
 
     this.logger.log(`✅ Previous course data wiped — student will start fresh`);
@@ -205,7 +207,7 @@ export class MatriculasService {
   }
 
   async seedMatriculas() {
-    // COD-07: Guard against accidental execution in production
+    // Guard against accidental execution in production
     if (process.env.NODE_ENV === 'production') {
       throw new Error('seedMatriculas no está disponible en producción.');
     }

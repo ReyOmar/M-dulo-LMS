@@ -1,7 +1,7 @@
 /**
  * Quick script to insert the MENSAJE_CHAT email event into the database
  * and update RECORDATORIO_INACTIVIDAD variables.
- * Run with: npx ts-node prisma/seed-chat-event.ts
+ * Run with: pnpm exec ts-node prisma/seed-chat-event.ts
  */
 import { PrismaClient } from '@prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';

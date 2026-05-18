@@ -266,7 +266,7 @@ export class SchedulerService implements OnModuleInit {
 
         if (existing) continue; // Already unlocked
 
-        // F5.8: If submission already has a calificacion, verify it meets nota_aprobacion
+        // If submission already has a calificacion, verify it meets nota_aprobacion
         // This prevents auto-unlock for submissions that were graded as failing
         // but whose estado wasn't transitioned to CALIFICADA correctly
         if (submission.calificacion != null) {

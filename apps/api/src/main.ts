@@ -63,7 +63,7 @@ async function bootstrap() {
       const ms = reply.elapsedTime?.toFixed(0) || '?';
       const status = reply.statusCode;
 
-      // F3.3: Sanitize sensitive params from logged URL (centralized helper)
+      // Sanitize sensitive params from logged URL (centralized helper)
       const sanitizedUrl = sanitizeUrlForLogs(request.url);
 
       const logLine = `${request.method} ${sanitizedUrl} ${status} ${ms}ms [${request.id}]`;

@@ -16,7 +16,7 @@ export class CertificadosController {
    */
   @Post('/generar')
   async generarCertificado(@CurrentUser() user: JwtPayload, @Body() body: { curso_guid: string }) {
-    // F3.9: Always use authenticated user's GUID — no override
+    // Always use authenticated user's GUID — no override
     return this.certificadosService.generarCertificado(user.sub, body.curso_guid);
   }
 
@@ -26,7 +26,7 @@ export class CertificadosController {
    */
   @Get('/verificar/:curso_guid')
   async verificarCurso(@Param('curso_guid') curso_guid: string, @CurrentUser() user: JwtPayload) {
-    // F3.9: Always use authenticated user's GUID
+    // Always use authenticated user's GUID
     return this.certificadosService.verificarCursoCompleto(user.sub, curso_guid);
   }
 
@@ -35,7 +35,7 @@ export class CertificadosController {
    */
   @Get()
   async getCertificados(@CurrentUser() user: JwtPayload) {
-    // F3.9: Always use authenticated user's GUID
+    // Always use authenticated user's GUID
     return this.certificadosService.getCertificadosEstudiante(user.sub);
   }
 
@@ -48,13 +48,15 @@ export class CertificadosController {
   async downloadPDF(@Param('guid') guid: string, @CurrentUser() user: JwtPayload, @Res() reply: FastifyReply) {
     const cert = await this.certificadosService.getCertificado(guid);
 
-    // F3.9: Ownership validation — only owner, course professor, or admin can download
+    // Ownership validation — only owner, course professor, or admin can download
     await this.certificadosService.validateCertificateAccess(cert, user);
 
+    // Serve via StorageService (validated path resolution + R2 fallback)
     const filePath = this.certificadosService.getArchivoPDF(cert.archivo_pdf);
 
     const stream = fs.createReadStream(filePath);
     reply.header('Content-Type', 'application/pdf');
+    reply.header('Cache-Control', 'private, no-store, must-revalidate');
     reply.header(
       'Content-Disposition',
       `attachment; filename="Certificado-${cert.curso.titulo.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, '')}.pdf"`,
@@ -80,7 +82,7 @@ export class CertificadosController {
   async getCertificado(@Param('guid') guid: string, @CurrentUser() user: JwtPayload) {
     const cert = await this.certificadosService.getCertificado(guid);
 
-    // F3.9: Ownership validation
+    // Ownership validation
     await this.certificadosService.validateCertificateAccess(cert, user);
 
     return cert;

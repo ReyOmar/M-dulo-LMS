@@ -1,39 +1,39 @@
-"use client";
+'use client';
 
-import { useState, Suspense } from "react";
-import { Lock, ArrowLeft, Loader2, CheckCircle, Eye, EyeOff } from "lucide-react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import api from "@/lib/api";
+import { useState, Suspense } from 'react';
+import { Lock, ArrowLeft, Loader2, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import api from '@/lib/api';
 
 function ResetForm() {
   const searchParams = useSearchParams();
-  const token = searchParams.get("token") || "";
+  const token = searchParams.get('token') || '';
 
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.");
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres, incluir una letra y un número.');
       return;
     }
     if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden.");
+      setError('Las contraseñas no coinciden.');
       return;
     }
     setLoading(true);
-    setError("");
+    setError('');
     try {
-      await api.post("/auth/restablecer-contrasena", { token, nuevaContrasena: password });
+      await api.post('/auth/restablecer-contrasena', { token, nuevaContrasena: password });
       setSuccess(true);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Error al restablecer la contraseña.");
+      setError(err.response?.data?.message || 'Error al restablecer la contraseña.');
     } finally {
       setLoading(false);
     }
@@ -44,7 +44,10 @@ function ResetForm() {
       <div className="text-center p-8">
         <p className="text-red-500 font-bold">Enlace inválido</p>
         <p className="text-muted-foreground text-sm mt-2">No se encontró un token de recuperación en la URL.</p>
-        <Link href="/recuperar-contrasena" className="inline-flex items-center gap-2 mt-4 text-primary font-bold text-sm hover:underline">
+        <Link
+          href="/recuperar-contrasena"
+          className="inline-flex items-center gap-2 mt-4 text-primary font-bold text-sm hover:underline"
+        >
           Solicitar uno nuevo
         </Link>
       </div>
@@ -59,7 +62,9 @@ function ResetForm() {
             <CheckCircle className="h-8 w-8 text-emerald-500" />
           </div>
           <h3 className="text-lg font-bold mb-2">¡Contraseña Restablecida!</h3>
-          <p className="text-muted-foreground text-sm">Tu contraseña ha sido actualizada exitosamente. Ya puedes iniciar sesión.</p>
+          <p className="text-muted-foreground text-sm">
+            Tu contraseña ha sido actualizada exitosamente. Ya puedes iniciar sesión.
+          </p>
           <Link
             href="/login"
             className="inline-flex items-center justify-center gap-2 mt-6 bg-primary text-white font-bold py-3 px-8 rounded-xl hover:bg-primary/90 transition-colors text-sm"
@@ -73,13 +78,13 @@ function ResetForm() {
             <label className="block text-sm font-bold mb-2">Nueva Contraseña</label>
             <div className="relative">
               <input
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Mínimo 8 caracteres, letra y número"
                 className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                 required
-                minLength={6}
+                minLength={8}
                 disabled={loading}
               />
               <button
@@ -95,9 +100,9 @@ function ResetForm() {
           <div>
             <label className="block text-sm font-bold mb-2">Confirmar Contraseña</label>
             <input
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Repite la contraseña"
               className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
               required
@@ -105,9 +110,7 @@ function ResetForm() {
             />
           </div>
 
-          {error && (
-            <p className="text-red-500 text-sm font-medium bg-red-500/10 px-4 py-2 rounded-xl">{error}</p>
-          )}
+          {error && <p className="text-red-500 text-sm font-medium bg-red-500/10 px-4 py-2 rounded-xl">{error}</p>}
 
           <button
             type="submit"
@@ -119,7 +122,7 @@ function ResetForm() {
                 <Loader2 className="h-4 w-4 animate-spin" /> Actualizando...
               </>
             ) : (
-              "Restablecer Contraseña"
+              'Restablecer Contraseña'
             )}
           </button>
 
@@ -148,13 +151,17 @@ export default function RestablecerContrasenaPage() {
               <Lock className="h-8 w-8 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-white">Nueva Contraseña</h1>
-            <p className="text-white/70 text-sm mt-2">
-              Crea una nueva contraseña segura para tu cuenta.
-            </p>
+            <p className="text-white/70 text-sm mt-2">Crea una nueva contraseña segura para tu cuenta.</p>
           </div>
 
           {/* Body */}
-          <Suspense fallback={<div className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>}>
+          <Suspense
+            fallback={
+              <div className="p-8 text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+              </div>
+            }
+          >
             <ResetForm />
           </Suspense>
         </div>

@@ -15,7 +15,7 @@ export class UpdateConfiguracionDto {
   @IsSafeStorageKey()
   login_fondo_url?: string | null;
 
-  // F1.6: Validate hex color format to prevent XSS via style injection
+  // Validate hex color format to prevent XSS via style injection
   @IsOptional()
   @IsString()
   @Matches(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, {
@@ -30,7 +30,7 @@ export class UpdateConfiguracionDto {
   })
   color_secundario?: string;
 
-  // F1.2: contrasena_defecto removed — field is deprecated (passwordless onboarding)
+  // contrasena_defecto removed — field is deprecated (passwordless onboarding)
 
   @IsOptional()
   @IsString()
@@ -46,7 +46,7 @@ export class UpdateConfiguracionDto {
   @IsString()
   fuente?: string;
 
-  // F1.6: Limit border_radius to prevent layout-breaking values
+  // Limit border_radius to prevent layout-breaking values
   @IsOptional()
   @IsNumber()
   @Min(0)

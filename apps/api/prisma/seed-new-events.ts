@@ -1,6 +1,6 @@
 /**
  * Quick script to insert the 5 new email events into the database.
- * Run with: npx ts-node prisma/seed-new-events.ts
+ * Run with: pnpm exec ts-node prisma/seed-new-events.ts
  */
 import { PrismaClient } from '@prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';

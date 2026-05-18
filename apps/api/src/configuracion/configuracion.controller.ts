@@ -53,7 +53,7 @@ export class ConfiguracionController {
 
   @Get('/firma')
   getFirma(@CurrentUser() user: JwtPayload, @Query('usuario_guid') usuario_guid?: string) {
-    // F3.8: Non-admin users can only access their own firma
+    // Non-admin users can only access their own firma
     const guid = user.role === 'ADMINISTRADOR' && usuario_guid ? usuario_guid : user.sub;
     return this.configuracionService.getFirma(guid);
   }
@@ -64,7 +64,7 @@ export class ConfiguracionController {
     @Body() body: UpdateFirmaDto,
     @Query('usuario_guid') usuario_guid?: string,
   ) {
-    // F3.8: Non-admin users can only update their own firma
+    // Non-admin users can only update their own firma
     const guid = user.role === 'ADMINISTRADOR' && usuario_guid ? usuario_guid : user.sub;
     return this.configuracionService.updateFirma(guid, body);
   }

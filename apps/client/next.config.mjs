@@ -5,7 +5,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "standalone",
+  // standalone output is required for Docker deployments but fails on Windows
+  // without Developer Mode (EPERM symlink errors). Disable it on Windows.
+  output: process.platform === "win32" ? undefined : "standalone",
   // Resolve multi-lockfile warning by explicitly pointing to monorepo root
   outputFileTracingRoot: resolve(__dirname, "../../"),
   compiler: {

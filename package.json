@@ -3,25 +3,26 @@
   "version": "1.0.0",
   "description": "LMS PESV Education — Sistema de Gestión de Aprendizaje",
   "private": true,
+  "packageManager": "pnpm@10.12.1",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
-    "init": "npm ci && concurrently --success all -n api,client -c green,cyan \"cd apps/api && npm ci && npx prisma generate\" \"cd apps/client && npm ci\"",
-    "dev:api": "dotenv -e .env -- npm run dev --prefix apps/api",
-    "dev:client": "dotenv -e .env -- npm run dev --prefix apps/client",
-    "dev": "dotenv -e .env -- concurrently -k -n api,client -c green,cyan \"npm run dev:api\" \"npm run dev:client\"",
-    "build:api": "dotenv -e .env -- npm run build --prefix apps/api",
-    "build:client": "dotenv -e .env -- npm run build --prefix apps/client",
-    "build": "concurrently --success all -n api,client -c green,cyan \"npm run build:api\" \"npm run build:client\"",
-    "start:api": "dotenv -e .env -- npm run start:prod --prefix apps/api",
-    "start:client": "dotenv -e .env -- npm run start --prefix apps/client",
-    "start": "concurrently -k -n api,client -c green,cyan \"npm run start:api\" \"npm run start:client\"",
-    "db:generate": "cd apps/api && npx prisma generate",
-    "db:push": "dotenv -e .env -- npx prisma db push --schema=apps/api/prisma/schema.prisma",
-    "db:seed": "dotenv -e .env -- npx prisma db seed --schema=apps/api/prisma/schema.prisma",
-    "typecheck": "concurrently --success all \"cd apps/api && npx tsc --noEmit\" \"cd apps/client && npx tsc --noEmit\"",
-    "test": "cd apps/api && npm test",
+    "init": "pnpm install && pnpm --filter api exec prisma generate",
+    "dev:api": "dotenv -e .env -- pnpm --filter api dev",
+    "dev:client": "dotenv -e .env -- pnpm --filter client dev",
+    "dev": "dotenv -e .env -- concurrently -k -n api,client -c green,cyan \"pnpm run dev:api\" \"pnpm run dev:client\"",
+    "build:api": "pnpm --filter api build",
+    "build:client": "pnpm --filter client build",
+    "build": "concurrently --success all -n api,client -c green,cyan \"pnpm run build:api\" \"pnpm run build:client\"",
+    "start:api": "dotenv -e .env -- pnpm --filter api start",
+    "start:client": "dotenv -e .env -- pnpm --filter client start",
+    "start": "concurrently -k -n api,client -c green,cyan \"pnpm run start:api\" \"pnpm run start:client\"",
+    "db:generate": "pnpm --filter api exec prisma generate",
+    "db:push": "dotenv -e .env -- pnpm --filter api exec prisma db push",
+    "db:seed": "dotenv -e .env -- pnpm --filter api exec prisma db seed",
+    "typecheck": "concurrently --success all \"pnpm --filter api exec tsc --noEmit\" \"pnpm --filter client exec tsc --noEmit\"",
+    "test": "pnpm --filter api test",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -38,5 +39,16 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.3",
     "prettier": "^3.8.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "@hono/node-server": ">=1.19.13",
+      "postcss": ">=8.5.10"
+    },
+    "auditConfig": {
+      "ignoreCves": [
+        "CVE-2025-15056"
+      ]
+    }
   }
 }

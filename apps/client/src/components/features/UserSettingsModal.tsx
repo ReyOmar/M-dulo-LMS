@@ -96,8 +96,8 @@ export function UserSettingsModal({ open, onClose }: Props) {
       showFeedback('error', 'Las contraseñas no coinciden.');
       return;
     }
-    if (nuevaContrasena && nuevaContrasena.length < 6) {
-      showFeedback('error', 'La nueva contraseña debe tener al menos 6 caracteres.');
+    if (nuevaContrasena && nuevaContrasena.length < 8) {
+      showFeedback('error', 'La nueva contraseña debe tener al menos 8 caracteres, incluir una letra y un número.');
       return;
     }
 
@@ -427,7 +427,7 @@ export function UserSettingsModal({ open, onClose }: Props) {
                         type={showNewPwd ? 'text' : 'password'}
                         value={nuevaContrasena}
                         onChange={(e) => setNuevaContrasena(e.target.value)}
-                        placeholder="Mín. 6 caracteres"
+                        placeholder="Mín. 8 caracteres"
                         className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                       />
                     </div>

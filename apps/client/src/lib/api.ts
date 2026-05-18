@@ -34,7 +34,7 @@ api.interceptors.response.use(
     if (status === 401 && typeof window !== 'undefined') {
       // Only redirect if not already on login page
       if (!window.location.pathname.includes('/login')) {
-        // F10.2: Clean ALL LMS-related localStorage keys
+        // Clean ALL LMS-related localStorage keys
         const keysToRemove = Object.keys(localStorage).filter((k) => k.startsWith('lms_'));
         keysToRemove.forEach((k) => localStorage.removeItem(k));
 
@@ -54,7 +54,7 @@ api.interceptors.response.use(
       }
     }
 
-    // F10.4: Rate limiting — log but don't redirect
+    // Rate limiting — log but don't redirect
     if (status === 429 && typeof window !== 'undefined') {
       const retryAfter = error.response?.headers?.['retry-after'] || '60';
       error.message = `Demasiadas solicitudes. Intenta de nuevo en ${retryAfter} segundos.`;
@@ -85,15 +85,12 @@ async function uploadFile(url: string, file: File, fieldName = 'file') {
 /**
  * Resolves a file reference to a display URL.
  *
- * F3.1: Security model:
+ * Security model:
  * - Public folders (portadas, logos, avatars) → /download/public/* (no auth, safe for <img src>)
- * - Private folders (firmas) → /download/* with JWT query param (ONLY for inline <img> rendering)
- * - Private downloadable files → use secureDownload() instead (never expose token in URL)
+ * - Private folders (firmas, entregas, certificados) → use useSecureImage hook or secureDownload()
+ *   Never put JWT in URL — it leaks in browser history, logs, and referer headers.
  */
 const PUBLIC_FOLDERS = ['portadas', 'logos', 'avatars'];
-
-// Folders that need inline rendering (e.g. <img src>) and thus require token-in-URL
-const INLINE_PRIVATE_FOLDERS = ['firmas'];
 
 function resolveFileUrl(fileRef: string | null | undefined): string | null {
   if (!fileRef) return null;
@@ -106,17 +103,10 @@ function resolveFileUrl(fileRef: string | null | undefined): string | null {
     return `${API_BASE_URL}/storage/download/public/${fileRef}`;
   }
 
-  // F3.1: Only attach token for inline private content (signatures need <img src>)
-  const isInlinePrivate = INLINE_PRIVATE_FOLDERS.includes(folder);
-  const base = `${API_BASE_URL}/storage/download/${fileRef}`;
-  if (isInlinePrivate) {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('lms_token') : null;
-    return token ? `${base}?token=${encodeURIComponent(token)}` : base;
-  }
-
-  // For all other private files, return the URL without token
-  // (callers must use secureDownload() for actual downloads)
-  return base;
+  // Private files: return base URL without token.
+  // For inline rendering (e.g. firma images), use the useSecureImage hook.
+  // For downloads, use secureDownload().
+  return `${API_BASE_URL}/storage/download/${fileRef}`;
 }
 
 /**
@@ -134,7 +124,7 @@ function resolveDownloadUrl(fileRef: string | null | undefined, originalName?: s
 
   const params = new URLSearchParams();
   if (originalName) params.set('originalName', originalName);
-  // F3.2: Token is NO LONGER added to URL — use secureDownload() instead
+  // Token is NO LONGER added to URL — use secureDownload() instead
 
   const qs = params.toString();
   return qs ? `${base}?${qs}` : base;

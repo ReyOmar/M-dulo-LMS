@@ -142,26 +142,28 @@ export class EvaluacionesService {
       throw err;
     }
 
-    // Notify teachers/admins about the new submission (not students)
+    // Notify course professor + admins about the new submission (segmented, not broadcast to ALL professors)
+    const recursoForBroadcast = await this.prisma.lms_recursos.findUnique({
+      where: { guid: tarea_guid },
+      select: { leccion: { select: { modulo: { select: { curso: { select: { profesor_guid: true } } } } } } },
+    });
+    const courseProfesorGuid = recursoForBroadcast?.leccion?.modulo?.curso?.profesor_guid;
+
+    if (courseProfesorGuid) {
+      // Send submission:new only to the course's professor
+      this.lmsGateway.broadcast(
+        'submission:new',
+        { tarea_guid, usuario_guid: data.usuario_guid, estado: 'ENTREGADA' },
+        [courseProfesorGuid],
+      );
+      this.lmsGateway.broadcast('dashboard:refresh', { reason: 'submission_new' }, [courseProfesorGuid]);
+    }
+    // Always notify admins
     this.lmsGateway.broadcastToRole(
       'submission:new',
-      {
-        tarea_guid,
-        usuario_guid: data.usuario_guid,
-        estado: 'ENTREGADA',
-      },
-      'PROFESOR',
-    );
-    this.lmsGateway.broadcastToRole(
-      'submission:new',
-      {
-        tarea_guid,
-        usuario_guid: data.usuario_guid,
-        estado: 'ENTREGADA',
-      },
+      { tarea_guid, usuario_guid: data.usuario_guid, estado: 'ENTREGADA' },
       'ADMINISTRADOR',
     );
-    this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'submission_new' }, 'PROFESOR');
     this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'submission_new' }, 'ADMINISTRADOR');
 
     return entrega;
@@ -307,7 +309,7 @@ export class EvaluacionesService {
     profesor_guid: string,
     role: string,
   ) {
-    // F3.6: Verify professor owns the course (admins skip this check)
+    // Verify professor owns the course (admins skip this check)
     if (role === 'PROFESOR') {
       const submission = await this.prisma.lms_entregas.findUnique({
         where: { guid },

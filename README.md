@@ -1,6 +1,6 @@
 # 🎓 LMS PESV Education
 
-Sistema de Gestion de Aprendizaje (LMS) profesional para capacitacion empresarial en Seguridad Vial (PESV).
+Sistema de Gestión de Aprendizaje (LMS) profesional para capacitación empresarial en Seguridad Vial (PESV).
 
 ## Arquitectura
 
@@ -10,43 +10,47 @@ M-dulo-LMS/
 │   ├── api/          # Backend — NestJS + Fastify + Prisma + WebSockets
 │   └── client/       # Frontend — Next.js 15 + React 19 + TailwindCSS v4
 ├── .env              # Variables de entorno (NO versionar)
-├── docker-compose.yml
+├── pnpm-workspace.yaml
 └── package.json      # Scripts del monorepo
 ```
 
 ### Tech Stack
 
-| Capa | Tecnologia |
+| Capa | Tecnología |
 |------|-----------|
 | **Backend** | NestJS 11, Fastify, Prisma ORM 7, WebSockets (ws) |
 | **Frontend** | Next.js 15, React 19, TailwindCSS v4, Recharts |
 | **Base de Datos** | MySQL / MariaDB |
-| **Autenticacion** | JWT (HS256), bcryptjs, Guards + Roles |
+| **Autenticación** | JWT (HS256), bcryptjs, Guards + Roles |
 | **Archivos** | Cloudflare R2 / Almacenamiento local |
-| **Correo** | Nodemailer (SMTP) con plantillas dinamicas |
-| **Certificados** | PDFKit (generacion dinamica de PDFs) |
+| **Correo** | Nodemailer (SMTP) con plantillas dinámicas |
+| **Certificados** | PDFKit (generación dinámica de PDFs) |
+| **Gestor de paquetes** | pnpm (workspace monorepo) |
 
 ### Roles del Sistema
 
-| Rol | Descripcion |
+| Rol | Descripción |
 |-----|------------|
-| **Administrador** | Gestion completa: usuarios, cursos, configuracion, certificados |
-| **Profesor/Supervisor** | Calificacion de tareas, monitoreo de estudiantes, firma digital |
-| **Estudiante/Capacitado** | Cursos, tareas, quizzes, certificados, mensajeria |
+| **Administrador** | Gestión completa: usuarios, cursos, configuración, certificados |
+| **Profesor/Supervisor** | Calificación de tareas, monitoreo de estudiantes, firma digital |
+| **Estudiante/Capacitado** | Cursos, tareas, quizzes, certificados, mensajería |
 
 ---
 
-## Inicio Rapido
+## Inicio Rápido
 
 ### Prerrequisitos
 
 - Node.js >= 18
+- [pnpm](https://pnpm.io/installation) (se instala automáticamente vía `corepack enable`)
 - Docker & Docker Compose (para la base de datos)
+
+> **Windows**: Si `pnpm` falla en PowerShell por política de ejecución, usa `pnpm.cmd` o habilita Developer Mode.
 
 ### 1. Instalar dependencias
 
 ```bash
-npm run init
+pnpm run init
 ```
 
 ### 2. Levantar la base de datos
@@ -58,26 +62,27 @@ docker-compose up -d
 ### 3. Sincronizar schema y seed
 
 ```bash
-# Desde apps/api:
-npx prisma db push
-npx prisma db seed
+pnpm --filter api exec prisma db push
+pnpm --filter api exec prisma db seed
 ```
 
-> **El seed genera contrasenas aleatorias**. Se mostraran en la consola una sola vez. Guardalas.
+> **El seed genera contraseñas aleatorias**. Se mostrarán en la consola una sola vez. Guárdalas.
 
 ### 4. Configurar variables de entorno
 
 Copia `.env.example` a `.env` y completa las variables requeridas:
 
-- `JWT_SECRET` — Secreto para firmar tokens JWT (minimo 16 caracteres)
-- `DATABASE_URL` — URL de conexion a la base de datos MySQL
-- Variables SMTP opcionales para correo electronico
+- `JWT_SECRET` — Secreto para firmar tokens JWT (mínimo 16 caracteres)
+- `DATABASE_URL` — URL de conexión a la base de datos MySQL
+- Variables SMTP opcionales para correo electrónico
 - Variables R2 opcionales para almacenamiento en la nube
+
+> **No** definas `NODE_ENV` en `.env` — los frameworks lo detectan automáticamente.
 
 ### 5. Iniciar en modo desarrollo
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 - **API**: http://localhost:3200/api
@@ -88,13 +93,23 @@ npm run dev
 
 ## Scripts Disponibles
 
-| Script | Descripcion |
+| Script | Descripción |
 |--------|------------|
-| `npm run dev` | Inicia API + Client en modo desarrollo |
-| `npm run typecheck` | Verificacion TypeScript de ambos |
-| `npm run db:push` | Sincroniza schema con la DB |
-| `npm run db:seed` | Ejecuta el seed (solo desarrollo) |
-| `npm run db:generate` | Regenera el cliente Prisma |
+| `pnpm dev` | Inicia API + Client en modo desarrollo |
+| `pnpm run build` | Build completo de API + Client |
+| `pnpm run typecheck` | Verificación TypeScript de ambos |
+| `pnpm test` | Ejecuta tests de la API |
+| `pnpm run db:push` | Sincroniza schema con la DB |
+| `pnpm run db:seed` | Ejecuta el seed (solo desarrollo) |
+| `pnpm run db:generate` | Regenera el cliente Prisma |
+| `pnpm --filter api lint:check` | Lint del backend |
+| `pnpm --filter client lint` | Lint del frontend |
+
+### Matar procesos en puertos
+
+```bash
+pnpm dlx kill-port 3100 3200
+```
 
 ---
 
@@ -112,6 +127,7 @@ npm run dev
 - **Validación de rutas de archivo** en DTOs con `@IsSafeStorageKey()` — previene path traversal
 - **Tokens de invitación** para setup de primera contraseña (previene account takeover)
 - **WebSocket authorization**: tokens efímeros de uso único (no JWT en query string)
+- **Imágenes privadas**: cargadas vía `fetch()` + `Authorization` header, nunca JWT en URL
 - **Exception filter global**: errores consistentes en JSON, sin stack traces, URLs sanitizadas
 
 ---
@@ -165,7 +181,16 @@ apps/api/src/
 
 ---
 
+## Gestor de Paquetes
+
+Este proyecto usa **pnpm** como único gestor de paquetes.
+
+- No usar `npm`, `npx`, ni `yarn` en este workspace
+- El lockfile único es `pnpm-lock.yaml`
+- `.npmrc` contiene `shamefully-hoist=true` (requerido por NestJS/Next.js)
+
+---
+
 ## Licencia
 
 Proyecto privado — Todos los derechos reservados.
-

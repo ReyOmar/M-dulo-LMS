@@ -5,6 +5,9 @@ dist
 *.log
 .env
 
+# pnpm store
+.pnpm-store/
+
 # Database and Uploads
 apps/api/prisma/*.db
 *.sqlite
@@ -13,7 +16,7 @@ apps/api/uploads/**
 !apps/api/uploads/**/
 !apps/api/uploads/**/.gitkeep
 
-# Generated code (regenerate with: npx prisma generate)
+# Generated code (regenerate with: pnpm --filter api exec prisma generate)
 generated/
 
 # TypeScript build info (regenerated on build)
@@ -33,4 +36,3 @@ Thumbs.db
 *.bak
 *.backup
 *.tmp
-

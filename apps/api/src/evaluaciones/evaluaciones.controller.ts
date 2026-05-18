@@ -90,7 +90,7 @@ export class EvaluacionesController {
     @Body() body: CalificarEntregaDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    // F3.6: Pass professor's GUID for ownership verification
+    // Pass professor's GUID for ownership verification
     return this.evaluacionesService.calificarEntrega(guid, body, user.sub, user.role);
   }
 }

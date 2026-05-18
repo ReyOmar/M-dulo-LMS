@@ -117,7 +117,7 @@ export class MailService implements OnModuleInit {
     return false;
   }
 
-  // F5.8: HTML escape helper for template variables
+  // HTML escape helper for template variables
   private escapeHtml(str: string): string {
     return str
       .replace(/&/g, '&amp;')
@@ -127,7 +127,7 @@ export class MailService implements OnModuleInit {
       .replace(/'/g, '&#039;');
   }
 
-  // F5.8: Keys that contain URLs or pre-formatted HTML — skip escaping
+  // Keys that contain URLs or pre-formatted HTML — skip escaping
   // SEC: 'comentario' is NOT in this list — it contains user-supplied text and must be escaped
   private readonly SAFE_TEMPLATE_KEYS = new Set([
     'url_campus',
@@ -157,7 +157,7 @@ export class MailService implements OnModuleInit {
 
     for (const [key, value] of Object.entries(variables)) {
       const regex = new RegExp(`{{${key}}}`, 'g');
-      // F5.8: Escape by default, skip only for known safe keys (URLs)
+      // Escape by default, skip only for known safe keys (URLs)
       const safeValue = this.SAFE_TEMPLATE_KEYS.has(key) ? String(value) : this.escapeHtml(String(value));
       html = html.replace(regex, safeValue);
       asunto = asunto.replace(regex, this.escapeHtml(String(value)));

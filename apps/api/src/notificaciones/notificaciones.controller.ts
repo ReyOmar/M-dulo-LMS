@@ -29,7 +29,7 @@ export class NotificacionesController {
 
   @Patch(':id/leer')
   async marcarLeida(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    // F3.10: Verify the notification belongs to the authenticated user
+    // Verify the notification belongs to the authenticated user
     return this.notificacionesService.marcarLeida(parseInt(id, 10), user.sub);
   }
 

@@ -11,7 +11,7 @@ export class DashboardsController {
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Get('/examiner/monitoreo')
   async getMonitoreoEstudiantes(@CurrentUser() user: JwtPayload) {
-    // F2.11: Pass role for admin (all courses) vs professor (own courses) scoping
+    // Pass role for admin (all courses) vs professor (own courses) scoping
     return this.dashboardsService.getMonitoreoEstudiantes(user.sub, user.role);
   }
 

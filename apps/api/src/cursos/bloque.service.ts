@@ -82,7 +82,7 @@ export class BloqueService {
     });
     if (!bloque) throw new NotFoundException('Recurso no encontrado');
 
-    // F2.1: Validate professor ownership (admins bypass)
+    // Validate professor ownership (admins bypass)
     if (requestUser?.role === 'PROFESOR') {
       const cursoProfesorGuid = bloque.leccion?.modulo?.curso?.profesor_guid;
       if (cursoProfesorGuid !== requestUser.sub) {

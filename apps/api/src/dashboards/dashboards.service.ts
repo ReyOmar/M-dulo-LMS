@@ -6,7 +6,7 @@ export class DashboardsService {
   constructor(private prisma: PrismaService) {}
 
   async getMonitoreoEstudiantes(usuario_guid: string, role: string) {
-    // F2.11: Admin sees all courses, professor sees only their own
+    // Admin sees all courses, professor sees only their own
     const whereClause = role === 'ADMINISTRADOR' ? {} : { profesor_guid: usuario_guid };
     const cursos = await this.prisma.lms_cursos.findMany({
       where: whereClause,
@@ -154,7 +154,7 @@ export class DashboardsService {
       matriculasByCourse.set(m.curso_guid, (matriculasByCourse.get(m.curso_guid) || 0) + 1);
     }
 
-    // F2.12: Professor is active if they have at least one course assigned
+    // Professor is active if they have at least one course assigned
     const profGuidsWithCourses = new Set(allCursosProfesores.map((c) => c.profesor_guid).filter(Boolean));
     const profesoresActivos = [...profGuids].filter((g) => profGuidsWithCourses.has(g)).length || profesores.length;
     const estudiantesActivos = [...estudGuids].filter((g) => matriculasByUser.has(g)).length;

@@ -99,7 +99,7 @@ describe('StorageService — Sanitization (F12.5)', () => {
     });
   });
 
-  // F12.3: SVG malicious content
+  // SVG malicious content
   describe('SVG blocking (F5.3)', () => {
     it('should allow .svg upload (security is at download layer: Content-Disposition: attachment)', async () => {
       const svgContent = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert("xss")</script></svg>');

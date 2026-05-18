@@ -13,7 +13,7 @@ export class EstudiantesService {
   ) {}
 
   async getProgresoEstudiante(usuario_guid: string, curso_guid: string) {
-    // F2.5: Verify enrollment before exposing progress data
+    // Verify enrollment before exposing progress data
     const matricula = await this.prisma.lms_matriculas.findUnique({
       where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
     });
@@ -96,7 +96,7 @@ export class EstudiantesService {
   }
 
   async marcarRecursoCompletado(usuario_guid: string, recurso_guid: string) {
-    // F4.3: Verify the resource belongs to a course the student is enrolled in
+    // Verify the resource belongs to a course the student is enrolled in
     const recurso = await this.prisma.lms_recursos.findUnique({
       where: { guid: recurso_guid },
       select: {
@@ -212,7 +212,7 @@ export class EstudiantesService {
    * If last heartbeat was < 2 min ago, extend the session. Otherwise create a new one.
    */
   async registrarHeartbeat(usuario_guid: string, curso_guid: string) {
-    // F2.6: Verify enrollment before recording heartbeat
+    // Verify enrollment before recording heartbeat
     const matricula = await this.prisma.lms_matriculas.findUnique({
       where: { usuario_guid_curso_guid: { usuario_guid, curso_guid } },
     });

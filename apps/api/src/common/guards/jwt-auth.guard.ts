@@ -120,7 +120,11 @@ export class JwtAuthGuard implements CanActivate, OnModuleDestroy {
     return true;
   }
 
-  private extractTokenFromHeader(request: any): string | undefined {
+  private extractTokenFromHeader(request: {
+    headers: { authorization?: string };
+    url?: string;
+    query?: Record<string, string>;
+  }): string | undefined {
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
     if (type === 'Bearer' && token) return token;
 

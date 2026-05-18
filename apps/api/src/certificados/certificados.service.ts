@@ -5,7 +5,6 @@ import { ConfiguracionService } from '../configuracion/configuracion.service';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { StorageService } from '../storage/storage.service';
 import { MailService } from '../mail/mail.service';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const PDFDocument = require('pdfkit');
 import * as fs from 'fs';
 import * as path from 'path';
@@ -289,7 +288,7 @@ export class CertificadosService {
       firmaCargo: curso.profesor.firma_cargo || null,
     });
 
-    // F7.1: Upload PDF to R2 if cloud storage is active
+    // Upload PDF to R2 if cloud storage is active
     if (this.storageService.isCloudStorageActive()) {
       try {
         const pdfBuffer = await fs.promises.readFile(pdfPath);
@@ -646,7 +645,7 @@ export class CertificadosService {
             valign: 'center',
           });
           headerY += 105;
-        } catch (e) {
+        } catch {
           // Fallback to text if image fails
           doc.fontSize(16).font('Times-Bold').fillColor(primary).text(data.nombrePlataforma.toUpperCase(), 0, headerY, {
             align: 'center',
@@ -812,7 +811,7 @@ export class CertificadosService {
               align: 'center',
               valign: 'center',
             });
-          } catch (e) {
+          } catch {
             // Signature image failed to load, skip silently
           }
         }

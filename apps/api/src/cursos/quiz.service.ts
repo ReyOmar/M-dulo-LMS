@@ -156,7 +156,7 @@ export class QuizService {
       nota = parseFloat(((correctas / total) * 5).toFixed(1));
     }
 
-    // F6.2: Atomic update — only transitions BORRADOR→CALIFICADA once.
+    // Atomic update — only transitions BORRADOR→CALIFICADA once.
     // If a concurrent submit already transitioned this, updateMany returns count=0.
     const updateResult = await this.prisma.lms_entregas.updateMany({
       where: { tarea_guid: recurso_guid, usuario_guid, estado: 'BORRADOR' },

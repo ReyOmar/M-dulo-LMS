@@ -103,7 +103,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {}); // Ignore errors — local cleanup happens regardless
     }
-    // F10.2: Clean ALL LMS-related localStorage keys
+    // Clean ALL LMS-related localStorage keys
     const keysToRemove = Object.keys(localStorage).filter((k) => k.startsWith('lms_'));
     keysToRemove.forEach((k) => localStorage.removeItem(k));
     setUser(null);

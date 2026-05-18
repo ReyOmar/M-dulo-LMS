@@ -42,7 +42,7 @@ export class CursosController {
   @Roles('ADMINISTRADOR')
   @Get('/usuario-cursos')
   async getCursosPorUsuario(@Query('usuario_guid') usuario_guid: string, @Query('rol') rol: string) {
-    // F3.3: Admin-only endpoint for viewing another user's courses
+    // Admin-only endpoint for viewing another user's courses
     if (rol === 'ESTUDIANTE') {
       return this.cursosService.getCursosDeEstudianteConFecha(usuario_guid);
     } else if (rol === 'PROFESOR') {
@@ -61,7 +61,7 @@ export class CursosController {
 
   @Get('/:guid')
   async getCurso(@Param('guid') guid: string, @CurrentUser() user: JwtPayload) {
-    // F3.4: Verify enrollment/ownership before exposing full course detail
+    // Verify enrollment/ownership before exposing full course detail
     if (user.role !== 'ADMINISTRADOR') {
       await this.cursosService.verificarAccesoCurso(guid, user.sub, user.role);
     }

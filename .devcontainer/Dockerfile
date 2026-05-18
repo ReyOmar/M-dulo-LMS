@@ -13,6 +13,9 @@ RUN apt-get update && \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Habilitar pnpm via corepack
+RUN corepack enable && corepack prepare pnpm@10 --activate
+
 # Crear usuario node con permisos
 RUN mkdir -p /home/node/.config /home/node/.ssh /home/node/.vscode-server && \
     chown -R node:node /home/node

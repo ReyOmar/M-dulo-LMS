@@ -28,7 +28,7 @@ export class ChatService {
     ref_tipo?: string;
     ref_guid?: string;
   }) {
-    // F4.7: Validate contact relationship — users can only message approved contacts
+    // Validate contact relationship — users can only message approved contacts
     const contacto = await this.prisma.lms_contacto_chat.findFirst({
       where: {
         estado: 'ACEPTADO',
@@ -310,7 +310,7 @@ export class ChatService {
    * Send a contact request to another user in a shared course.
    */
   async solicitarContacto(solicitante_guid: string, receptor_guid: string, curso_guid: string) {
-    // F2.9: Verify BOTH users belong to the course
+    // Verify BOTH users belong to the course
     const curso = await this.prisma.lms_cursos.findUnique({
       where: { guid: curso_guid },
       select: { profesor_guid: true },

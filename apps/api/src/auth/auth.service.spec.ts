@@ -79,6 +79,8 @@ describe('AuthService', () => {
 
     // Reset all mocks between tests
     jest.clearAllMocks();
+    // Default: usuarios.update returns a resolved promise (needed for fire-and-forget .catch() chains)
+    mockPrisma.usuarios.update.mockResolvedValue({});
     // Default config mock
     mockPrisma.lms_configuracion.findUnique.mockResolvedValue({
       id: 1,
@@ -120,7 +122,7 @@ describe('AuthService', () => {
     it('should throw generic UnauthorizedException for pending request users (anti-enumeration)', async () => {
       mockPrisma.usuarios.findUnique.mockResolvedValue(null);
 
-      // F2.6: No longer reveals whether user has a pending request
+      // No longer reveals whether user has a pending request
       await expect(service.login('pending@pesv.com', 'pass')).rejects.toThrow('Credenciales inválidas.');
     });
 
@@ -283,7 +285,7 @@ describe('AuthService', () => {
 
       expect(result.message).toContain('aprobada');
       expect(mockPrisma.$transaction).toHaveBeenCalled();
-      // F2.9: Now passes invitation token for secure password setup
+      // Now passes invitation token for secure password setup
       expect(mockMailService.sendWelcomeEmail).toHaveBeenCalledWith('new@pesv.com', 'Nuevo', expect.any(String));
     });
 
@@ -383,7 +385,7 @@ describe('AuthService', () => {
     });
 
     it('should reset password with valid token', async () => {
-      // F2.3: The service now hashes the incoming token before lookup
+      // The service now hashes the incoming token before lookup
       const crypto = require('crypto');
       const rawToken = 'valid-raw-token';
       const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
@@ -517,7 +519,7 @@ describe('AuthService', () => {
 
       await service.resetPassword('valid-token-123', 'NewSecure1');
 
-      // F2.5: Should revoke all existing sessions
+      // Should revoke all existing sessions
       expect(mockTokenBlacklist.revokeUser).toHaveBeenCalledWith('user-1');
     });
   });

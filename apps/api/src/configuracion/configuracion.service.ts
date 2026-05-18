@@ -7,7 +7,7 @@ import { UpdateConfiguracionDto } from './dto/update-configuracion.dto';
 /** Fields in lms_configuracion that reference uploaded files */
 const FILE_FIELDS = ['logo_url', 'favicon_url', 'login_fondo_url'] as const;
 
-// F9.6: Fields that must NEVER be broadcast via WebSocket
+// Fields that must NEVER be broadcast via WebSocket
 const SENSITIVE_CONFIG_FIELDS = ['contrasena_defecto', 'email_remitente', 'email_nombre'];
 
 /** Strip sensitive fields before broadcasting config via WS */

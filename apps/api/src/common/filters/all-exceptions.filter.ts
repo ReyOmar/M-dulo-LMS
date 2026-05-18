@@ -37,14 +37,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
       } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
-        const resp = exceptionResponse as Record<string, any>;
+        const resp = exceptionResponse as Record<string, unknown>;
         // Handle class-validator array messages
         if (Array.isArray(resp.message)) {
-          message = resp.message.join('. ');
-        } else {
-          message = resp.message || message;
+          message = (resp.message as string[]).join('. ');
+        } else if (typeof resp.message === 'string') {
+          message = resp.message;
         }
-        error = resp.error || error;
+        if (typeof resp.error === 'string') {
+          error = resp.error;
+        }
       }
     } else if (exception instanceof Error) {
       // Unexpected errors — log full stack but don't expose to client

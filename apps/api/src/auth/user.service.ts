@@ -300,7 +300,7 @@ export class UserService {
       throw new BadRequestException('Ya existe un usuario con este correo electrónico.');
     }
 
-    // F2.9: Generate a one-time invitation token
+    // Generate a one-time invitation token
     const crypto = await import('crypto');
     const rawInvitationToken = crypto.randomBytes(32).toString('hex');
     const invitationTokenHash = crypto.createHash('sha256').update(rawInvitationToken).digest('hex');

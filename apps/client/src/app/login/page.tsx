@@ -396,11 +396,11 @@ export default function LoginPage() {
                 <Lock className="absolute left-3 top-3 h-5 w-5 text-emerald-500" />
                 <input
                   type={showNewPassword ? 'text' : 'password'}
-                  placeholder="Minimo 6 caracteres"
+                  placeholder="Mínimo 8 caracteres, letra y número"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={8}
                   className="flex h-11 w-full rounded-xl border border-emerald-500/30 bg-emerald-500/5 pl-11 pr-11 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 />
                 <button
