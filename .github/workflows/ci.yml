@@ -41,7 +41,7 @@ jobs:
         run: pnpm --filter api exec tsc --noEmit
 
       - name: Run tests
-        run: pnpm --filter api test -- --ci --coverage
+        run: pnpm --filter api test --ci --coverage
 
       - name: Build
         run: pnpm --filter api build
