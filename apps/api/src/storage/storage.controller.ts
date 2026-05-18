@@ -11,6 +11,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { FastifyRequest, FastifyReply } from 'fastify';
 import { StorageService } from './storage.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -56,8 +57,9 @@ export class StorageController {
   @Roles('ADMINISTRADOR', 'PROFESOR')
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('/upload')
-  async uploadFile(@Req() req: any, @Query('folder') folder?: string) {
-    const data = await req.file();
+  async uploadFile(@Req() req: FastifyRequest, @Query('folder') folder?: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- @fastify/multipart extends request dynamically
+    const data = await (req as any).file();
     if (!data) {
       throw new BadRequestException('No se envió ningún archivo. Usa multipart/form-data con el campo "file".');
     }
@@ -93,11 +95,11 @@ export class StorageController {
   @Public()
   @Get('/download/public/*')
   async downloadPublicFile(
-    @Req() req: any,
+    @Req() req: FastifyRequest,
     @Query('originalName') originalName: string,
-    @Res({ passthrough: true }) res: any,
+    @Res({ passthrough: true }) res: FastifyReply,
   ) {
-    const rawKey: string = req.params['*'] || '';
+    const rawKey: string = (req.params as Record<string, string>)['*'] || '';
     if (!rawKey) throw new BadRequestException('Nombre de archivo requerido.');
 
     const segments = rawKey.split('/');
@@ -133,12 +135,12 @@ export class StorageController {
    */
   @Get('/download/*')
   async downloadFile(
-    @Req() req: any,
+    @Req() req: FastifyRequest,
     @Query('originalName') originalName: string,
     @CurrentUser() user: JwtPayload,
-    @Res({ passthrough: true }) res: any,
+    @Res({ passthrough: true }) res: FastifyReply,
   ) {
-    const rawKey: string = req.params['*'] || '';
+    const rawKey: string = (req.params as Record<string, string>)['*'] || '';
     if (!rawKey) throw new BadRequestException('Nombre de archivo requerido.');
 
     // Validate each path segment to prevent directory traversal
@@ -275,7 +277,12 @@ export class StorageController {
    * Internal: serve a file using the 3-strategy approach.
    * @param isPrivate - If true, applies restrictive cache headers and blocks CDN redirect
    */
-  private async serveFile(sanitizedKey: string, originalName: string | undefined, res: any, isPrivate: boolean) {
+  private async serveFile(
+    sanitizedKey: string,
+    originalName: string | undefined,
+    res: FastifyReply,
+    isPrivate: boolean,
+  ) {
     const justFilename = path.basename(sanitizedKey);
     const downloadName = originalName ? path.basename(originalName).replace(/"/g, '') : justFilename;
 
@@ -292,7 +299,7 @@ export class StorageController {
     // SEC: Private files must NEVER redirect to unauthenticated CDN URL
     if (!isPrivate && this.storageService.hasPublicUrl() && !this.storageService.existsLocally(sanitizedKey)) {
       const publicUrl = this.storageService.getFileUrl(sanitizedKey);
-      res.redirect(302, publicUrl);
+      res.status(302).redirect(publicUrl);
       return;
     }
 

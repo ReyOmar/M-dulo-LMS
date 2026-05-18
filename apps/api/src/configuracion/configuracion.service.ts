@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LmsGateway } from '../ws/lms.gateway';
 import { StorageService } from '../storage/storage.service';
 import { UpdateConfiguracionDto } from './dto/update-configuracion.dto';
+import { UpdateCertConfigDto } from './dto/update-cert-config.dto';
 
 /** Fields in lms_configuracion that reference uploaded files */
 const FILE_FIELDS = ['logo_url', 'favicon_url', 'login_fondo_url'] as const;
@@ -11,7 +12,7 @@ const FILE_FIELDS = ['logo_url', 'favicon_url', 'login_fondo_url'] as const;
 const SENSITIVE_CONFIG_FIELDS = ['contrasena_defecto', 'email_remitente', 'email_nombre'];
 
 /** Strip sensitive fields before broadcasting config via WS */
-function sanitizeConfigForBroadcast(config: any): any {
+function sanitizeConfigForBroadcast(config: Record<string, unknown>): Record<string, unknown> {
   if (!config) return config;
   const clean = { ...config };
   for (const field of SENSITIVE_CONFIG_FIELDS) {
@@ -68,7 +69,7 @@ export class ConfiguracionService implements OnModuleInit {
   }
 
   // In-memory cache for public config (avoids DB hit on every page load)
-  private configCache: any = null;
+  private configCache: Record<string, unknown> | null = null;
   private configCacheExpiry = 0;
   private static readonly CACHE_TTL_MS = 30_000; // 30 seconds
 
@@ -83,6 +84,7 @@ export class ConfiguracionService implements OnModuleInit {
     });
     if (config) {
       // Strip sensitive fields from public response
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma model spread requires any cast
       const { contrasena_defecto: _pwd, ...safeConfig } = config as any;
       this.configCache = safeConfig;
       this.configCacheExpiry = now + ConfiguracionService.CACHE_TTL_MS;
@@ -114,8 +116,8 @@ export class ConfiguracionService implements OnModuleInit {
     // Clean up old files that are being replaced
     if (current) {
       for (const field of FILE_FIELDS) {
-        const oldValue = (current as any)[field];
-        const newValue = (dto as any)[field];
+        const oldValue = (current as Record<string, unknown>)[field] as string | undefined;
+        const newValue = (dto as Record<string, unknown>)[field] as string | undefined;
         // Only delete if field is being updated AND the old value exists AND it's different
         if (newValue !== undefined && oldValue && oldValue !== newValue) {
           this.logger.log(`🗑️  Cleaning up replaced file: ${oldValue} (field: ${field})`);
@@ -181,9 +183,9 @@ export class ConfiguracionService implements OnModuleInit {
     return config;
   }
 
-  async updateCertConfig(dto: any) {
+  async updateCertConfig(dto: UpdateCertConfigDto) {
     // Only allow cert_* fields to be updated
-    const allowedFields = [
+    const allowedFields: (keyof UpdateCertConfigDto)[] = [
       'cert_titulo_personalizado',
       'cert_subtitulo',
       'cert_texto_legal',
@@ -193,7 +195,7 @@ export class ConfiguracionService implements OnModuleInit {
       'cert_mostrar_firma',
       'cert_mostrar_fecha_ingreso',
     ];
-    const data: any = {};
+    const data: Record<string, unknown> = {};
     for (const key of allowedFields) {
       if (dto[key] !== undefined) data[key] = dto[key];
     }
@@ -233,7 +235,7 @@ export class ConfiguracionService implements OnModuleInit {
     }
 
     const allowedFields = ['firma_url', 'firma_nombre', 'firma_cargo'];
-    const data: any = {};
+    const data: Record<string, unknown> = {};
     for (const key of allowedFields) {
       if (dto[key as keyof typeof dto] !== undefined) data[key] = dto[key as keyof typeof dto];
     }

@@ -374,18 +374,18 @@ export class SchedulerService implements OnModuleInit {
       const referencedFiles = new Set<string>();
       recursos.forEach((r) => {
         if (r.archivo_adjunto) referencedFiles.add(r.archivo_adjunto);
-        if ((r as any).url_archivo) referencedFiles.add((r as any).url_archivo);
+        if (r.url_archivo) referencedFiles.add(r.url_archivo);
       });
       entregas.forEach((e) => e.url_archivo_adjunto && referencedFiles.add(e.url_archivo_adjunto));
       certificados.forEach((c) => c.archivo_pdf && referencedFiles.add(c.archivo_pdf));
       usuarios.forEach((u) => {
         if (u.firma_url) referencedFiles.add(u.firma_url);
-        if ((u as any).foto_url) referencedFiles.add((u as any).foto_url);
+        if (u.foto_url) referencedFiles.add(u.foto_url);
       });
       cursos.forEach((c) => c.imagen_portada && referencedFiles.add(c.imagen_portada));
       if (configuracion?.logo_url) referencedFiles.add(configuracion.logo_url);
-      if ((configuracion as any)?.favicon_url) referencedFiles.add((configuracion as any).favicon_url);
-      if ((configuracion as any)?.login_fondo_url) referencedFiles.add((configuracion as any).login_fondo_url);
+      if (configuracion?.favicon_url) referencedFiles.add(configuracion.favicon_url);
+      if (configuracion?.login_fondo_url) referencedFiles.add(configuracion.login_fondo_url);
 
       // SEC: Scan local files recursively (including subdirectories)
       const getAllFiles = (dir: string, prefix = ''): { relativePath: string; fullPath: string }[] => {

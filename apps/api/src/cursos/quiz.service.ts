@@ -3,6 +3,20 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { LmsGateway } from '../ws/lms.gateway';
 
+interface QuizOption {
+  id: string;
+  es_correcta?: boolean;
+}
+interface QuizPregunta {
+  id: string;
+  opciones: QuizOption[];
+}
+interface QuizConfig {
+  preguntas: QuizPregunta[];
+  intentos_permitidos?: number;
+  tiempo_minutos?: number;
+}
+
 /**
  * QuizService — Quiz attempt management (start, evaluate, status, enrollment check).
  * Extracted from CursosService. Uses event-driven architecture for notifications.
@@ -22,7 +36,7 @@ export class QuizService {
       throw new BadRequestException('El recurso no es un cuestionario válido.');
     }
 
-    let quizConfig: any;
+    let quizConfig: QuizConfig;
     try {
       quizConfig = JSON.parse(bloque.quiz_config);
     } catch {
@@ -113,7 +127,7 @@ export class QuizService {
       ? Number(bloque.leccion.modulo.curso.nota_aprobacion)
       : 3.0;
 
-    let quizConfig: any;
+    let quizConfig: QuizConfig;
     try {
       quizConfig = JSON.parse(bloque.quiz_config);
     } catch {
@@ -144,7 +158,7 @@ export class QuizService {
     if (!tiempoExcedido) {
       for (const p of preguntas) {
         const userAnswer = respuestas[p.id];
-        const correctOption = p.opciones.find((o: any) => o.es_correcta);
+        const correctOption = p.opciones.find((o: QuizOption) => o.es_correcta);
         if (correctOption && userAnswer === correctOption.id) {
           correctas++;
         }
@@ -297,7 +311,7 @@ export class QuizService {
     });
 
     let mejor_nota = 0;
-    let inProgressAttempt: any = null;
+    let inProgressAttempt: { fecha_inicio: Date | null } | null = null;
     let validAttempts = 0;
 
     for (const e of entregas) {

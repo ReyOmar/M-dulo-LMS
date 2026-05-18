@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { FastifyRequest, FastifyReply } from 'fastify';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -52,12 +53,13 @@ async function bootstrap() {
   // ── Request ID + Logging ──
   const httpLogger = new Logger('HTTP');
   const fastify = app.getHttpAdapter().getInstance();
-  fastify.addHook('onRequest', (request: any, reply: any, done: () => void) => {
-    request.id = request.headers['x-request-id'] || randomUUID();
+  fastify.addHook('onRequest', (request: FastifyRequest, reply: FastifyReply, done: () => void) => {
+    const headerVal = request.headers['x-request-id'];
+    request.id = (Array.isArray(headerVal) ? headerVal[0] : headerVal) || randomUUID();
     reply.header('X-Request-ID', request.id);
     done();
   });
-  fastify.addHook('onResponse', (request: any, reply: any, done: () => void) => {
+  fastify.addHook('onResponse', (request: FastifyRequest, reply: FastifyReply, done: () => void) => {
     // Skip health checks from logs
     if (request.url !== '/api/health') {
       const ms = reply.elapsedTime?.toFixed(0) || '?';

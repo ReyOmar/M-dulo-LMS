@@ -108,6 +108,7 @@ export class CursosService {
       include: { curso: true },
       orderBy: { fecha_matricula: 'desc' },
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma include return type is complex
     return matriculas.map((m: any) => ({ ...m.curso, fecha_asignacion: m.fecha_matricula }));
   }
 
@@ -125,6 +126,7 @@ export class CursosService {
       include: { curso: { select: { guid: true, titulo: true, estado: true } } },
       orderBy: { fecha_matricula: 'desc' },
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma include return type is complex
     return matriculas.map((m: any) => ({ ...m.curso, fecha_asignacion: m.fecha_matricula }));
   }
 

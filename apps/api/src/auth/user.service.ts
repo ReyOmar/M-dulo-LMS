@@ -310,7 +310,7 @@ export class UserService {
         email: data.email,
         nombre: data.nombre,
         apellido: data.apellido,
-        rol: data.rol as any,
+        rol: data.rol as 'ADMINISTRADOR' | 'PROFESOR' | 'ESTUDIANTE',
         contrasena: null,
         usa_clave_defecto: true,
         invitacion_token_hash: invitationTokenHash,

@@ -12,9 +12,9 @@ describe('BloqueService — Security', () => {
   let service: BloqueService;
   let mockPrisma: any;
 
-  const profOwner = { sub: 'prof-1', role: 'PROFESOR' };
-  const profOther = { sub: 'prof-2', role: 'PROFESOR' };
-  const admin = { sub: 'admin-1', role: 'ADMINISTRADOR' };
+  const profOwner = { sub: 'prof-1', role: 'PROFESOR' as const };
+  const profOther = { sub: 'prof-2', role: 'PROFESOR' as const };
+  const admin = { sub: 'admin-1', role: 'ADMINISTRADOR' as const };
 
   beforeEach(() => {
     mockPrisma = {

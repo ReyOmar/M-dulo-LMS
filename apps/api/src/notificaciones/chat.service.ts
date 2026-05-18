@@ -141,7 +141,18 @@ export class ChatService {
     });
 
     const contactGuids = new Set<string>();
-    const contactMap = new Map<string, any>();
+    const contactMap = new Map<
+      string,
+      {
+        guid: string;
+        nombre: string;
+        apellido: string;
+        rol: string;
+        ultimo_mensaje: string;
+        ultimo_mensaje_fecha: Date;
+        no_leidos: number;
+      }
+    >();
     for (const m of mensajes) {
       const otherUser = m.remitente_guid === usuario_guid ? m.destinatario : m.remitente;
       if (!contactMap.has(otherUser.guid)) {

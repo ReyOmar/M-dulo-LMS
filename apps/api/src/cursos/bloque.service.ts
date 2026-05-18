@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { RequestUser } from '../common/interfaces/request-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { lms_tipo_recurso } from '@prisma/client';
 
@@ -16,7 +17,10 @@ export class BloqueService {
    * Combined validation: checks course exists, is BORRADOR, and ownership in ONE query.
    * Replaces the old 3-query pattern (ensureDraft + ensureOwnership + find).
    */
-  private assertDraftAndOwnership(curso: { estado: string; profesor_guid: string } | null, requestUser?: any): void {
+  private assertDraftAndOwnership(
+    curso: { estado: string; profesor_guid: string } | null,
+    requestUser?: RequestUser,
+  ): void {
     if (!curso) throw new NotFoundException('Curso no encontrado');
     if (curso.estado !== 'BORRADOR') {
       throw new BadRequestException('El curso debe estar en estado Borrador para realizar cambios.');
@@ -26,7 +30,7 @@ export class BloqueService {
     }
   }
 
-  async createModuloParaCurso(curso_guid: string, data: { titulo: string; orden?: number }, requestUser?: any) {
+  async createModuloParaCurso(curso_guid: string, data: { titulo: string; orden?: number }, requestUser?: RequestUser) {
     // Single query: fetch course + validate
     const curso = await this.prisma.lms_cursos.findUnique({
       where: { guid: curso_guid },
@@ -49,7 +53,7 @@ export class BloqueService {
     });
   }
 
-  async updateModulo(modulo_guid: string, data: { titulo: string }, requestUser?: any) {
+  async updateModulo(modulo_guid: string, data: { titulo: string }, requestUser?: RequestUser) {
     // Single query: fetch module + course state + ownership
     const modulo = await this.prisma.lms_modulos.findUnique({
       where: { guid: modulo_guid },
@@ -64,7 +68,7 @@ export class BloqueService {
     });
   }
 
-  async getBloque(guid: string, requestUser?: any) {
+  async getBloque(guid: string, requestUser?: RequestUser) {
     // SEC: Join to course to validate ownership — prevents IDOR by non-owner professors
     const bloque = await this.prisma.lms_recursos.findUnique({
       where: { guid },
@@ -98,7 +102,7 @@ export class BloqueService {
   async addBloqueToModulo(
     modulo_guid: string,
     data: { tipo: lms_tipo_recurso; contenido_html?: string; titulo?: string },
-    requestUser?: any,
+    requestUser?: RequestUser,
   ) {
     // Single query: fetch module + lessons + course validation data
     const modulo = await this.prisma.lms_modulos.findUnique({
@@ -143,7 +147,7 @@ export class BloqueService {
       quiz_config?: string;
       archivo_max_size_mb?: number;
     },
-    requestUser?: any,
+    requestUser?: RequestUser,
   ) {
     // Single query: fetch resource + course state via joins
     const recurso = await this.prisma.lms_recursos.findUnique({
@@ -171,7 +175,7 @@ export class BloqueService {
     });
   }
 
-  async deleteBloque(guid: string, requestUser?: any) {
+  async deleteBloque(guid: string, requestUser?: RequestUser) {
     // Single query: fetch resource + course state via joins
     const recurso = await this.prisma.lms_recursos.findUnique({
       where: { guid },
@@ -186,7 +190,7 @@ export class BloqueService {
     return this.prisma.lms_recursos.delete({ where: { guid } });
   }
 
-  async reorderBloques(modulo_guid: string, recursos_guids: string[], requestUser?: any) {
+  async reorderBloques(modulo_guid: string, recursos_guids: string[], requestUser?: RequestUser) {
     // Single query: module + course validation
     const modulo = await this.prisma.lms_modulos.findUnique({
       where: { guid: modulo_guid },
@@ -223,7 +227,7 @@ export class BloqueService {
     return this.prisma.$transaction(queries);
   }
 
-  async deleteModulo(guid: string, requestUser?: any) {
+  async deleteModulo(guid: string, requestUser?: RequestUser) {
     // Single query: module + course validation
     const modulo = await this.prisma.lms_modulos.findUnique({
       where: { guid },

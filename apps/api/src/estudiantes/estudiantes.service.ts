@@ -39,15 +39,18 @@ export class EstudiantesService {
     if (!curso)
       return { completados: [], desbloqueados_por_tiempo: [], tareas_pendientes_calificacion: [], total_recursos: 0 };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma nested include return type
     const allRecursos = curso.modulos.flatMap((m: any) => m.lecciones.flatMap((l: any) => l.recursos));
-    const recursoGuids = allRecursos.map((r: any) => r.guid);
-    const tareaGuids = allRecursos.filter((r: any) => r.tipo === 'TAREA').map((r: any) => r.guid);
+    const recursoGuids = allRecursos.map((r: { guid: string }) => r.guid);
+    const tareaGuids = allRecursos
+      .filter((r: { tipo: string }) => r.tipo === 'TAREA')
+      .map((r: { guid: string }) => r.guid);
 
     // Fetch real completions
     const progreso = await this.prisma.lms_progreso_recurso.findMany({
       where: { usuario_guid, recurso_guid: { in: recursoGuids } },
     });
-    const completados = progreso.map((p: any) => p.recurso_guid);
+    const completados = progreso.map((p) => p.recurso_guid);
 
     // Fetch pending submissions (ENTREGADA or EN_REVISION, not yet CALIFICADA)
     const entregasPendientes =
@@ -71,7 +74,7 @@ export class EstudiantesService {
 
     for (const entrega of entregasPendientes) {
       if (!entrega.tarea_guid || !entrega.fecha_entrega) continue;
-      const recursoInfo = allRecursos.find((r: any) => r.guid === entrega.tarea_guid);
+      const recursoInfo = allRecursos.find((r: { guid: string; titulo?: string }) => r.guid === entrega.tarea_guid);
       const elapsed = now - new Date(entrega.fecha_entrega).getTime();
 
       // Track pending tasks for certificate blocking info

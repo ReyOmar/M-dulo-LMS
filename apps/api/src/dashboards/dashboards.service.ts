@@ -30,7 +30,7 @@ export class DashboardsService {
 
     for (const curso of cursos) {
       for (const mod of curso.modulos) {
-        const recursos = mod.lecciones.flatMap((l: any) => l.recursos);
+        const recursos = mod.lecciones.flatMap((l: { recursos: { guid: string }[] }) => l.recursos);
         for (const r of recursos) {
           allResourceGuids.push(r.guid);
         }
@@ -73,13 +73,14 @@ export class DashboardsService {
         .filter((curso) => studentEnrolledCourseGuids.has(curso.guid))
         .map((curso) => {
           const totalRecursos = curso.modulos.reduce(
-            (sum, mod) => sum + mod.lecciones.reduce((s: any, l: any) => s + l.recursos.length, 0),
+            (sum, mod) =>
+              sum + mod.lecciones.reduce((s: number, l: { recursos: { guid: string }[] }) => s + l.recursos.length, 0),
             0,
           );
 
           const completados = curso.modulos.reduce((sum, mod) => {
-            const recursos = mod.lecciones.flatMap((l: any) => l.recursos);
-            return sum + recursos.filter((r: any) => completedResources.has(r.guid)).length;
+            const recursos = mod.lecciones.flatMap((l: { recursos: { guid: string }[] }) => l.recursos);
+            return sum + recursos.filter((r: { guid: string }) => completedResources.has(r.guid)).length;
           }, 0);
 
           return {
@@ -89,8 +90,8 @@ export class DashboardsService {
             completados,
             porcentaje: totalRecursos > 0 ? Math.round((completados / totalRecursos) * 100) : 0,
             modulos: curso.modulos.map((mod) => {
-              const modRecursos = mod.lecciones.flatMap((l: any) => l.recursos);
-              const modCompletados = modRecursos.filter((r: any) => completedResources.has(r.guid)).length;
+              const modRecursos = mod.lecciones.flatMap((l: { recursos: { guid: string }[] }) => l.recursos);
+              const modCompletados = modRecursos.filter((r: { guid: string }) => completedResources.has(r.guid)).length;
               return {
                 titulo: mod.titulo,
                 total: modRecursos.length,

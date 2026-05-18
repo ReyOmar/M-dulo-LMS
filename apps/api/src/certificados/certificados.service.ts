@@ -501,7 +501,10 @@ export class CertificadosService {
    * F3.9: Validate that a user has access to a certificate.
    * Allowed: certificate owner, course professor, or admin.
    */
-  async validateCertificateAccess(cert: any, user: { sub: string; role: string }): Promise<void> {
+  async validateCertificateAccess(
+    cert: { usuario_guid: string; curso_guid: string },
+    user: { sub: string; role: string },
+  ): Promise<void> {
     // Certificate owner
     if (cert.usuario_guid === user.sub) return;
     // Admin
