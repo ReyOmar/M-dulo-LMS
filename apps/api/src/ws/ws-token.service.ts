@@ -23,6 +23,8 @@ interface EphemeralToken {
   userGuid: string;
   /** User role from the JWT */
   userRole: string;
+  /** Short hash of the original JWT — stable across page refreshes for the same login session */
+  jwtHash: string;
   /** Expiration timestamp (ms since epoch) */
   expiresAt: number;
 }
@@ -47,9 +49,12 @@ export class WsTokenService {
    * The raw token is returned to the caller (to send to the client).
    * Only the hash is stored server-side.
    *
+   * @param userGuid - User GUID from the JWT
+   * @param userRole - User role from the JWT
+   * @param rawJwt - The original JWT token (used to derive a stable session hash)
    * @returns The raw ephemeral token (32 bytes, hex-encoded)
    */
-  issueToken(userGuid: string, userRole: string): string {
+  issueToken(userGuid: string, userRole: string, rawJwt: string): string {
     // Invalidate any existing tokens for this user (one pending token per user)
     for (const [hash, token] of this.tokens.entries()) {
       if (token.userGuid === userGuid) {
@@ -59,11 +64,14 @@ export class WsTokenService {
 
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    // Derive a stable session hash from the JWT — same JWT = same hash across page refreshes
+    const jwtHash = crypto.createHash('sha256').update(rawJwt).digest('hex').slice(0, 16);
 
     this.tokens.set(tokenHash, {
       tokenHash,
       userGuid,
       userRole,
+      jwtHash,
       expiresAt: Date.now() + TOKEN_TTL_MS,
     });
 
@@ -75,7 +83,7 @@ export class WsTokenService {
    * Returns the user info if valid, null otherwise.
    * The token is deleted after consumption regardless of outcome.
    */
-  consumeToken(rawToken: string): { userGuid: string; userRole: string } | null {
+  consumeToken(rawToken: string): { userGuid: string; userRole: string; jwtHash: string } | null {
     if (!rawToken) return null;
 
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
@@ -92,7 +100,7 @@ export class WsTokenService {
       return null;
     }
 
-    return { userGuid: entry.userGuid, userRole: entry.userRole };
+    return { userGuid: entry.userGuid, userRole: entry.userRole, jwtHash: entry.jwtHash };
   }
 
   /**

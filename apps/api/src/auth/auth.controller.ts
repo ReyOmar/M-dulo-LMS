@@ -89,8 +89,11 @@ export class AuthController {
    */
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('ws-token')
-  async getWsToken(@CurrentUser() user: JwtPayload) {
-    const token = this.wsTokenService.issueToken(user.sub, user.role);
+  async getWsToken(@CurrentUser() user: JwtPayload, @Req() req: FastifyRequest) {
+    // Extract raw JWT from Authorization header to derive a stable session hash.
+    // Same JWT = same session hash across page refreshes → gateway won't revoke on refresh.
+    const rawJwt = (req.headers.authorization || '').replace('Bearer ', '');
+    const token = this.wsTokenService.issueToken(user.sub, user.role, rawJwt);
     return { token };
   }
 

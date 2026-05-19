@@ -7,7 +7,6 @@ import { TokenBlacklistService } from '../auth/token-blacklist.service';
 import { WsTokenService } from './ws-token.service';
 import { IncomingMessage } from 'http';
 import * as WebSocket from 'ws';
-import * as crypto from 'crypto';
 import { LmsWsEvent } from './ws-events.types';
 
 interface CourseEditor {
@@ -122,8 +121,10 @@ export class LmsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnM
       if (ephemeral) {
         userGuid = ephemeral.userGuid;
         userRole = ephemeral.userRole;
-        // SEC: Hash the raw token for session comparison — never store the raw value
-        sessionHash = crypto.createHash('sha256').update(rawToken).digest('hex').slice(0, 16);
+        // SEC: Use the JWT-derived hash as session identifier — it's stable across
+        // page refreshes (same JWT = same hash), so reconnects won't trigger revocation.
+        // Only a genuine new login (different JWT) will produce a different sessionHash.
+        sessionHash = ephemeral.jwtHash;
       } else {
         // SEC: JWT tokens in query string are no longer accepted.
         // Clients must use POST /api/auth/ws-token to get an ephemeral token first.
