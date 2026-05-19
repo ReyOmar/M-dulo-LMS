@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsIn, IsNumber, IsBoolean, Min, Max } from 'class-validator';
 import { IsSafeStorageKey } from '../../common/validators/safe-storage-key.validator';
 
 export class CreateCursoDto {
@@ -42,18 +42,28 @@ export class UpdateCursoDto {
 
   @IsOptional()
   @IsString()
+  @IsIn(['PRINCIPIANTE', 'INTERMEDIO', 'AVANZADO', 'EXPERTO'], {
+    message: 'Nivel debe ser PRINCIPIANTE, INTERMEDIO, AVANZADO o EXPERTO.',
+  })
   nivel?: string;
 
   @IsOptional()
+  @IsNumber({}, { message: 'nota_aprobacion debe ser un número.' })
+  @Min(0, { message: 'La nota mínima de aprobación no puede ser negativa.' })
+  @Max(5, { message: 'La nota máxima de aprobación no puede exceder 5.0.' })
   nota_aprobacion?: number;
 
   @IsOptional()
+  @IsBoolean({ message: 'orden_estricto debe ser verdadero o falso.' })
   orden_estricto?: boolean;
 
   @IsOptional()
+  @IsBoolean({ message: 'emite_certificado debe ser verdadero o falso.' })
   emite_certificado?: boolean;
 
   @IsOptional()
+  @IsNumber({}, { message: 'duracion_horas debe ser un número.' })
+  @Min(0, { message: 'La duración no puede ser negativa.' })
   duracion_horas?: number;
 
   @IsOptional()
@@ -65,6 +75,8 @@ export class UpdateCursoDto {
   fecha_fin?: string;
 
   @IsOptional()
+  @IsNumber({}, { message: 'max_estudiantes debe ser un número.' })
+  @Min(1, { message: 'El máximo de estudiantes debe ser al menos 1.' })
   max_estudiantes?: number;
 
   @IsOptional()
@@ -73,6 +85,9 @@ export class UpdateCursoDto {
 
   @IsOptional()
   @IsString()
+  @IsIn(['NUMERICA', 'PORCENTAJE', 'PUNTOS', 'LETRAS'], {
+    message: 'Escala debe ser NUMERICA, PORCENTAJE, PUNTOS o LETRAS.',
+  })
   escala?: string;
 }
 

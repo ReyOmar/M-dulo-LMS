@@ -209,7 +209,7 @@ export default function CursoVisorPage() {
     if (!userGuid || !curso_id || viewOnlyMode) return;
     const sendHeartbeat = () => {
       if (!document.hidden) {
-        api.post(`/estudiantes/student/heartbeat?usuario_guid=${userGuid}`, { curso_guid: curso_id }).catch(() => {});
+        api.post(`/estudiantes/student/heartbeat`, { curso_guid: curso_id }).catch(() => {});
       }
     };
     sendHeartbeat(); // Send immediately
@@ -235,7 +235,7 @@ export default function CursoVisorPage() {
 
   const fetchProgreso = async () => {
     try {
-      const res = await api.get(`/estudiantes/student/progreso?usuario_guid=${userGuid}&curso_guid=${curso_id}`);
+      const res = await api.get(`/estudiantes/student/progreso?curso_guid=${curso_id}`);
       const data = res.data;
       // Merge completados + desbloqueados_por_tiempo for navigation purposes
       const realCompleted = data.completados || [];
@@ -254,7 +254,7 @@ export default function CursoVisorPage() {
     async (recurso_guid: string) => {
       if (!userGuid || completados.includes(recurso_guid)) return;
       try {
-        await api.post(`/estudiantes/student/completar-recurso?usuario_guid=${userGuid}`, { recurso_guid });
+        await api.post(`/estudiantes/student/completar-recurso`, { recurso_guid });
         setCompletados((prev) => [...prev, recurso_guid]);
       } catch (err) {
         console.error(err);

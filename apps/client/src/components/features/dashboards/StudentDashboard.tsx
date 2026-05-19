@@ -29,7 +29,7 @@ export function StudentDashboard() {
     try {
       const [cursosRes, metricasRes] = await Promise.all([
         api.get('/cursos'),
-        api.get(`/estudiantes/student/metricas?usuario_guid=${user.guid}`),
+        api.get(`/estudiantes/student/metricas`),
       ]);
       const cursosData = cursosRes.data;
       const metricasData = metricasRes.data;
@@ -40,7 +40,7 @@ export function StudentDashboard() {
       // Fetch certificates to know which courses are completed
       let certs: any[] = [];
       try {
-        const certsRes = await api.get(`/estudiantes/student/certificados?usuario_guid=${user.guid}`);
+        const certsRes = await api.get(`/estudiantes/student/certificados`);
         certs = Array.isArray(certsRes.data) ? certsRes.data : [];
         setCompletedCourseGuids(new Set(certs.map((c: any) => c.curso_guid)));
       } catch {}
@@ -51,9 +51,7 @@ export function StudentDashboard() {
       const progCurso = firstActiveCurso || cursosArr[0];
       if (progCurso) {
         try {
-          const progRes = await api.get(
-            `/estudiantes/student/progreso?usuario_guid=${user.guid}&curso_guid=${progCurso.guid}`,
-          );
+          const progRes = await api.get(`/estudiantes/student/progreso?curso_guid=${progCurso.guid}`);
           const progData = await progRes.data;
           setProgreso({
             completados: progData.completados?.length || 0,
@@ -98,7 +96,7 @@ export function StudentDashboard() {
     if (user?.guid) {
       setActiveDays([]);
       api
-        .get(`/estudiantes/student/dias-activos?usuario_guid=${user.guid}&year=${calYear}&month=${calMonth}`)
+        .get(`/estudiantes/student/dias-activos?year=${calYear}&month=${calMonth}`)
         .then((r) => r.data)
         .then((data) => setActiveDays(Array.isArray(data.dias) ? data.dias : []))
         .catch(() => setActiveDays([]));

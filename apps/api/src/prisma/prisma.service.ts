@@ -5,7 +5,7 @@ import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 // Parse DATABASE_URL: mysql://user:password@host:port/database
 function parseDbUrl(url: string) {
   const match = url.match(/mysql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/);
-  if (!match) throw new Error(`Invalid DATABASE_URL format: ${url}`);
+  if (!match) throw new Error('Invalid DATABASE_URL format. Expected: mysql://user:password@host:port/database');
   return {
     user: match[1],
     password: match[2],

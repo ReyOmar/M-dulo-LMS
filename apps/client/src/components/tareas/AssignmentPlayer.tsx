@@ -69,7 +69,7 @@ export default function AssignmentPlayer({
             const userGuid = savedUser ? JSON.parse(savedUser).guid : '';
             if (userGuid) {
               try {
-                await api.post(`/estudiantes/student/completar-recurso?usuario_guid=${userGuid}`, { recurso_guid });
+                await api.post(`/estudiantes/student/completar-recurso`, { recurso_guid });
               } catch (e) {
                 console.error('Error marcando recurso como completado', e);
               }

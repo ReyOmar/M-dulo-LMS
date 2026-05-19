@@ -1,10 +1,11 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { lms_estado_curso } from '@prisma/client';
+import { lms_estado_curso, lms_nivel_dificultad, lms_escala_calificacion } from '@prisma/client';
 import { LmsGateway } from '../ws/lms.gateway';
 import { StorageService } from '../storage/storage.service';
 import { MailService } from '../mail/mail.service';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
+import { UpdateCursoDto } from './dto/cursos.dto';
 
 /**
  * CursosService — Core course management (CRUD, assignment, listing).
@@ -178,11 +179,7 @@ export class CursosService {
     return curso;
   }
 
-  async updateCurso(
-    curso_guid: string,
-    data: { titulo?: string; estado?: string; imagen_portada?: string },
-    requestUser?: JwtPayload,
-  ) {
+  async updateCurso(curso_guid: string, data: UpdateCursoDto, requestUser?: JwtPayload) {
     // GUARD: Professors can only edit their own assigned courses
     if (requestUser?.role === 'PROFESOR') {
       const cursoOwnership = await this.prisma.lms_cursos.findUnique({
@@ -260,13 +257,29 @@ export class CursosService {
       this.lmsGateway.releaseCourseEditor(curso_guid);
     }
 
+    // Build the Prisma update payload from all defined DTO fields
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Dynamic Prisma update data construction
+    const updateData: Record<string, any> = {};
+    if (data.titulo !== undefined) updateData.titulo = data.titulo;
+    if (data.estado !== undefined) updateData.estado = data.estado as lms_estado_curso;
+    if (data.imagen_portada !== undefined) updateData.imagen_portada = data.imagen_portada;
+    if (data.descripcion !== undefined) updateData.descripcion = data.descripcion;
+    if (data.descripcion_corta !== undefined) updateData.descripcion_corta = data.descripcion_corta;
+    if (data.nivel !== undefined) updateData.nivel = data.nivel as lms_nivel_dificultad;
+    if (data.nota_aprobacion !== undefined) updateData.nota_aprobacion = data.nota_aprobacion;
+    if (data.duracion_horas !== undefined) updateData.duracion_horas = data.duracion_horas;
+    if (data.fecha_inicio !== undefined)
+      updateData.fecha_inicio = data.fecha_inicio ? new Date(data.fecha_inicio) : null;
+    if (data.fecha_fin !== undefined) updateData.fecha_fin = data.fecha_fin ? new Date(data.fecha_fin) : null;
+    if (data.max_estudiantes !== undefined) updateData.max_estudiantes = data.max_estudiantes;
+    if (data.codigo_acceso !== undefined) updateData.codigo_acceso = data.codigo_acceso;
+    if (data.escala !== undefined) updateData.escala = data.escala as lms_escala_calificacion;
+    if (data.orden_estricto !== undefined) updateData.orden_estricto = data.orden_estricto;
+    if (data.emite_certificado !== undefined) updateData.emite_certificado = data.emite_certificado;
+
     const updated = await this.prisma.lms_cursos.update({
       where: { guid: curso_guid },
-      data: {
-        ...(data.titulo !== undefined && { titulo: data.titulo }),
-        ...(data.estado !== undefined && { estado: data.estado as lms_estado_curso }),
-        ...(data.imagen_portada !== undefined && { imagen_portada: data.imagen_portada }),
-      },
+      data: updateData,
     });
 
     this.lmsGateway.broadcast('course:updated', { guid: curso_guid, ...data });

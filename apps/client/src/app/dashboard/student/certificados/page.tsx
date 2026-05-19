@@ -55,7 +55,7 @@ export default function CertificadosPage() {
 
   const fetchCertificados = useCallback(async () => {
     try {
-      const res = await api.get(`/estudiantes/student/certificados?usuario_guid=${user?.guid}`);
+      const res = await api.get(`/estudiantes/student/certificados`);
       setCertificados(Array.isArray(res.data) ? res.data : []);
     } catch (err: any) {
       console.error('Error loading certificates:', err);
@@ -74,9 +74,7 @@ export default function CertificadosPage() {
       const pending: { curso_titulo: string; tareas_pendientes: { titulo: string }[] }[] = [];
       for (const curso of cursos) {
         try {
-          const verif = await api.get(
-            `/estudiantes/student/certificados/verificar/${curso.guid}?usuario_guid=${user?.guid}`,
-          );
+          const verif = await api.get(`/estudiantes/student/certificados/verificar/${curso.guid}`);
           const data = verif.data;
           if (data.completo && !data.puede_generar_certificado && data.tareas_pendientes?.length > 0) {
             pending.push({

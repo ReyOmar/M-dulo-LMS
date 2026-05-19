@@ -194,19 +194,10 @@ export class QuizService {
       if (recent) {
         return { success: true, nota: Number(recent.calificacion), correctas: 0, total, already_submitted: true };
       }
-      // Fallback: create a new graded record (legacy path)
-      await this.prisma.lms_entregas.create({
-        data: {
-          usuario_guid,
-          tarea_guid: recurso_guid,
-          estado: 'CALIFICADA',
-          fecha_inicio: new Date(),
-          fecha_entrega: new Date(),
-          calificacion: nota,
-          comentario_calificacion: `${correctas}/${total} correctas`,
-          contenido_texto: `NOTA: ${nota.toFixed(1)} | ${correctas}/${total} correctas`,
-        },
-      });
+      // No active attempt found — reject the submission
+      throw new BadRequestException(
+        'No hay un intento activo para este cuestionario. Debes iniciar el cuestionario antes de enviar respuestas.',
+      );
     }
 
     const quizName = bloque.titulo.replace('[QUIZ] ', '');

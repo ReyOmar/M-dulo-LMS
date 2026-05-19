@@ -119,7 +119,7 @@ export default function QuizPlayer({
         }
       }
 
-      const resStatus = await api.get(`/cursos/student/quiz/${recurso_guid}/status?usuario_guid=${userGuid}`);
+      const resStatus = await api.get(`/cursos/student/quiz/${recurso_guid}/status`);
       const status: QuizStatus = resStatus.data;
       setQuizStatus(status);
 
@@ -185,7 +185,7 @@ export default function QuizPlayer({
     if (!userGuid || isStarting) return;
     setIsStarting(true);
     try {
-      await api.post(`/cursos/student/quiz/${recurso_guid}/start?usuario_guid=${userGuid}`);
+      await api.post(`/cursos/student/quiz/${recurso_guid}/start`);
       if (quizConfig && quizConfig.tiempo_minutos > 0) {
         setTimeLeft(quizConfig.tiempo_minutos * 60);
       }
@@ -212,7 +212,7 @@ export default function QuizPlayer({
     setSubmitting(true);
     setShowConfirmModal(false);
     try {
-      const res = await api.post(`/cursos/student/quiz/${recurso_guid}/submit?usuario_guid=${userGuid}`, {
+      const res = await api.post(`/cursos/student/quiz/${recurso_guid}/submit`, {
         respuestas,
       });
       // Clear saved answers from localStorage on successful submit
