@@ -29,7 +29,9 @@ export type LmsWsEvent =
   | 'notification:new'
   | 'notification:read'
   | 'message:new'
-  | 'certificate:new';
+  | 'certificate:new'
+  | 'pesv-bridge:sync'
+  | 'pesv-bridge:subsanacion';
 
 // ── Event payloads ──
 
@@ -55,7 +57,12 @@ export interface DashboardRefreshPayload {
     | 'user_disconnected'
     | 'user_password_setup'
     | 'request_resolved'
-    | 'course_completed';
+    | 'course_completed'
+    | 'pesv_bridge_sync'
+    | 'pesv_bridge_subsanacion'
+    | 'pesv_bridge_retry'
+    | 'pesv_user_created'
+    | 'certificate_generated';
 }
 
 export interface SubmissionNewPayload {

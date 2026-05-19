@@ -1,0 +1,72 @@
+// ═══════════════════════════════════════════════════════════════
+// PESV Database Schema — READONLY Access for LMS Bridge
+// ═══════════════════════════════════════════════════════════════
+// This schema mirrors only the tables needed by the LMS bridge
+// to read infraction data from the PESV database. NO write
+// operations should ever be executed against this database.
+// ═══════════════════════════════════════════════════════════════
+
+generator pesv_client {
+  provider = "prisma-client-js"
+  output   = "../generated/pesv-client"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ── Only the models we need for the bridge (readonly) ──
+
+model usuarios {
+  guid         String        @id @db.Char(36)
+  nombre       String        @db.VarChar(100)
+  apellido     String        @db.VarChar(100)
+  cedula       String        @unique @db.VarChar(20)
+  email        String        @unique @db.VarChar(100)
+  rol_id       Int
+  empresa_guid String        @db.Char(36)
+  created_at   DateTime?     @default(now()) @db.DateTime(6)
+  conductor    conductores?
+}
+
+model conductores {
+  guid              String         @id @db.Char(36)
+  empresa_guid      String         @db.Char(36)
+  usuario_guid      String?        @unique @db.Char(36)
+  nombre            String         @db.VarChar(60)
+  apellido          String         @db.VarChar(60)
+  identificacion    String         @db.VarChar(20)
+  email_contacto    String         @db.VarChar(100)
+  activo            Boolean        @default(true)
+  created_at        DateTime?      @default(now()) @db.DateTime(6)
+  usuario           usuarios?      @relation(fields: [usuario_guid], references: [guid])
+  infracciones      infracciones[]
+}
+
+model infracciones {
+  guid               String       @id @db.Char(36)
+  vehiculo_guid      String?      @db.Char(36)
+  conductor_guid     String?      @db.Char(36)
+  fecha_infraccion   DateTime     @db.Date
+  tipo_infraccion_id Int
+  codigo_infraccion  String?      @db.VarChar(20)
+  valor_multa        Decimal?     @db.Decimal(10, 2)
+  estado_id          Int
+  fecha_vencimiento  DateTime?    @db.Date
+  observaciones      String?
+  created_at         DateTime?    @default(now()) @db.DateTime(6)
+  conductor          conductores? @relation(fields: [conductor_guid], references: [guid])
+  tipo_infraccion    terminos     @relation("infraccion_tipo", fields: [tipo_infraccion_id], references: [id])
+  estado             terminos     @relation("infraccion_estado", fields: [estado_id], references: [id])
+}
+
+model terminos {
+  id              Int              @id
+  tipo_termino_id Int
+  termino         String           @unique @db.VarChar(100)
+  descripcion     String?
+  categoria       String?          @db.VarChar(50)
+  created_at      DateTime?        @default(now()) @db.DateTime(6)
+  infracciones_tipo   infracciones[] @relation("infraccion_tipo")
+  infracciones_estado infracciones[] @relation("infraccion_estado")
+}

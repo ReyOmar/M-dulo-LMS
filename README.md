@@ -9,6 +9,7 @@ M-dulo-LMS/
 ├── apps/
 │   ├── api/          # Backend — NestJS + Fastify + Prisma + WebSockets
 │   └── client/       # Frontend — Next.js 15 + React 19 + TailwindCSS v4
+├── conexion-con-pesv/ # Documentación y config de integración PESV (opcional)
 ├── .env              # Variables de entorno (NO versionar)
 ├── pnpm-workspace.yaml
 └── package.json      # Scripts del monorepo
@@ -153,7 +154,9 @@ WebSocket events principales (segmentados por rol/usuario):
 | `notification:new` | Usuario | Nueva notificación |
 | `course:lock` / `course:unlock` | Admin/Profesor | Bloqueo de edición de curso |
 | `config:updated` | Todos | Configuración de plataforma actualizada |
-| `certificate:generated` | Estudiante | Certificado generado |
+| `certificate:new` | Estudiante | Certificado generado |
+| `pesv-bridge:sync` | Admin | Sincronización PESV completada |
+| `pesv-bridge:subsanacion` | Admin | Infracción subsanada por certificado |
 
 ---
 
@@ -176,6 +179,7 @@ apps/api/src/
 ├── prisma/          # Servicio Prisma (DB)
 ├── scheduler/       # Tareas programadas
 ├── storage/         # Almacenamiento R2/local con validación
+├── pesv-bridge/     # Integración PESV (opcional, desactivable)
 └── ws/              # WebSocket gateway y tokens efímeros
 ```
 

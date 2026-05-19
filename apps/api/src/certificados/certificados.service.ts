@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { LmsGateway } from '../ws/lms.gateway';
 import { ConfiguracionService } from '../configuracion/configuracion.service';
@@ -22,6 +23,7 @@ export class CertificadosService {
     private notificacionesService: NotificacionesService,
     private storageService: StorageService,
     private mailService: MailService,
+    private eventEmitter: EventEmitter2,
   ) {
     if (!fs.existsSync(CERTS_DIR)) {
       fs.mkdirSync(CERTS_DIR, { recursive: true });
@@ -330,6 +332,15 @@ export class CertificadosService {
       [usuario_guid],
     );
     this.lmsGateway.broadcast('dashboard:refresh', { reason: 'certificate_generated' }, [usuario_guid]);
+
+    // Emit event for cross-module listeners (e.g., PESV bridge infraction resolution)
+    this.eventEmitter.emit('certificate.generated', {
+      usuario_guid,
+      curso_guid,
+      certificado_guid: certificado.guid,
+      codigo_verificacion: codigoVerificacion,
+      fecha_completado: fechaCompletado,
+    });
 
     // Create notification (fire-and-forget)
     this.notificacionesService

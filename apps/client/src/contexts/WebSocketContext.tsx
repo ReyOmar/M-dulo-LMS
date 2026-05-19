@@ -27,7 +27,9 @@ type WebSocketEvent =
   | 'notification:new'
   | 'notification:read'
   | 'message:new'
-  | 'certificate:new';
+  | 'certificate:new'
+  | 'pesv-bridge:sync'
+  | 'pesv-bridge:subsanacion';
 
 interface CourseEditor {
   guid: string;

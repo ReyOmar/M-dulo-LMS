@@ -22,6 +22,7 @@ import { MailModule } from './mail/mail.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { CertificadosModule } from './certificados/certificados.module';
 import { HealthModule } from './health/health.module';
+import { PesvBridgeModule } from './pesv-bridge/pesv-bridge.module';
 import { LmsEventListener } from './common/listeners/lms-event.listener';
 
 @Module({
@@ -65,6 +66,7 @@ import { LmsEventListener } from './common/listeners/lms-event.listener';
     SchedulerModule,
     CertificadosModule,
     HealthModule,
+    PesvBridgeModule,
   ],
   controllers: [],
   providers: [

@@ -373,7 +373,7 @@ export function Sidebar() {
                   onClick={() => setMobileOpen(false)}
                 >
                   <ShieldAlert className="h-4 w-4 shrink-0" />
-                  <span>Solicitudes</span>
+                  <span>Solicitudes y Registro</span>
                   {solicitudesCount > 0 && (
                     <span className="ml-auto bg-accent text-accent-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
                       {solicitudesCount}

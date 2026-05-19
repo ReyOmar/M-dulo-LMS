@@ -515,3 +515,44 @@ model lms_plantillas_correo {
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 }
+
+// ── BRIDGE PESV-LMS: Registro de infracciones sincronizadas ──
+
+enum lms_pesv_bridge_estado {
+  MATRICULADO         // Usuario matriculado en curso exitosamente
+  CURSO_NO_ENCONTRADO // El curso correspondiente no existe aún en el LMS
+  SUBSANADO           // Completó el curso y obtuvo certificado
+  ERROR               // Error durante el procesamiento
+}
+
+model lms_pesv_bridge_registros {
+  id                    Int                       @id @default(autoincrement())
+  // Referencia a la infracción del PESV (no FK — distinta BD)
+  pesv_infraccion_guid  String                    @unique
+  pesv_conductor_guid   String
+  pesv_tipo_infraccion  String                    // Nombre del tipo de infracción (display)
+  pesv_conductor_nombre String                    // Nombre completo del conductor
+  pesv_conductor_email  String                    // Email del conductor
+  pesv_fecha_infraccion DateTime
+
+  // Referencia al LMS
+  lms_usuario_guid      String?                   // GUID del usuario creado/encontrado en LMS
+  lms_curso_guid        String?                   // GUID del curso asignado
+  lms_curso_titulo      String?                   // Título del curso (display)
+
+  // Estado y tracking
+  estado                lms_pesv_bridge_estado    @default(CURSO_NO_ENCONTRADO)
+  fecha_matriculacion   DateTime?                 // Cuándo fue matriculado
+  fecha_subsanacion     DateTime?                 // Fecha del certificado (subsanación)
+  certificado_guid      String?                   // GUID del certificado emitido
+  codigo_verificacion   String?                   // Código de verificación del certificado
+  mensaje_error         String?       @db.Text    // Mensaje si hubo error
+  intentos_sync         Int                       @default(1)
+
+  created_at            DateTime                  @default(now())
+  updated_at            DateTime                  @updatedAt
+
+  @@index([estado])
+  @@index([pesv_conductor_email])
+  @@index([lms_usuario_guid])
+}
