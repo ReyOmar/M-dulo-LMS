@@ -46,6 +46,7 @@ const mockTokenBlacklist = {
   isBlacklisted: jest.fn().mockReturnValue(false),
   add: jest.fn(),
   revokeUser: jest.fn().mockResolvedValue(undefined),
+  revokeUserBefore: jest.fn().mockResolvedValue(undefined),
 };
 
 const mockLmsGateway = {

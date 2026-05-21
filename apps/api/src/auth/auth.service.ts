@@ -131,6 +131,20 @@ export class AuthService {
       };
     }
 
+    // SEC: Enforce single session — revoke ALL previous tokens for this user
+    // and force-disconnect any active WebSocket connections BEFORE issuing a new token.
+    // This guarantees only one session exists at a time, regardless of browser/device.
+    // IMPORTANT: Must happen BEFORE signAsync so the new token's iat > revokedAt.
+    try {
+      // Use a timestamp 1 second in the past to avoid same-second race condition.
+      // isRevoked uses iat <= revokedAt, so this ensures the new token (iat = now) passes.
+      await this.tokenBlacklistService.revokeUserBefore(user.guid, new Date(Date.now() - 1000));
+      this.lmsGateway.forceDisconnect(user.guid, 'new_session');
+    } catch (err) {
+      this.logger.error('Error revoking previous sessions on login', err);
+    }
+
+    // Generate new token AFTER revocation — its iat will be > revokedAt (which uses <=)
     const payload = { sub: user.guid, role: user.rol, email: user.email };
     const token = await this.jwtService.signAsync(payload);
 

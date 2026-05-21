@@ -88,6 +88,27 @@ export class TokenBlacklistService implements OnModuleInit {
   }
 
   /**
+   * Revoke all tokens for a user issued before a specific timestamp.
+   * Used by login to revoke previous sessions while keeping the new token valid.
+   * @param revokedBefore - Tokens issued at or before this time will be invalidated
+   */
+  async revokeUserBefore(userGuid: string, revokedBefore: Date): Promise<void> {
+    const expiresAt = new Date(Date.now() + 25 * 3600 * 1000);
+
+    await this.prisma.lms_token_revocations.create({
+      data: {
+        usuario_guid: userGuid,
+        revoked_at: revokedBefore,
+        expires_at: expiresAt,
+      },
+    });
+
+    this.cache.set(userGuid, Math.floor(revokedBefore.getTime() / 1000));
+
+    this.logger.log(`Revoked tokens for user ${userGuid} issued before ${revokedBefore.toISOString()}`);
+  }
+
+  /**
    * Check if a token (identified by user GUID and issued-at timestamp) is revoked.
    * Returns true if the token was issued AT OR BEFORE the most recent revocation.
    * F3.5: Uses <= to ensure tokens from the same second as revocation are also invalidated.
