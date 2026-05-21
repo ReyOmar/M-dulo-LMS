@@ -65,4 +65,19 @@ export class PesvBridgeController {
       ...result,
     };
   }
+
+  /**
+   * POST /api/pesv-bridge/retry — Retry pending enrollments (CURSO_NO_ENCONTRADO)
+   */
+  @Post('retry')
+  @Roles('ADMINISTRADOR')
+  async retryPending() {
+    this.logger.log('🔧 Manual retry triggered by admin');
+    await this.bridgeService.retryPendingEnrollments();
+    const stats = await this.bridgeService.getStats();
+    return {
+      message: 'Reintento de matrículas pendientes completado.',
+      ...stats,
+    };
+  }
 }
