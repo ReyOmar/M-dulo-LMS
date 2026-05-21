@@ -6,6 +6,7 @@ import { StorageService } from '../storage/storage.service';
 import { MailService } from '../mail/mail.service';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import { UpdateCursoDto } from './dto/cursos.dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 /**
  * CursosService — Core course management (CRUD, assignment, listing).
@@ -20,6 +21,7 @@ export class CursosService {
     private lmsGateway: LmsGateway,
     private storageService: StorageService,
     private mailService: MailService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -284,6 +286,15 @@ export class CursosService {
 
     this.lmsGateway.broadcast('course:updated', { guid: curso_guid, ...data });
     this.lmsGateway.broadcastToRole('dashboard:refresh', { reason: 'course_updated' }, 'ADMINISTRADOR');
+
+    // Emit course.published event AFTER the DB update so listeners see the current state
+    if (data.estado === 'PUBLICADO') {
+      this.eventEmitter.emit('course.published', {
+        curso_guid: updated.guid,
+        titulo: updated.titulo,
+      });
+    }
+
     return updated;
   }
 

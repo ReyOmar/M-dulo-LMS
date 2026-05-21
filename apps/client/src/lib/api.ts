@@ -40,14 +40,19 @@ api.interceptors.response.use(
 
         // Differentiate between active revocation and normal token expiry.
         const serverMessage = (error.response?.data?.message || '').toLowerCase();
-        const isActiveRevocation =
-          serverMessage.includes('revocada') ||
-          serverMessage.includes('eliminada') ||
-          serverMessage.includes('desactivada');
+        const isRevoked = serverMessage.includes('revocada');
+        const isDeleted = serverMessage.includes('eliminada') || serverMessage.includes('desactivada');
+        const isDisplaced = isRevoked && !isDeleted;
 
         const isOnDashboard = window.location.pathname.startsWith('/dashboard');
         if (isOnDashboard) {
-          window.location.href = isActiveRevocation ? '/login?revoked=true' : '/login?expired=true';
+          if (isDeleted) {
+            window.location.href = '/login?revoked=true';
+          } else if (isDisplaced) {
+            window.location.href = '/login?displaced=true';
+          } else {
+            window.location.href = '/login?expired=true';
+          }
         } else if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }

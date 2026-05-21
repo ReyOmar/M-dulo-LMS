@@ -46,6 +46,7 @@ export function Sidebar() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [solicitudesCount, setSolicitudesCount] = useState(0);
+  const [pesvPendingCount, setPesvPendingCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -82,6 +83,32 @@ export function Sidebar() {
     const unsub1 = subscribe('request:new', fetchCount);
     const unsub2 = subscribe('dashboard:refresh', fetchCount);
     const unsub3 = subscribe('user:created', fetchCount);
+
+    return () => {
+      unsub1();
+      unsub2();
+      unsub3();
+    };
+  }, [role, subscribe]);
+
+  // Real-time PESV bridge pending count for admin
+  useEffect(() => {
+    if (role !== 'admin') return;
+
+    const fetchPesvCount = async () => {
+      try {
+        const res = await api.get('/pesv-bridge/stats');
+        setPesvPendingCount(res.data?.cursoNoEncontrado || 0);
+      } catch {
+        // Bridge might not be enabled
+      }
+    };
+
+    fetchPesvCount();
+
+    const unsub1 = subscribe('pesv-bridge:sync', fetchPesvCount);
+    const unsub2 = subscribe('pesv-bridge:subsanacion', fetchPesvCount);
+    const unsub3 = subscribe('dashboard:refresh', fetchPesvCount);
 
     return () => {
       unsub1();
@@ -374,9 +401,13 @@ export function Sidebar() {
                 >
                   <ShieldAlert className="h-4 w-4 shrink-0" />
                   <span>Solicitudes y Registro</span>
-                  {solicitudesCount > 0 && (
-                    <span className="ml-auto bg-accent text-accent-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
-                      {solicitudesCount}
+                  {(solicitudesCount > 0 || pesvPendingCount > 0) && (
+                    <span
+                      className={`ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse ${
+                        pesvPendingCount > 0 ? 'bg-amber-500/15 text-amber-500' : 'bg-accent text-accent-foreground'
+                      }`}
+                    >
+                      {solicitudesCount + pesvPendingCount}
                     </span>
                   )}
                 </Link>

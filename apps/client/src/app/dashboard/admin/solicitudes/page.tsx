@@ -42,6 +42,7 @@ interface BridgeRecord {
   codigo_verificacion?: string;
   mensaje_error?: string;
   intentos_sync: number;
+  pesv_actualizado: boolean;
   created_at: string;
 }
 
@@ -507,6 +508,7 @@ export default function SolicitudesYRegistro() {
                     <th className="px-5 py-4">Estado</th>
                     <th className="px-5 py-4">Fecha Infracción</th>
                     <th className="px-5 py-4">Subsanación</th>
+                    <th className="px-5 py-4">PESV</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/30">
@@ -529,6 +531,17 @@ export default function SolicitudesYRegistro() {
                       <td className="px-5 py-4 text-sm text-muted-foreground">{fmtDate(r.pesv_fecha_infraccion)}</td>
                       <td className="px-5 py-4 text-sm text-muted-foreground">
                         {r.fecha_subsanacion ? fmtDateTime(r.fecha_subsanacion) : '—'}
+                      </td>
+                      <td className="px-5 py-4 text-sm">
+                        {r.estado === 'SUBSANADO' ? (
+                          r.pesv_actualizado ? (
+                            <span className="text-emerald-500 text-xs font-bold">✓ Actualizado</span>
+                          ) : (
+                            <span className="text-amber-500 text-xs font-bold">⏳ Pendiente</span>
+                          )
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -559,7 +572,10 @@ export default function SolicitudesYRegistro() {
                       </p>
                     )}
                     {r.fecha_subsanacion && (
-                      <p className="text-xs text-emerald-500">✓ Subsanado: {fmtDateTime(r.fecha_subsanacion)}</p>
+                      <p className="text-xs text-emerald-500">
+                        ✓ Subsanado: {fmtDateTime(r.fecha_subsanacion)}
+                        {r.pesv_actualizado ? ' · PESV actualizado' : ' · PESV pendiente'}
+                      </p>
                     )}
                     {r.estado === 'ERROR' && r.mensaje_error && (
                       <p className="text-xs text-red-400 italic">{r.mensaje_error}</p>

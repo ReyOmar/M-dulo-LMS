@@ -6,6 +6,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { MatriculasModule } from '../matriculas/matriculas.module';
 import { WsModule } from '../ws/ws.module';
 import { MailModule } from '../mail/mail.module';
+import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 
 /**
  * PesvBridgeModule — Self-contained integration module for PESV ↔ LMS.
@@ -19,7 +20,7 @@ import { MailModule } from '../mail/mail.module';
  * so we don't need to import it here. The @Cron decorators just work.
  */
 @Module({
-  imports: [PrismaModule, MatriculasModule, WsModule, MailModule],
+  imports: [PrismaModule, MatriculasModule, WsModule, MailModule, NotificacionesModule],
   controllers: [PesvBridgeController],
   providers: [PesvBridgeService, PesvPrismaService],
   exports: [PesvBridgeService],

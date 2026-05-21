@@ -2,6 +2,9 @@ import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/commo
 import { PrismaClient } from '../../generated/pesv-client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
+// PESV estado_id constants (from terminos table)
+const PESV_ESTADO_SUBSANADA = 202;
+
 // Parse DATABASE_URL: mysql://user:password@host:port/database
 function parseDbUrl(url: string) {
   const match = url.match(/mysql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/);
@@ -16,9 +19,16 @@ function parseDbUrl(url: string) {
 }
 
 /**
- * PesvPrismaService — Manages a READONLY Prisma Client connection
- * to the PESV database. Used exclusively by the bridge module to
- * read infraction data. NO write operations are permitted.
+ * PesvPrismaService — Manages a Prisma Client connection to the PESV database.
+ *
+ * Used exclusively by the bridge module to:
+ * - READ infraction data (sync new infractions to LMS)
+ * - WRITE-BACK subsanation status (update estado_id to SUBSANADA when course is completed)
+ *
+ * Security constraints:
+ * - Only `subsanarInfraccion()` performs writes — limited to updating estado_id
+ * - No DELETE, no INSERT, no other field updates
+ * - Connection credentials come from PESV_DATABASE_URL env var (never hardcoded)
  */
 @Injectable()
 export class PesvPrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -65,7 +75,7 @@ export class PesvPrismaService extends PrismaClient implements OnModuleInit, OnM
 
     try {
       await this.$connect();
-      this.logger.log('✅ Connected to PESV database (readonly)');
+      this.logger.log('✅ Connected to PESV database');
     } catch (error) {
       this.logger.error('❌ Failed to connect to PESV database. Bridge sync will be disabled.', error);
     }
@@ -86,6 +96,42 @@ export class PesvPrismaService extends PrismaClient implements OnModuleInit, OnM
       await this.$queryRaw`SELECT 1`;
       return true;
     } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Write-back: Update infracción estado to SUBSANADA in the PESV database.
+   *
+   * Called when a student completes the corresponding LMS course and receives
+   * a certificate. This is the ONLY write operation permitted against PESV.
+   *
+   * @param guid - The infracción GUID in the PESV database
+   * @returns true if update succeeded, false if it failed
+   */
+  async subsanarInfraccion(guid: string): Promise<boolean> {
+    if (!this.hasUrl) {
+      this.logger.warn('Cannot update PESV — database not connected.');
+      return false;
+    }
+
+    try {
+      const result = await this.infracciones.update({
+        where: { guid },
+        data: {
+          estado_id: PESV_ESTADO_SUBSANADA,
+          observaciones: `Subsanada via LMS - ${new Date().toISOString().split('T')[0]}`,
+        },
+      });
+
+      if (result) {
+        this.logger.log(`  ✅ PESV infracción ${guid} → SUBSANADA`);
+        return true;
+      }
+
+      return false;
+    } catch (err) {
+      this.logger.error(`  ❌ Failed to update PESV infracción ${guid}:`, err);
       return false;
     }
   }

@@ -24,7 +24,7 @@ describe('CursosService — IDOR & Ownership (F12.1)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new CursosService(mockPrisma as any, null as any, null as any, null as any);
+    service = new CursosService(mockPrisma as any, null as any, null as any, null as any, null as any);
   });
 
   describe('verificarAccesoCurso', () => {

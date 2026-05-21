@@ -65,7 +65,7 @@ export class JwtAuthGuard implements CanActivate, OnModuleDestroy {
         if (payload.sub && payload.iat) {
           if (this.tokenBlacklistService.isRevoked(payload.sub, payload.iat)) {
             if (!isPublic) {
-              throw new UnauthorizedException('Sesión revocada. Tu cuenta ha sido eliminada o tu sesión fue cerrada.');
+              throw new UnauthorizedException('Sesión revocada. Se inició sesión en otro dispositivo.');
             }
             // On public routes, just don't set user
             payload = null;

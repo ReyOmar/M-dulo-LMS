@@ -115,6 +115,7 @@ enum lms_tipo_notificacion {
   CURSO_REACTIVADO
   RECORDATORIO_INACTIVIDAD
   MENSAJE_NUEVO
+  PESV_ALERTA
 }
 
 enum lms_escala_calificacion {
@@ -308,7 +309,7 @@ model lms_notificaciones {
   usuario      usuarios              @relation(fields: [usuario_guid], references: [guid], onDelete: Cascade)
   tipo         lms_tipo_notificacion
   titulo       String
-  mensaje      String
+  mensaje      String                @db.Text
   leida        Boolean               @default(false)
   url_accion   String?               // Link para ver detalle (ej. /lms/cursos/123)
   ref_tipo     String?               // 'curso', 'evaluacion', 'entrega'
@@ -548,6 +549,7 @@ model lms_pesv_bridge_registros {
   codigo_verificacion   String?                   // Código de verificación del certificado
   mensaje_error         String?       @db.Text    // Mensaje si hubo error
   intentos_sync         Int                       @default(1)
+  pesv_actualizado      Boolean                   @default(false) // true = PESV infracción actualizada a SUBSANADA
 
   created_at            DateTime                  @default(now())
   updated_at            DateTime                  @updatedAt
