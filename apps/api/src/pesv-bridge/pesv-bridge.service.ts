@@ -54,7 +54,7 @@ export class PesvBridgeService {
     this.isSyncing = true;
     let processed = 0;
     let errors = 0;
-    let skipped = 0;
+    const skipped = 0;
 
     try {
       // Check PESV connection
@@ -183,13 +183,13 @@ export class PesvBridgeService {
       select: { guid: true, activo: true, deleted_at: true },
     });
 
-    let invitacionToken: string | null = null;
+    let _invitacionToken: string | null = null;
 
     if (!lmsUser) {
       // Create user in LMS as ESTUDIANTE (without password — invitation flow)
       const rawToken = crypto.randomBytes(32).toString('hex');
       const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-      invitacionToken = rawToken;
+      _invitacionToken = rawToken;
 
       lmsUser = await this.prisma.usuarios.create({
         data: {
